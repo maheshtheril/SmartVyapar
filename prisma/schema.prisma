@@ -1,0 +1,623 @@
+// SmartVyapar: Multi-Tenant Business, Inventory & GST SaaS ERP Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  CARD
+  BANK_TRANSFER
+  CREDIT
+}
+
+enum StockLogType {
+  INITIAL
+  PURCHASE_IN
+  SALE_OUT
+  RETURN_IN
+  MANUAL_ADJUSTMENT
+  CONSUMPTION_OUT // For recipe / kitchen ingredient depletion
+}
+
+enum ProductType {
+  RETAIL_ITEM   // Standard retail product - direct stock deduction
+  RAW_MATERIAL  // Bulk ingredients (Chicken, Rice, Oil) - not directly sold
+  FINISHED_GOOD // Prepared menu dish (Biryani, 65) - auto-depletes ingredients
+}
+
+// ----------------------------------------------------
+// 1. TENANT / BUSINESS ENTITY (ISOLATED WORKSPACE)
+// ----------------------------------------------------
+model Tenant {
+  id               String           @id @default(uuid())
+  slug             String           @unique // e.g. "ziona-electricals"
+  businessName     String
+  legalName        String?
+  gstin            String?          // e.g. "32AAAAA0000A1Z5"
+  stateCode        String           @default("32") // e.g. "32" for Kerala, "27" for MH
+  stateName        String?          @default("Kerala")
+  upiId            String           // e.g. "mybusiness@okaxis" for dynamic QR
+  phone            String
+  email            String?
+  address          String?
+  pincode          String?          @default("682001")
+  isComposition    Boolean          @default(false)
+  currency         String           @default("INR")
+  logoUrl          String?
+  subscriptionTier SubscriptionTier @default(FREE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  users         User[]
+  products      Product[]
+  stockLogs     StockLog[]
+  customers     Customer[]
+  invoices      Invoice[]
+  purchaseBills PurchaseBill[]
+  accounts            Account[]
+  recipeItems         RecipeItem[]
+  batches             Batch[]
+  restaurantTables    RestaurantTable[]
+  kitchenOrderTickets KitchenOrderTicket[]
+  invoiceSequences    InvoiceSequence[]
+  creditNotes         CreditNote[]
+  auditLogs           AuditLog[]
+
+  @@map("tenants")
+}
+
+// ----------------------------------------------------
+// 2. USERS & STAFF
+// ----------------------------------------------------
+model User {
+  id           String    @id @default(uuid())
+  tenantId     String
+  name         String
+  email        String?   @unique
+  phone        String
+  passwordHash String
+  role         UserRole  @default(STAFF)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditLogs AuditLog[]
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ----------------------------------------------------
+// 3. PRODUCT & INVENTORY CATALOG
+// ----------------------------------------------------
+model Product {
+  id                  String      @id @default(uuid())
+  tenantId            String
+  name                String
+  sku                 String?
+  barcode             String?
+  hsnCode             String      @default("9983")
+  category            String?
+  productType         ProductType @default(RETAIL_ITEM) // RETAIL_ITEM, RAW_MATERIAL, FINISHED_GOOD
+  baseUnit            String      @default("PCS") // Atomic unit: PCS, KG, MTR, NOS, TAB, LTR
+  hasAltUnit          Boolean     @default(false)
+  altUnit             String?     // Packaging unit: BOX, CTN, BAG, STRIP, DOZ
+  conversionFactor    Decimal?    @default(1.0) @db.Decimal(10, 3) // 1 altUnit = X baseUnit (e.g. 1 BOX = 10 PCS)
+  purchasePrice       Decimal     @db.Decimal(10, 2) // Cost per baseUnit
+  purchasePricePerAlt Decimal?    @db.Decimal(10, 2) // Cost per altUnit (Box cost)
+  sellingPrice        Decimal     @db.Decimal(10, 2) // Price per baseUnit
+  sellingPricePerAlt  Decimal?    @db.Decimal(10, 2) // Price per altUnit (Box selling price)
+  mrp                 Decimal?    @db.Decimal(10, 2)
+  gstRate             Decimal     @default(18.0) @db.Decimal(5, 2)
+  currentStock        Decimal     @default(0.0) @db.Decimal(12, 3) // Always tracked in baseUnit
+  minStockAlert       Decimal     @default(5.0) @db.Decimal(10, 3)
+  isActive            Boolean     @default(true)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  hasBatchTracking    Boolean            @default(false)
+  batches             Batch[]
+  kotItems            KotItem[]
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stockLogs         StockLog[]
+  invoiceItems      InvoiceItem[]
+  purchaseBillItems PurchaseBillItem[]
+  creditNoteItems   CreditNoteItem[]
+  
+  // Recipes: When this product is a finished dish (e.g. Chicken Biryani):
+  recipeIngredients RecipeItem[]       @relation("MenuToIngredients")
+  
+  // Recipes: When this product is used as a raw material ingredient (e.g. Raw Chicken):
+  usedInRecipes     RecipeItem[]       @relation("IngredientToMenu")
+
+  @@index([tenantId])
+  @@index([tenantId, barcode])
+  @@map("products")
+}
+
+// ----------------------------------------------------
+// 3B. RECIPES / BILL OF MATERIALS (BOM)
+// ----------------------------------------------------
+model RecipeItem {
+  id               String   @id @default(uuid())
+  tenantId         String
+  menuProductId    String   // The Finished Dish (e.g. Chicken Biryani)
+  ingredientId     String   // The Raw Material (e.g. Raw Chicken, Basmati Rice)
+  quantityRequired Decimal  @db.Decimal(12, 3) // e.g. 0.250 KG per plate
+  wastePercentage  Decimal  @default(0.0) @db.Decimal(5, 2) // Cooking shrinkage / wastage
+  createdAt        DateTime @default(now())
+
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  menuProduct Product @relation("MenuToIngredients", fields: [menuProductId], references: [id], onDelete: Cascade)
+  ingredient  Product @relation("IngredientToMenu", fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, menuProductId])
+  @@index([tenantId, ingredientId])
+  @@map("recipe_items")
+}
+
+// ----------------------------------------------------
+// 4. INVENTORY STOCK LEDGER (AUDIT LOG)
+// ----------------------------------------------------
+model StockLog {
+  id          String       @id @default(uuid())
+  tenantId    String
+  productId   String
+  changeQty   Decimal      @db.Decimal(12, 3) // Positive for additions, negative for deductions
+  type        StockLogType
+  referenceId String?      // Invoice number or Purchase bill number
+  note        String?
+  createdAt   DateTime     @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, productId])
+  @@map("stock_logs")
+}
+
+// ----------------------------------------------------
+// 5. CUSTOMERS & KHATA (CREDIT LEDGER)
+// ----------------------------------------------------
+model Customer {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  name               String
+  phone              String
+  email              String?
+  gstin              String?
+  stateCode          String?
+  address            String?
+  pincode            String?  @default("682001")
+  outstandingBalance Decimal  @default(0.0) @db.Decimal(10, 2) // Positive means customer owes money
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+  creditNotes CreditNote[]
+
+  @@index([tenantId, phone])
+  @@map("customers")
+}
+
+// ----------------------------------------------------
+// 6. SALES INVOICE (BILLING)
+// ----------------------------------------------------
+model Invoice {
+  id                String        @id @default(uuid())
+  tenantId          String
+  invoiceNumber     String        // e.g. "INV-2026-0001"
+  invoiceDate       DateTime      @default(now())
+  customerId        String?
+  customerName      String
+  customerPhone     String
+  customerGstin     String?
+  customerStateCode String        // If matches tenant.stateCode -> CGST+SGST, else IGST
+  isInterState      Boolean       @default(false)
+  subtotal          Decimal       @db.Decimal(10, 2)
+  cgstAmount        Decimal       @default(0.0) @db.Decimal(10, 2)
+  sgstAmount        Decimal       @default(0.0) @db.Decimal(10, 2)
+  igstAmount        Decimal       @default(0.0) @db.Decimal(10, 2)
+  totalTax          Decimal       @default(0.0) @db.Decimal(10, 2)
+  totalAmount       Decimal       @db.Decimal(10, 2)
+  paidAmount        Decimal       @default(0.0) @db.Decimal(10, 2)
+  dueAmount         Decimal       @default(0.0) @db.Decimal(10, 2)
+  paymentStatus     PaymentStatus @default(UNPAID)
+  paymentMode       PaymentMode   @default(UPI)
+  upiUri            String?       // NPCI QR Link
+  notes             String?
+  
+  // E-Way Bill (GST Rule 138)
+  ewayBillNo        String?       // 12-digit statutory E-Way Bill number
+  ewayBillDate      DateTime?
+  transDistance     Int?          // Approximate distance in KM
+  transporterId     String?       // 15-character GSTIN/TRANSIN
+  transporterName   String?
+  transDocNo        String?       // LR / RR / Consignment Note / Airway Bill No
+  transDocDate      DateTime?
+  vehicleNo         String?       // e.g. KL07AB1234
+  vehicleType       String?       @default("R") // R: Regular, O: Over Dimensional Cargo
+  transportMode     String?       @default("1") // 1: Road, 2: Rail, 3: Air, 4: Ship
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer    Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items       InvoiceItem[]
+  creditNotes CreditNote[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId, invoiceDate])
+  @@index([tenantId, paymentStatus])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id               String  @id @default(uuid())
+  invoiceId        String
+  productId        String
+  productName      String
+  hsnCode          String
+  unitSold         String  @default("PCS") // Unit chosen by cashier: PCS, BOX, KG, etc.
+  quantity         Decimal @db.Decimal(12, 3) // E.g. 2 BOX or 1.5 KG or 3 PCS
+  conversionFactor Decimal @default(1.0) @db.Decimal(10, 3) // Factor at time of sale
+  baseQuantity     Decimal @default(0.0) @db.Decimal(12, 3) // Effective base units deducted: quantity * conversionFactor
+  unitPrice        Decimal @db.Decimal(10, 2)
+  gstRate          Decimal @db.Decimal(5, 2)
+  cgstAmount       Decimal @default(0.0) @db.Decimal(10, 2)
+  sgstAmount       Decimal @default(0.0) @db.Decimal(10, 2)
+  igstAmount       Decimal @default(0.0) @db.Decimal(10, 2)
+  batchId          String?
+  batchNumber      String?
+  lineTotal        Decimal @db.Decimal(10, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  batch   Batch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@map("invoice_items")
+}
+
+// ----------------------------------------------------
+// 7. PURCHASE BILLS (AI SCANNED OR MANUAL RESTOCK)
+// ----------------------------------------------------
+model PurchaseBill {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  billNumber         String   // Supplier's bill number
+  billDate           DateTime @default(now())
+  supplierName       String
+  supplierGstin      String?
+  totalTaxable       Decimal  @db.Decimal(10, 2)
+  cgstAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
+  sgstAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
+  igstAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
+  totalAmount        Decimal  @db.Decimal(10, 2)
+  scannedFileUrl     String?
+  aiConfidenceScore  Decimal? @db.Decimal(4, 2) // e.g. 0.95 (95% accuracy)
+  isConfirmed        Boolean  @default(false)    // True when user confirms AI extraction
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  PurchaseBillItem[]
+
+  @@index([tenantId])
+  @@map("purchase_bills")
+}
+
+model PurchaseBillItem {
+  id             String    @id @default(uuid())
+  purchaseBillId String
+  productId      String?   // Matched to catalog product (or null if new item)
+  productName    String
+  batchNumber    String?
+  expiryDate     DateTime?
+  hsnCode        String?
+  unit           String    @default("PCS") // Unit billed by vendor (e.g. BOX, CTN, PCS, KG)
+  quantity       Decimal   @db.Decimal(12, 3) // Quantity billed by vendor (e.g. 5 Boxes)
+  packageSize    Decimal   @default(1.0) @db.Decimal(10, 3) // E.g. 10 Pcs/Box
+  baseQuantity   Decimal   @default(0.0) @db.Decimal(12, 3) // Total base units entering stock: quantity * packageSize
+  purchasePrice  Decimal   @db.Decimal(10, 2) // Price per unit billed by vendor (e.g. ₹1,000 / Box)
+  baseCostPrice  Decimal?  @db.Decimal(10, 2) // Cost per base unit (e.g. ₹1,000 / 10 = ₹100 / PC)
+  mrp            Decimal?  @db.Decimal(10, 2)
+  gstRate        Decimal   @db.Decimal(5, 2)
+  lineTotal      Decimal   @db.Decimal(10, 2)
+
+  purchaseBill PurchaseBill @relation(fields: [purchaseBillId], references: [id], onDelete: Cascade)
+  product      Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@map("purchase_bill_items")
+}
+
+// ----------------------------------------------------
+// 8. CHART OF ACCOUNTS (DOUBLE-ENTRY LEDGER)
+// ----------------------------------------------------
+enum AccountClassification {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+model Account {
+  id             String                @id @default(uuid())
+  tenantId       String
+  code           String                // e.g. "1000", "1010", "1050", "2000", "4000"
+  name           String                // e.g. "Cash in Hand", "Accounts Receivable", "Sales Revenue"
+  classification AccountClassification
+  balance        Decimal               @default(0.0) @db.Decimal(12, 2)
+  isGroup        Boolean               @default(false)
+  isActive       Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, classification])
+  @@map("accounts")
+}
+
+// ----------------------------------------------------
+// 9. BATCH & EXPIRY TRACKING (MULTIPLE MRPS & SALE PRICES)
+// ----------------------------------------------------
+model Batch {
+  id           String    @id @default(uuid())
+  tenantId     String
+  productId    String
+  batchNumber  String    // e.g. "B-2026-01", "LOT-992"
+  mfgDate      DateTime?
+  expiryDate   DateTime?
+  costPrice    Decimal   @db.Decimal(10, 2)
+  sellingPrice Decimal   @db.Decimal(10, 2)
+  mrp          Decimal   @db.Decimal(10, 2)
+  currentStock Decimal   @default(0.0) @db.Decimal(12, 3)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  invoiceItems InvoiceItem[]
+
+  @@unique([tenantId, productId, batchNumber])
+  @@index([tenantId, productId])
+  @@index([tenantId, expiryDate])
+  @@map("batches")
+}
+
+// ----------------------------------------------------
+// 10. RESTAURANT TABLES & KITCHEN ORDER TICKETS (KOT)
+// ----------------------------------------------------
+enum TableStatus {
+  VACANT
+  OCCUPIED
+  BILLED
+}
+
+model RestaurantTable {
+  id           String      @id @default(uuid())
+  tenantId     String
+  name         String      // e.g. "T-01", "AC-2", "Parcel / Takeaway"
+  section      String      @default("Main Hall") // "Main Hall", "AC Dining", "Rooftop", "Takeaway"
+  capacity     Int         @default(4)
+  status       TableStatus @default(VACANT)
+  activeKotId  String?     // Link to currently open session
+  currentTotal Decimal     @default(0.0) @db.Decimal(10, 2)
+  occupiedAt   DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  tenant Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  kots   KitchenOrderTicket[]
+
+  @@unique([tenantId, name])
+  @@map("restaurant_tables")
+}
+
+enum KotStatus {
+  PREPARING
+  SERVED
+  SETTLED
+  CANCELLED
+}
+
+model KitchenOrderTicket {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tableId     String
+  kotNumber   String    // e.g. "KOT-101", "KOT-102"
+  guestCount  Int       @default(2)
+  waiterName  String?
+  status      KotStatus @default(PREPARING)
+  totalAmount Decimal   @default(0.0) @db.Decimal(10, 2)
+  invoiceId   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  table  RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  items  KotItem[]
+
+  @@index([tenantId, tableId])
+  @@map("kitchen_order_tickets")
+}
+
+model KotItem {
+  id          String   @id @default(uuid())
+  kotId       String
+  productId   String
+  productName String
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  notes       String?  // e.g. "Extra spicy, no mayo"
+  isServed    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  kot     KitchenOrderTicket @relation(fields: [kotId], references: [id], onDelete: Cascade)
+  product Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("kot_items")
+}
+
+// ----------------------------------------------------
+// 12. ATOMIC INVOICE SEQUENCE GENERATOR
+// ----------------------------------------------------
+model InvoiceSequence {
+  id            String   @id @default(uuid())
+  tenantId      String
+  financialYear String   // e.g. "2026-27"
+  prefix        String   @default("INV")
+  lastNumber    Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, financialYear, prefix])
+  @@map("invoice_sequences")
+}
+
+// ----------------------------------------------------
+// 13. GST CREDIT NOTES & SALES RETURNS (RULE 53 / GSTR-1 TABLE 9B)
+// ----------------------------------------------------
+enum CreditNoteReason {
+  SALES_RETURN
+  POST_SALE_DISCOUNT
+  DEFICIENT_GOODS
+  INVOICE_CORRECTION
+  OTHER
+}
+
+model CreditNote {
+  id                    String           @id @default(uuid())
+  tenantId              String
+  creditNoteNumber      String           // e.g. "CN-2627-0001"
+  creditNoteDate        DateTime         @default(now())
+  invoiceId             String
+  originalInvoiceNumber String
+  originalInvoiceDate   DateTime
+  customerId            String?
+  customerName          String
+  customerPhone         String
+  customerGstin         String?
+  customerStateCode     String
+  isInterState          Boolean          @default(false)
+  reason                CreditNoteReason @default(SALES_RETURN)
+  remarks               String?
+
+  subtotal              Decimal          @db.Decimal(10, 2)
+  cgstAmount            Decimal          @default(0.0) @db.Decimal(10, 2)
+  sgstAmount            Decimal          @default(0.0) @db.Decimal(10, 2)
+  igstAmount            Decimal          @default(0.0) @db.Decimal(10, 2)
+  totalTax              Decimal          @default(0.0) @db.Decimal(10, 2)
+  totalAmount           Decimal          @db.Decimal(10, 2)
+
+  refundMode            PaymentMode      @default(CASH)
+
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  tenant                Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice               Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer              Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items                 CreditNoteItem[]
+
+  @@unique([tenantId, creditNoteNumber])
+  @@index([tenantId, creditNoteDate])
+  @@index([tenantId, invoiceId])
+  @@map("credit_notes")
+}
+
+model CreditNoteItem {
+  id               String     @id @default(uuid())
+  creditNoteId     String
+  invoiceItemId    String?
+  productId        String
+  productName      String
+  hsnCode          String
+  unitReturned     String     @default("PCS")
+  quantity         Decimal    @db.Decimal(12, 3)
+  conversionFactor Decimal    @default(1.0) @db.Decimal(10, 3)
+  baseQuantity     Decimal    @default(0.0) @db.Decimal(12, 3)
+  unitPrice        Decimal    @db.Decimal(10, 2)
+  gstRate          Decimal    @db.Decimal(5, 2)
+  cgstAmount       Decimal    @default(0.0) @db.Decimal(10, 2)
+  sgstAmount       Decimal    @default(0.0) @db.Decimal(10, 2)
+  igstAmount       Decimal    @default(0.0) @db.Decimal(10, 2)
+  lineTotal        Decimal    @db.Decimal(10, 2)
+  restock          Boolean    @default(true)
+
+  creditNote       CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  product          Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("credit_note_items")
+}
+
+// ----------------------------------------------------
+// 12. STATUTORY AUDIT TRAIL / ACTIVITY LOG (MCA / GST)
+// ----------------------------------------------------
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  STOCK_ADJUSTMENT
+  CREDIT_NOTE_ISSUED
+  EWAY_BILL_GENERATED
+  PAYMENT_RECEIVED
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  tenantId   String
+  userId     String?
+  userName   String?
+  action     AuditAction
+  entityType String      // "INVOICE", "CREDIT_NOTE", "PRODUCT", "EWAY_BILL", "STOCK", "CUSTOMER"
+  entityId   String      // ID or Document reference
+  details    Json?       // Metadata snapshot / change diff
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+
+

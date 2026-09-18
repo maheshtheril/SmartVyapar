@@ -1,0 +1,42 @@
+# ==========================================
+# SmartVyapar — .gitignore
+# ==========================================
+
+# ---- Secrets & Environment ----
+.env
+.env.local
+.env.*.local
+# Keep .env.example so teammates can bootstrap
+!.env.example
+
+# ---- Node / Package manager ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Next.js build output ----
+.next/
+out/
+build/
+
+# ---- Prisma ----
+# Generated client (auto-rebuilt on `prisma generate`)
+node_modules/.prisma/
+
+# ---- TypeScript ----
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# ---- OS & Editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ---- Logs ----
+*.log
+logs/
