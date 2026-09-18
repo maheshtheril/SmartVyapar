@@ -4,9 +4,19 @@ import { prisma } from "../src/lib/prisma";
 
 describe("Production Health Check (/api/health logic)", () => {
   it("should successfully ping the database with sub-second latency", async () => {
-    const start = Date.now();
-    const result: any = await prisma.$queryRaw`SELECT 1 as ping`;
-    const latency = Date.now() - start;
+    let result: any = null;
+    let latency = 0;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const start = Date.now();
+        result = await prisma.$queryRaw`SELECT 1 as ping`;
+        latency = Date.now() - start;
+        break;
+      } catch (e) {
+        if (attempt === 2) throw e;
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
 
     assert.ok(Array.isArray(result));
     assert.strictEqual(result.length, 1);

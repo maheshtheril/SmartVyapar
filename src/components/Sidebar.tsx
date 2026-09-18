@@ -28,17 +28,37 @@ import {
   RotateCcw,
   Truck,
   FileCode,
-  ShieldCheck,
   Landmark,
-  Layers,
-  FolderOpen
+  Layers
 } from 'lucide-react';
 
-interface NavChildItem {
+const ICON_MAP: Record<string, any> = {
+  LayoutDashboard,
+  Receipt,
+  PlusCircle,
+  FileText,
+  RotateCcw,
+  Truck,
+  FileCode,
+  Package,
+  Tag,
+  Grid,
+  Boxes,
+  ChefHat,
+  UtensilsCrossed,
+  Layers,
+  Users,
+  BookOpen,
+  Landmark,
+  Sparkles,
+  Camera,
+};
+
+interface NavChildNode {
   id: string;
   name: string;
   href: string;
-  icon: any;
+  icon: string;
   badge?: string;
   badgeColor?: 'amber' | 'rose' | 'emerald' | 'indigo';
   aiTag?: string;
@@ -48,28 +68,26 @@ interface NavChildItem {
 interface NavTreeGroup {
   id: string;
   name: string;
-  icon: any;
+  icon: string;
   badge?: string;
   badgeColor?: 'amber' | 'rose' | 'emerald' | 'indigo';
-  children: NavChildItem[];
+  children: NavChildNode[];
 }
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [tenant, setTenant] = useState({
     businessName: "Loading Business...",
     subscriptionTier: "FREE",
     gstin: "",
   });
   const [currentUser, setCurrentUser] = useState({ name: "", role: "" });
-  const [badges, setBadges] = useState({
-    lowStockCount: 0,
-    unpaidInvoicesCount: 0,
-  });
+  const [treeGroups, setTreeGroups] = useState<NavTreeGroup[]>([]);
 
-  // Track expanded state for each parent tree group
+  // Expanded state for parent tree categories
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     billing: true,
     inventory: true,
@@ -103,7 +121,7 @@ export default function Sidebar() {
     }
   }, [pathname]);
 
-  // Dynamically load Tenant Profile & Live DB Badges from Neon
+  // Dynamically load Tenant Profile & Live DB Tree from /api/tenant
   useEffect(() => {
     async function loadTenantData() {
       try {
@@ -124,15 +142,15 @@ export default function Sidebar() {
           if (data.user) {
             setCurrentUser({ name: data.user.name, role: data.user.role });
           }
-          if (data.badges) {
-            setBadges({
-              lowStockCount: data.badges.lowStockCount || 0,
-              unpaidInvoicesCount: data.badges.unpaidInvoicesCount || 0,
-            });
+          // Set dynamic menu tree populated by Neon Database
+          if (Array.isArray(data.menuTree)) {
+            setTreeGroups(data.menuTree);
           }
         }
       } catch (err) {
         console.error("Failed to load tenant profile for sidebar:", err);
+      } finally {
+        setLoading(false);
       }
     }
     loadTenantData();
@@ -147,152 +165,6 @@ export default function Sidebar() {
       console.error("Logout failed:", err);
     }
   };
-
-  // Enterprise Tree Navigation Schema
-  const treeGroups: NavTreeGroup[] = [
-    {
-      id: "billing",
-      name: "Sales & Billing",
-      icon: Receipt,
-      badge: badges.unpaidInvoicesCount > 0 ? `${badges.unpaidInvoicesCount} Due` : undefined,
-      badgeColor: "amber",
-      children: [
-        { 
-          id: "pos", 
-          name: "Create Bill (POS)", 
-          href: "/billing/new", 
-          icon: PlusCircle, 
-          highlight: true 
-        },
-        { 
-          id: "invoices", 
-          name: "Tax Invoices & Ledger", 
-          href: "/invoices", 
-          icon: FileText,
-          badge: badges.unpaidInvoicesCount > 0 ? `${badges.unpaidInvoicesCount}` : undefined,
-          badgeColor: "amber"
-        },
-        { 
-          id: "credit-notes", 
-          name: "Credit Notes & Returns", 
-          href: "/invoices", 
-          icon: RotateCcw 
-        },
-        { 
-          id: "eway-bills", 
-          name: "E-Way Bills (Rule 138)", 
-          href: "/invoices", 
-          icon: Truck 
-        },
-        { 
-          id: "gstr1-export", 
-          name: "GSTR-1 Portal JSON", 
-          href: "/invoices", 
-          icon: FileCode 
-        },
-      ],
-    },
-    {
-      id: "inventory",
-      name: "Inventory & Catalog",
-      icon: Package,
-      badge: badges.lowStockCount > 0 ? `${badges.lowStockCount} Low` : undefined,
-      badgeColor: "rose",
-      children: [
-        { 
-          id: "stock", 
-          name: "Product Catalog & Stock", 
-          href: "/inventory", 
-          icon: Package,
-          badge: badges.lowStockCount > 0 ? `${badges.lowStockCount}` : undefined,
-          badgeColor: "rose"
-        },
-        { 
-          id: "barcode", 
-          name: "Barcode Labels (EAN/Code128)", 
-          href: "/inventory/barcode-generator", 
-          icon: Tag 
-        },
-        { 
-          id: "variants", 
-          name: "Variant Matrix (Size/Color)", 
-          href: "/inventory/variants", 
-          icon: Grid 
-        },
-        { 
-          id: "batches", 
-          name: "Batches & Expiry (FIFO)", 
-          href: "/inventory/batches", 
-          icon: Boxes 
-        },
-        { 
-          id: "recipes", 
-          name: "Recipes & BOM Depletion", 
-          href: "/inventory/recipes", 
-          icon: ChefHat 
-        },
-      ],
-    },
-    {
-      id: "restaurant",
-      name: "Food & Restaurant",
-      icon: UtensilsCrossed,
-      children: [
-        { 
-          id: "tables", 
-          name: "Dining Tables & Status", 
-          href: "/restaurant", 
-          icon: Layers 
-        },
-        { 
-          id: "kot", 
-          name: "Kitchen Order Tickets (KOT)", 
-          href: "/restaurant", 
-          icon: ChefHat 
-        },
-      ],
-    },
-    {
-      id: "parties",
-      name: "Parties & Khata",
-      icon: Users,
-      children: [
-        { 
-          id: "customers", 
-          name: "Customer Directory & Balance", 
-          href: "/customers", 
-          icon: Users 
-        },
-      ],
-    },
-    {
-      id: "accounting",
-      name: "Accounting & GST",
-      icon: BookOpen,
-      children: [
-        { 
-          id: "coa", 
-          name: "Chart of Accounts", 
-          href: "/accounting/chart-of-accounts", 
-          icon: Landmark 
-        },
-      ],
-    },
-    {
-      id: "ai",
-      name: "AI Smart Tools",
-      icon: Sparkles,
-      children: [
-        { 
-          id: "scanner", 
-          name: "AI Purchase Bill Scanner", 
-          href: "/scanner", 
-          icon: Camera, 
-          aiTag: "Gemini Vision" 
-        },
-      ],
-    },
-  ];
 
   return (
     <>
@@ -324,7 +196,7 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Dynamic Hierarchical Tree Sidebar */}
+      {/* Dynamic Hierarchical Tree Sidebar (Loaded from Database) */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -369,9 +241,9 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Tree Menu Navigation */}
+        {/* Dynamic Tree Navigation from Database */}
         <nav className="flex-1 space-y-1.5 px-3 py-2 overflow-y-auto">
-          {/* Root Item: Dashboard */}
+          {/* Root Link: Dashboard */}
           <Link
             href="/"
             onClick={() => setMobileOpen(false)}
@@ -396,15 +268,24 @@ export default function Sidebar() {
             </p>
           </div>
 
-          {/* Hierarchical Tree Groups */}
+          {/* Loading Skeleton */}
+          {loading && treeGroups.length === 0 && (
+            <div className="space-y-2 p-2 animate-pulse">
+              <div className="h-8 bg-slate-100 rounded-lg w-full"></div>
+              <div className="h-8 bg-slate-100 rounded-lg w-full"></div>
+              <div className="h-8 bg-slate-100 rounded-lg w-full"></div>
+            </div>
+          )}
+
+          {/* Render Dynamic Database Tree Groups */}
           {treeGroups.map((group) => {
             const isExpanded = !!expandedGroups[group.id];
-            const GroupIcon = group.icon;
+            const GroupIcon = ICON_MAP[group.icon] || Package;
             const hasActiveChild = group.children.some((child) => pathname === child.href);
 
             return (
               <div key={group.id} className="space-y-1">
-                {/* Parent Group Button */}
+                {/* Parent Category Button */}
                 <button
                   onClick={() => toggleGroup(group.id)}
                   className={`w-full group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition ${
@@ -445,7 +326,7 @@ export default function Sidebar() {
                   <div className="ml-4 border-l-2 border-slate-100 pl-2.5 space-y-0.5 py-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
                     {group.children.map((child) => {
                       const isChildActive = pathname === child.href;
-                      const ChildIcon = child.icon;
+                      const ChildIcon = ICON_MAP[child.icon] || FileText;
 
                       return (
                         <Link
