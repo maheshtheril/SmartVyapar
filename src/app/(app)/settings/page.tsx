@@ -41,6 +41,7 @@ function SettingsContent() {
     address: '',
     pincode: '',
     upiId: '',
+    businessType: 'RETAIL',
     isComposition: false,
     subscriptionTier: 'FREE',
   });
@@ -81,6 +82,7 @@ function SettingsContent() {
           address: data.tenant.address || '',
           pincode: data.tenant.pincode || '',
           upiId: data.tenant.upiId || '',
+          businessType: data.tenant.businessType || 'RETAIL',
           isComposition: !!data.tenant.isComposition,
           subscriptionTier: data.tenant.subscriptionTier || 'FREE',
         });
@@ -338,6 +340,41 @@ function SettingsContent() {
                 <Building2 className="h-4 w-4 text-indigo-600" />
                 <span>Business & Legal Information</span>
               </h2>
+
+              {/* Business Industry / Category */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Business Industry & Store Category
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {[
+                    { id: 'RETAIL', label: 'Retail & Wholesale', desc: 'Electricals, Supermarket, Garments, Electronics', emoji: '🛒' },
+                    { id: 'AUTOMOBILE', label: 'Automobile Workshop', desc: 'Vehicle Job-Cards, Spare Parts & Labor', emoji: '🚗' },
+                    { id: 'RESTAURANT', label: 'Restaurant & Cafe', desc: 'Dining Tables, KOT, Bakery & Takeaway', emoji: '🍽️' },
+                    { id: 'SERVICES', label: 'Services & Repair', desc: 'Consulting, Repair Services & Freelance', emoji: '💼' },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setProfile({ ...profile, businessType: cat.id })}
+                      className={`flex flex-col text-left p-3 rounded-xl border transition ${
+                        profile.businessType === cat.id
+                          ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-600/20'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xl">{cat.emoji}</span>
+                        <span className="text-xs font-bold text-slate-900">{cat.label}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1 leading-snug">{cat.desc}</p>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  Tailors your navigation sidebar and print templates to only show relevant documents for your store.
+                </p>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

@@ -67,42 +67,48 @@ export interface PrintTemplatePreset {
   previewColors: { bg: string; header: string; accent: string; text: string };
 }
 
-export const DOC_TYPE_METADATA: Record<PrintDocType, { label: string; description: string; emoji: string; color: string }> = {
+export const DOC_TYPE_METADATA: Record<PrintDocType, { label: string; description: string; emoji: string; color: string; industryGroup: 'core' | 'automobile' | 'restaurant' }> = {
   sale_bill: {
     label: "Sale Tax Invoice",
     description: "Detailed B2B & B2C GST Tax Invoice (A4 & A5 full sheet)",
     emoji: "🧾",
-    color: "indigo"
+    color: "indigo",
+    industryGroup: "core"
   },
   pos_bill: {
     label: "POS Thermal Receipt",
     description: "High-speed retail roll receipt for POS counters (80mm & 58mm)",
     emoji: "🖨️",
-    color: "emerald"
-  },
-  auto_workshop: {
-    label: "Automobile Job-Card & Bill",
-    description: "Vehicle registration, odometer, mechanic notes, parts + labor SAC billing",
-    emoji: "🚗",
-    color: "amber"
-  },
-  kot: {
-    label: "Restaurant KOT Ticket",
-    description: "Kitchen order ticket with table number, captain, and item special notes",
-    emoji: "🍽️",
-    color: "rose"
+    color: "emerald",
+    industryGroup: "core"
   },
   credit_note: {
     label: "GST Credit Note / Return",
     description: "Statutory sales return voucher reversing GST liability",
     emoji: "↩️",
-    color: "teal"
+    color: "teal",
+    industryGroup: "core"
   },
   challan: {
     label: "Delivery Challan",
     description: "Goods transit document with transporter and vehicle information",
     emoji: "🚚",
-    color: "sky"
+    color: "sky",
+    industryGroup: "core"
+  },
+  auto_workshop: {
+    label: "Automobile Job-Card & Bill",
+    description: "Vehicle registration, odometer, mechanic notes, parts + labor SAC billing",
+    emoji: "🚗",
+    color: "amber",
+    industryGroup: "automobile"
+  },
+  kot: {
+    label: "Restaurant KOT Ticket",
+    description: "Kitchen order ticket with table number, captain, and item special notes",
+    emoji: "🍽️",
+    color: "rose",
+    industryGroup: "restaurant"
   }
 };
 

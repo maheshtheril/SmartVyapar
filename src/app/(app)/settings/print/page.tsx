@@ -115,7 +115,21 @@ function PrintStudioContent() {
     pincode: '680001',
     stateCode: '32',
     upiId: 'zionabusiness@icici',
+    businessType: 'RETAIL',
   });
+  const [showAllIndustryDocs, setShowAllIndustryDocs] = useState(false);
+
+  // Filter visible tabs based on store industry
+  const visibleDocTypes = React.useMemo(() => {
+    const list: PrintDocType[] = ['sale_bill', 'pos_bill', 'credit_note', 'challan'];
+    if (business.businessType === 'AUTOMOBILE' || showAllIndustryDocs || activeDocType === 'auto_workshop') {
+      list.push('auto_workshop');
+    }
+    if (business.businessType === 'RESTAURANT' || showAllIndustryDocs || activeDocType === 'kot') {
+      list.push('kot');
+    }
+    return list;
+  }, [business.businessType, showAllIndustryDocs, activeDocType]);
 
   // Load Templates & Business Info
   const loadTemplates = async () => {
@@ -147,6 +161,7 @@ function PrintStudioContent() {
           pincode: tenantRes.tenant.pincode || '680001',
           stateCode: tenantRes.tenant.stateCode || '32',
           upiId: tenantRes.tenant.upiId || 'zionabusiness@icici',
+          businessType: tenantRes.tenant.businessType || 'RETAIL',
         });
       }
     } catch (err) {
@@ -336,38 +351,64 @@ function PrintStudioContent() {
       )}
 
       {/* Document Type Horizontal Nav Tabs */}
-      <div className="flex overflow-x-auto border-b border-slate-200 gap-2 pb-1 scrollbar-none">
-        {(Object.keys(DOC_TYPE_METADATA) as PrintDocType[]).map((docKey) => {
-          const meta = DOC_TYPE_METADATA[docKey];
-          const isActive = activeDocType === docKey;
-          const count = (templatesByDoc[docKey] || []).length;
-          return (
-            <button
-              key={docKey}
-              onClick={() => {
-                setActiveDocType(docKey);
-                router.push(`/settings/print?doc=${docKey}`);
-              }}
-              className={`flex items-center space-x-2 rounded-xl px-4 py-2.5 text-xs font-bold whitespace-nowrap transition-all ${
-                isActive
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-              }`}
-            >
-              <span className="text-base">{meta.emoji}</span>
-              <span>{meta.label}</span>
-              {count > 0 && (
-                <span
-                  className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-1">
+        <div className="flex overflow-x-auto gap-2 scrollbar-none py-1">
+          {visibleDocTypes.map((docKey) => {
+            const meta = DOC_TYPE_METADATA[docKey];
+            const isActive = activeDocType === docKey;
+            const count = (templatesByDoc[docKey] || []).length;
+            const isIndustryAddon = meta.industryGroup !== 'core';
+            return (
+              <button
+                key={docKey}
+                onClick={() => {
+                  setActiveDocType(docKey);
+                  router.push(`/settings/print?doc=${docKey}`);
+                }}
+                className={`flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <span className="text-base">{meta.emoji}</span>
+                <span>{meta.label}</span>
+                {isIndustryAddon && (
+                  <span
+                    className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    Add-on
+                  </span>
+                )}
+                {count > 0 && (
+                  <span
+                    className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Toggle to view/hide other industry documents without cluttering */}
+        <button
+          type="button"
+          onClick={() => setShowAllIndustryDocs(!showAllIndustryDocs)}
+          className={`hidden sm:flex items-center space-x-1.5 rounded-xl px-3 py-2 text-[11px] font-bold border transition whitespace-nowrap ml-2 ${
+            showAllIndustryDocs
+              ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+              : 'bg-slate-50 text-slate-600 border-dashed border-slate-300 hover:border-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <Layers className="h-3.5 w-3.5" />
+          <span>{showAllIndustryDocs ? 'Hide Extra Industry Templates' : '+ More Industry Templates'}</span>
+        </button>
       </div>
 
       {/* Main Studio Grid: Left Configuration Tabs + Right Live Preview */}

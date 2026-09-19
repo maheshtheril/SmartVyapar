@@ -161,6 +161,25 @@ export async function GET(req: NextRequest) {
         ],
       },
       {
+        id: "parties",
+        name: "Parties & Khata",
+        icon: "Users",
+        badge: customersCount > 0 ? `${customersCount}` : undefined,
+        badgeColor: "indigo",
+        children: [
+          { 
+            id: "customers", 
+            name: "Customer Directory & Balance", 
+            href: "/customers", 
+            icon: "Users" 
+          },
+        ],
+      },
+    ];
+
+    // Industry-Specific Module: Only show Food & Restaurant for RESTAURANT businesses
+    if (tenant.businessType === "RESTAURANT") {
+      menuTree.splice(2, 0, {
         id: "restaurant",
         name: "Food & Restaurant",
         icon: "UtensilsCrossed",
@@ -182,23 +201,8 @@ export async function GET(req: NextRequest) {
             icon: "ChefHat" 
           },
         ],
-      },
-      {
-        id: "parties",
-        name: "Parties & Khata",
-        icon: "Users",
-        badge: customersCount > 0 ? `${customersCount}` : undefined,
-        badgeColor: "indigo",
-        children: [
-          { 
-            id: "customers", 
-            name: "Customer Directory & Balance", 
-            href: "/customers", 
-            icon: "Users" 
-          },
-        ],
-      },
-    ];
+      });
+    }
 
     // RBAC Security: Only OWNER and MANAGER can view Accounting & Statutory Ledgers
     if (userRole === "OWNER" || userRole === "MANAGER") {
@@ -278,6 +282,7 @@ export async function GET(req: NextRequest) {
         address: tenant.address,
         pincode: tenant.pincode,
         upiId: tenant.upiId,
+        businessType: tenant.businessType || "RETAIL",
         subscriptionTier: tenant.subscriptionTier,
         currency: tenant.currency,
       },
@@ -316,6 +321,7 @@ export async function PATCH(req: NextRequest) {
       businessName,
       legalName,
       logoUrl,
+      businessType,
       phone,
       email,
       address,
@@ -331,6 +337,7 @@ export async function PATCH(req: NextRequest) {
         ...(businessName !== undefined ? { businessName: businessName.trim() } : {}),
         ...(legalName !== undefined ? { legalName: legalName ? legalName.trim() : null } : {}),
         ...(logoUrl !== undefined ? { logoUrl: logoUrl ? logoUrl.trim() : null } : {}),
+        ...(businessType !== undefined ? { businessType } : {}),
         ...(phone !== undefined ? { phone: phone.trim() } : {}),
         ...(email !== undefined ? { email: email ? email.trim() : null } : {}),
         ...(address !== undefined ? { address: address ? address.trim() : null } : {}),
