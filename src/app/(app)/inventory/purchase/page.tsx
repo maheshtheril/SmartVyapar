@@ -942,23 +942,23 @@ export default function PurchaseInwardPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-[1360px] w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 font-semibold uppercase tracking-wider text-[11px]">
-                    <th className="py-2.5 px-2 w-8 text-center">#</th>
-                    <th className="py-2.5 px-3 w-80">Item Name & SKU</th>
-                    <th className="py-2.5 px-2 w-20 text-center">HSN</th>
-                    <th className="py-2.5 px-2 w-28">Batch #</th>
-                    <th className="py-2.5 px-2 w-32">Expiry Date</th>
-                    <th className="py-2.5 px-2 w-20 text-center">Qty</th>
-                    <th className="py-2.5 px-2 w-20 text-center">Unit</th>
-                    <th className="py-2.5 px-2 w-24 text-right">Cost (₹)</th>
-                    <th className="py-2.5 px-2 w-16 text-right">Disc %</th>
-                    <th className="py-2.5 px-2 w-24 text-right bg-blue-50/70 text-blue-900">Margin %</th>
-                    <th className="py-2.5 px-2 w-32 text-right bg-emerald-50/70 text-emerald-900">Selling Price (₹)</th>
-                    <th className="py-2.5 px-2 w-20 text-center">GST %</th>
-                    <th className="py-2.5 px-3 w-28 text-right font-bold">Total (₹)</th>
-                    <th className="py-2.5 px-2 w-10 text-center"></th>
+              <table className="min-w-[1320px] w-full text-left text-xs border-collapse">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-xs border-b-2 border-slate-950 shadow-sm">
+                    <th className="py-3 px-2 w-8 text-center text-slate-400 font-bold">#</th>
+                    <th className="py-3 px-3 w-80 text-white font-bold">Item Name & SKU</th>
+                    <th className="py-3 px-2 w-20 text-center text-white font-bold">HSN</th>
+                    <th className="py-3 px-2 w-28 text-white font-bold">Batch #</th>
+                    <th className="py-3 px-2 w-32 text-white font-bold">Expiry Date</th>
+                    <th className="py-3 px-2 w-20 text-center text-white font-bold">Qty</th>
+                    <th className="py-3 px-2 w-20 text-center text-white font-bold">Unit</th>
+                    <th className="py-3 px-2 w-24 text-right text-white font-bold">Cost (₹)</th>
+                    <th className="py-3 px-2 w-16 text-right text-white font-bold">Disc %</th>
+                    <th className="py-3 px-2 w-24 text-right bg-blue-900 text-blue-100 font-bold border-x border-blue-800">Margin %</th>
+                    <th className="py-3 px-2 w-32 text-right bg-emerald-900 text-emerald-100 font-bold border-r border-emerald-800">Selling Price (₹)</th>
+                    <th className="py-3 px-2 w-20 text-center text-white font-bold">GST %</th>
+                    <th className="py-3 px-3 w-28 text-right text-white font-black">Total (₹)</th>
+                    <th className="py-3 px-2 w-10 text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -984,6 +984,7 @@ export default function PurchaseInwardPage() {
                               placeholder="Search catalog or type item..."
                               value={row.productName}
                               onFocus={() => setActiveItemDropdownIdx(idx)}
+                              onBlur={() => setTimeout(() => setActiveItemDropdownIdx(null), 150)}
                               onChange={(e) => {
                                 updateItem(idx, 'productName', e.target.value);
                                 setActiveItemDropdownIdx(idx);
@@ -999,33 +1000,68 @@ export default function PurchaseInwardPage() {
 
                           {/* Searchable Dropdown for Catalog Items */}
                           {activeItemDropdownIdx === idx && (
-                            <div className="absolute z-50 left-3 right-3 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
+                            <div className="absolute z-50 left-3 right-3 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-2xl max-h-64 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/5">
                               {getFilteredProducts(row.productName).length > 0 ? (
-                                getFilteredProducts(row.productName).map((prod) => (
-                                  <div
-                                    key={prod.id}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      updateItem(idx, 'productId', prod.id);
-                                      setActiveItemDropdownIdx(null);
-                                    }}
-                                    className="p-2 hover:bg-blue-50 cursor-pointer flex items-center justify-between transition text-xs"
-                                  >
-                                    <div>
-                                      <span className="font-semibold text-slate-800">{prod.name}</span>
-                                      <div className="text-[10px] text-slate-400 font-mono">
-                                        SKU: {prod.sku} | HSN: {prod.hsnCode || '8708'}
+                                <>
+                                  <div className="px-3 py-1.5 bg-slate-100 text-[10px] font-bold uppercase text-slate-600 tracking-wider flex justify-between items-center">
+                                    <span>Matching Catalog Products ({products.length} in store)</span>
+                                    <span className="text-[9px] text-slate-400 font-normal">Click to auto-fill</span>
+                                  </div>
+                                  {getFilteredProducts(row.productName).map((prod) => (
+                                    <div
+                                      key={prod.id}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        updateItem(idx, 'productId', prod.id);
+                                        setActiveItemDropdownIdx(null);
+                                      }}
+                                      className="p-2.5 hover:bg-blue-50 cursor-pointer flex items-center justify-between transition text-xs"
+                                    >
+                                      <div>
+                                        <span className="font-bold text-slate-800">{prod.name}</span>
+                                        <div className="text-[10px] text-slate-500 font-mono">
+                                          SKU: {prod.sku || 'N/A'} | HSN: {prod.hsnCode || '8708'} | Unit: {prod.baseUnit}
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <span className="font-mono font-bold text-slate-800">Cost: ₹{Number(prod.purchasePrice || 0).toFixed(2)}</span>
+                                        <div className="text-[10px] text-emerald-600 font-semibold">Stock: {Number(prod.currentStock || 0)} {prod.baseUnit}</div>
                                       </div>
                                     </div>
-                                    <div className="text-right">
-                                      <span className="font-mono font-bold text-slate-700">Cost: ₹{Number(prod.purchasePrice || 0).toFixed(2)}</span>
-                                      <div className="text-[10px] text-emerald-600 font-semibold">Stock: {Number(prod.currentStock || 0)} {prod.baseUnit}</div>
-                                    </div>
-                                  </div>
-                                ))
+                                  ))}
+                                </>
                               ) : (
-                                <div className="p-2 text-xs text-slate-500 text-center">
-                                  No catalog item matches "{row.productName}". Will save as manual part.
+                                <div className="p-3 bg-slate-50/50">
+                                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    New Item Entry: "{row.productName}"
+                                  </div>
+                                  <p className="text-[11px] text-slate-600 mt-1">
+                                    This item is not yet in your current store catalog. You can proceed with inwarding — saving this bill will automatically create the item &amp; its stock batch.
+                                  </p>
+                                  {products.length > 0 && (
+                                    <div className="mt-2.5 pt-2 border-t border-slate-200">
+                                      <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">
+                                        Or choose from your current inventory ({products.length} items):
+                                      </div>
+                                      <div className="space-y-1">
+                                        {products.slice(0, 4).map((p) => (
+                                          <div
+                                            key={p.id}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              updateItem(idx, 'productId', p.id);
+                                              setActiveItemDropdownIdx(null);
+                                            }}
+                                            className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded text-xs text-slate-700 cursor-pointer flex justify-between items-center"
+                                          >
+                                            <span className="font-semibold text-slate-800">{p.name}</span>
+                                            <span className="font-mono text-[11px] text-slate-600 font-medium">₹{Number(p.purchasePrice || 0)}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
