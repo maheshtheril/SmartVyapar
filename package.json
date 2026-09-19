@@ -10,6 +10,8 @@
     "prisma:push": "prisma db push",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio -p 5556",
+    "db:backup": "tsx scripts/backup-database.ts",
+    "db:restore": "tsx scripts/restore-database.ts",
     "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
