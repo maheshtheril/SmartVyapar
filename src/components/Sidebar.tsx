@@ -29,7 +29,10 @@ import {
   Truck,
   FileCode,
   Landmark,
-  Layers
+  Layers,
+  Settings,
+  ShieldCheck,
+  Printer
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -52,6 +55,10 @@ const ICON_MAP: Record<string, any> = {
   Landmark,
   Sparkles,
   Camera,
+  Building2,
+  Settings,
+  ShieldCheck,
+  Printer,
 };
 
 interface NavChildNode {

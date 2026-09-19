@@ -87,6 +87,7 @@ model Tenant {
   invoiceSequences    InvoiceSequence[]
   creditNotes         CreditNote[]
   auditLogs           AuditLog[]
+  printTemplates      PrintTemplate[]
 
   @@map("tenants")
 }
@@ -617,6 +618,31 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@index([tenantId, entityType, entityId])
   @@map("audit_logs")
+}
+
+// ----------------------------------------------------
+// 15. PRINT CONFIGURATION & TEMPLATES STUDIO
+// ----------------------------------------------------
+model PrintTemplate {
+  id         String   @id @default(uuid())
+  tenantId   String
+  name       String
+  docType    String   @default("sale_bill") // "sale_bill", "pos_bill", "auto_workshop", "kot", "credit_note", "challan"
+  paperSize  String   @default("a4")        // "a4", "a5", "roll80", "roll58"
+  brand      Json     @default("{}")        // primaryColor, accentColor, headerBg, headerText, fontFamily, logoPosition, logoSize
+  sections   Json     @default("{}")        // showLogo, showTaxId, showHsn, showBankDetails, showQr, etc.
+  automation Json     @default("{}")        // autoPrint, copies, whatsappOnSave, actionAfterSave
+  isDefault  Boolean  @default(false)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name, docType])
+  @@index([tenantId, docType])
+  @@index([tenantId, docType, isDefault])
+  @@map("print_templates")
 }
 
 

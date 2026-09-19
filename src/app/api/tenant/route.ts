@@ -252,6 +252,12 @@ export async function GET(req: NextRequest) {
             href: "/settings?tab=users",
             icon: "ShieldCheck",
           },
+          {
+            id: "print-studio",
+            name: "Print Configuration Studio",
+            href: "/settings/print",
+            icon: "Printer",
+          },
         ],
       });
     }
