@@ -233,6 +233,14 @@ export async function GET(req: NextRequest) {
             badge: "Double-Entry",
             badgeColor: "indigo"
           },
+          {
+            id: "financial-reports",
+            name: "Financial Reports (P&L, Balance Sheet)",
+            href: "/accounting/reports",
+            icon: "Scale",
+            badge: "Statements",
+            badgeColor: "emerald"
+          },
         ],
       });
     }

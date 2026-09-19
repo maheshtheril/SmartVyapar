@@ -36,7 +36,8 @@ import {
   Printer,
   CreditCard,
   MessageSquare,
-  FileCheck
+  FileCheck,
+  Scale
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -45,6 +46,7 @@ const ICON_MAP: Record<string, any> = {
   PlusCircle,
   FileText,
   FileCheck,
+  Scale,
   RotateCcw,
   Truck,
   FileCode,

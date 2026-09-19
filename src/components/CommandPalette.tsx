@@ -30,6 +30,7 @@ import {
   Layers,
   HelpCircle,
   FileCheck,
+  Scale,
 } from 'lucide-react';
 
 interface PaletteItem {
@@ -158,6 +159,17 @@ const PALETTE_ITEMS: PaletteItem[] = [
     keywords: ['vouchers', 'payment', 'receipt', 'contra', 'journal', 'pv', 'rv', 'cv', 'jv', 'debit', 'credit', 'ledger'],
     badge: 'Double-Entry',
     badgeColor: 'indigo',
+  },
+  {
+    id: 'mod-financial-reports',
+    title: 'Financial Statements (Trial Balance, P&L, Balance Sheet)',
+    subtitle: 'Statutory double-entry reports, trading profit, balance sheet & ledger statements',
+    category: 'MODULES',
+    href: '/accounting/reports',
+    icon: Scale,
+    keywords: ['reports', 'financial', 'p&l', 'profit', 'loss', 'balance sheet', 'trial balance', 'ledger', 'statements'],
+    badge: 'Statements',
+    badgeColor: 'emerald',
   },
 
   // 📦 INVENTORY & LOGISTICS
