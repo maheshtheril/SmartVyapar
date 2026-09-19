@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   PackagePlus,
   Truck,
@@ -22,7 +22,9 @@ import {
   ShieldCheck,
   ChevronDown,
   Sparkles,
-  Layers
+  Layers,
+  X,
+  Check
 } from 'lucide-react';
 import BarcodeSvg from '@/components/BarcodeSvg';
 
@@ -44,6 +46,23 @@ interface PurchaseItemRow {
   expiryDate: string;
 }
 
+interface SupplierOption {
+  name: string;
+  gstin: string | null;
+  phone: string | null;
+  billsCount?: number;
+  isPreset?: boolean;
+}
+
+const DEFAULT_SUPPLIERS: SupplierOption[] = [
+  { name: 'Bosch Automotive Aftermarket India Ltd', gstin: '29AAACB2021A1Z8', phone: '1800 108 1234', isPreset: true },
+  { name: 'Castrol Lubricants Distribution Ltd', gstin: '32AABCC3344P1ZV', phone: '1800 222 100', isPreset: true },
+  { name: 'Exide Industries India Ltd', gstin: '32AAACE4455Q1ZT', phone: '1800 103 5454', isPreset: true },
+  { name: 'Mann & Hummel Filters India Pvt Ltd', gstin: '27AABCM8899P1ZA', phone: '020 6675 3000', isPreset: true },
+  { name: 'NGK Spark Plugs India Pvt Ltd', gstin: '27AABCN7788Q1ZB', phone: '0124 472 8888', isPreset: true },
+  { name: 'Valeo India Auto Parts Pvt Ltd', gstin: '33AABCV1122R1ZC', phone: '044 6711 8000', isPreset: true },
+];
+
 export default function PurchaseInwardPage() {
   const [activeTab, setActiveTab] = useState<'NEW_BILL' | 'REGISTER'>('NEW_BILL');
   const [loading, setLoading] = useState(false);
@@ -53,6 +72,11 @@ export default function PurchaseInwardPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [tenant, setTenant] = useState<any>(null);
+
+  // Suppliers directory & searchable combobox state
+  const [registeredSuppliers, setRegisteredSuppliers] = useState<SupplierOption[]>(DEFAULT_SUPPLIERS);
+  const [supplierDropdownOpen, setSupplierDropdownOpen] = useState(false);
+  const supplierInputRef = useRef<HTMLInputElement>(null);
 
   // Inward Register & History
   const [bills, setBills] = useState<any[]>([]);
@@ -75,6 +99,9 @@ export default function PurchaseInwardPage() {
   const [paymentTerms, setPaymentTerms] = useState('CREDIT');
   const [notes, setNotes] = useState('');
 
+  // Active line-item product search dropdown row index
+  const [activeItemDropdownIdx, setActiveItemDropdownIdx] = useState<number | null>(null);
+
   // Line items
   const [items, setItems] = useState<PurchaseItemRow[]>([
     {
@@ -95,18 +122,20 @@ export default function PurchaseInwardPage() {
     },
   ]);
 
-  // Load products, warehouses, and tenant metadata
+  // Load products, warehouses, tenant metadata, and supplier directory
   const loadInitialData = async () => {
     try {
-      const [prodRes, whRes, tenantRes] = await Promise.all([
+      const [prodRes, whRes, tenantRes, purchRes] = await Promise.all([
         fetch('/api/products'),
         fetch('/api/warehouses'),
         fetch('/api/tenant'),
+        fetch('/api/purchase'),
       ]);
 
       const prodData = await prodRes.json();
       const whData = await whRes.json();
       const tenantData = await tenantRes.json();
+      const purchData = await purchRes.json();
 
       if (prodData.success && prodData.products) setProducts(prodData.products);
       if (whData.success && whData.warehouses) {
@@ -117,6 +146,16 @@ export default function PurchaseInwardPage() {
         }
       }
       if (tenantData.success && tenantData.tenant) setTenant(tenantData.tenant);
+
+      if (purchData.success && Array.isArray(purchData.suppliers) && purchData.suppliers.length > 0) {
+        // Merge server suppliers with default presets
+        const existingNames = new Set(purchData.suppliers.map((s: any) => s.name.toLowerCase()));
+        const merged = [
+          ...purchData.suppliers,
+          ...DEFAULT_SUPPLIERS.filter((s) => !existingNames.has(s.name.toLowerCase())),
+        ];
+        setRegisteredSuppliers(merged);
+      }
     } catch (err) {
       console.error('Failed to load purchase master data:', err);
     }
@@ -132,6 +171,14 @@ export default function PurchaseInwardPage() {
       if (data.success) {
         setBills(data.bills || []);
         if (data.summary) setSummary(data.summary);
+        if (Array.isArray(data.suppliers) && data.suppliers.length > 0) {
+          const existingNames = new Set(data.suppliers.map((s: any) => s.name.toLowerCase()));
+          const merged = [
+            ...data.suppliers,
+            ...DEFAULT_SUPPLIERS.filter((s) => !existingNames.has(s.name.toLowerCase())),
+          ];
+          setRegisteredSuppliers(merged);
+        }
       }
     } catch (err) {
       console.error('Failed to load purchase bills:', err);
@@ -150,21 +197,32 @@ export default function PurchaseInwardPage() {
     }
   }, [activeTab, searchFilter]);
 
-  // Quick Supplier Auto-fill presets
-  const applySupplierPreset = (preset: 'BOSCH' | 'CASTROL' | 'EXIDE') => {
-    if (preset === 'BOSCH') {
-      setSupplierName('Bosch Automotive Aftermarket India Ltd');
-      setSupplierGstin('29AAACB2021A1Z8');
-      setSupplierPhone('1800 108 1234');
-    } else if (preset === 'CASTROL') {
-      setSupplierName('Castrol Lubricants Distribution Ltd');
-      setSupplierGstin('32AABCC3344P1ZV');
-      setSupplierPhone('1800 222 100');
-    } else if (preset === 'EXIDE') {
-      setSupplierName('Exide Industries India Ltd');
-      setSupplierGstin('32AAACE4455Q1ZT');
-      setSupplierPhone('1800 103 5454');
+  // Filtered suppliers for live combobox
+  const filteredSuppliers = useMemo(() => {
+    if (!supplierName.trim()) {
+      return registeredSuppliers;
     }
+    const q = supplierName.toLowerCase();
+    return registeredSuppliers.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.gstin && s.gstin.toLowerCase().includes(q)) ||
+        (s.phone && s.phone.includes(q))
+    );
+  }, [registeredSuppliers, supplierName]);
+
+  // Filter catalog products for live item combobox
+  const getFilteredProducts = (query: string) => {
+    if (!query || !query.trim()) return products.slice(0, 10);
+    const q = query.toLowerCase();
+    return products
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.sku && p.sku.toLowerCase().includes(q)) ||
+          (p.barcode && p.barcode.toLowerCase().includes(q))
+      )
+      .slice(0, 10);
   };
 
   // Handle line item field change with bidirectional margin calculation
@@ -176,6 +234,7 @@ export default function PurchaseInwardPage() {
     if (field === 'productId') {
       const selected = products.find((p) => p.id === value);
       if (selected) {
+        row.productId = selected.id;
         row.productName = selected.name;
         row.hsnCode = selected.hsnCode || '8708';
         row.unit = selected.baseUnit || 'PCS';
@@ -259,32 +318,36 @@ export default function PurchaseInwardPage() {
     const cost = Number(item.purchasePrice || 0) * (1 - Number(item.discountPercent || 0) / 100);
     const taxable = Math.round(cost * qty * 100) / 100;
     const gst = Number(item.gstRate || 18);
+    const taxAmt = Math.round((taxable * gst / 100) * 100) / 100;
 
     totalTaxable += taxable;
-
     if (isInterState) {
-      totalIgst += Math.round((taxable * gst) / 100 * 100) / 100;
+      totalIgst += taxAmt;
     } else {
-      totalCgst += Math.round((taxable * (gst / 2)) / 100 * 100) / 100;
-      totalSgst += Math.round((taxable * (gst / 2)) / 100 * 100) / 100;
+      totalCgst += Math.round((taxAmt / 2) * 100) / 100;
+      totalSgst += Math.round((taxAmt / 2) * 100) / 100;
     }
 
     const sp = Number(item.sellingPrice || 0);
-    projectedGrossProfit += Math.max(0, (sp - cost) * qty * Number(item.packageSize || 1));
+    projectedGrossProfit += (sp - cost) * qty;
   });
 
   grandTotal = totalTaxable + totalCgst + totalSgst + totalIgst;
 
-  // Submit Form
+  // Submit Purchase Bill & GRN
   const handleSubmitBill = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supplierName || !billNumber) {
-      alert('Please provide Supplier Name and Bill Number');
+
+    if (!supplierName.trim()) {
+      alert('Please enter or select a Supplier Name');
       return;
     }
-
-    if (items.some((i) => !i.productName || Number(i.quantity) <= 0 || Number(i.purchasePrice) <= 0)) {
-      alert('Please ensure all items have a valid Part Name, Quantity (>0), and Purchase Price (>0)');
+    if (!billNumber.trim()) {
+      alert('Please enter Supplier Bill / Invoice Number');
+      return;
+    }
+    if (items.some((it) => !it.productName.trim() || Number(it.quantity) <= 0 || Number(it.purchasePrice) < 0)) {
+      alert('Please verify line items: ensure description, quantity (> 0), and price are entered.');
       return;
     }
 
@@ -292,14 +355,30 @@ export default function PurchaseInwardPage() {
     try {
       const payload = {
         supplierName,
-        supplierGstin,
-        supplierPhone,
+        supplierGstin: supplierGstin || undefined,
+        supplierPhone: supplierPhone || undefined,
         billNumber,
         billDate,
-        warehouseId,
+        warehouseId: warehouseId || undefined,
         paymentTerms,
-        notes,
-        items,
+        notes: notes || undefined,
+        items: items.map((it) => ({
+          productId: it.productId || undefined,
+          productName: it.productName,
+          hsnCode: it.hsnCode,
+          unit: it.unit,
+          quantity: Number(it.quantity),
+          packageSize: Number(it.packageSize || 1),
+          purchasePrice: Number(it.purchasePrice),
+          discountPercent: Number(it.discountPercent || 0),
+          sellingPrice: Number(it.sellingPrice || 0),
+          marginPercent: Number(it.marginPercent || 0),
+          mrp: Number(it.mrp || it.sellingPrice || 0),
+          gstRate: Number(it.gstRate || 18),
+          batchNumber: it.batchNumber || undefined,
+          mfgDate: it.mfgDate || undefined,
+          expiryDate: it.expiryDate || undefined,
+        })),
       };
 
       const res = await fetch('/api/purchase', {
@@ -310,11 +389,10 @@ export default function PurchaseInwardPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to create purchase bill');
+        throw new Error(data.error || 'Failed to post purchase bill');
       }
 
-      alert(`✅ Success! Purchase Bill & GRN ${data.bill?.grnNumber || ''} has been confirmed and posted to inventory & ledger.`);
-      
+      alert(`Success! Purchase Bill & ${data.bill?.grnNumber || 'GRN'} recorded into books.`);
       // Reset form
       setBillNumber('');
       setSupplierName('');
@@ -412,11 +490,11 @@ export default function PurchaseInwardPage() {
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Accounts Payable (Khata)</span>
+          <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Trade Payables (Vendor Credit)</span>
           <div className="text-xl font-bold text-amber-600 mt-1">
             ₹{summary.totalUnpaidPayables?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}
           </div>
-          <span className="text-[11px] text-amber-700">Pending Distributor Settlements</span>
+          <span className="text-[11px] text-amber-700">Pending Supplier Invoices</span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
@@ -438,53 +516,120 @@ export default function PurchaseInwardPage() {
                 <h2 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-blue-600" /> Supplier & Consignment Header
                 </h2>
-                <p className="text-xs text-slate-500">Enter vendor bill metadata and receiving warehouse details</p>
+                <p className="text-xs text-slate-500">Search and select registered supplier or enter vendor details</p>
               </div>
 
               {/* Quick Supplier Presets */}
               <div className="flex items-center gap-1.5 text-xs font-mono">
-                <span className="text-slate-400 text-[11px] mr-1">Quick Vendor:</span>
-                <button
-                  type="button"
-                  onClick={() => applySupplierPreset('CASTROL')}
-                  className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]"
-                >
-                  Castrol
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applySupplierPreset('BOSCH')}
-                  className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]"
-                >
-                  Bosch
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applySupplierPreset('EXIDE')}
-                  className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]"
-                >
-                  Exide
-                </button>
+                <span className="text-slate-400 text-[11px] mr-1">Quick Select:</span>
+                {DEFAULT_SUPPLIERS.slice(0, 3).map((sup) => (
+                  <button
+                    key={sup.name}
+                    type="button"
+                    onClick={() => {
+                      setSupplierName(sup.name);
+                      setSupplierGstin(sup.gstin || '');
+                      setSupplierPhone(sup.phone || '');
+                      setSupplierDropdownOpen(false);
+                    }}
+                    className="px-2 py-1 rounded bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold text-[11px] transition"
+                  >
+                    {sup.name.split(' ')[0]}
+                  </button>
+                ))}
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+              {/* Searchable Supplier Combobox */}
+              <div className="relative">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Supplier Name <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Bosch Automotive India Ltd"
-                  value={supplierName}
-                  onChange={(e) => setSupplierName(e.target.value)}
-                  className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-medium"
-                />
+                <div className="relative">
+                  <input
+                    ref={supplierInputRef}
+                    type="text"
+                    required
+                    placeholder="Search or enter supplier name..."
+                    value={supplierName}
+                    onFocus={() => setSupplierDropdownOpen(true)}
+                    onChange={(e) => {
+                      setSupplierName(e.target.value);
+                      setSupplierDropdownOpen(true);
+                    }}
+                    className="w-full text-xs border border-slate-300 rounded-lg pl-3 pr-8 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {supplierName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSupplierName('');
+                          setSupplierGstin('');
+                          setSupplierPhone('');
+                          setSupplierDropdownOpen(true);
+                        }}
+                        className="text-slate-400 hover:text-slate-600 p-0.5"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSupplierDropdownOpen(!supplierDropdownOpen)}
+                      className="text-slate-400 hover:text-slate-600 p-0.5"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dropdown list of registered suppliers */}
+                {supplierDropdownOpen && (
+                  <div className="absolute z-40 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100">
+                    {filteredSuppliers.length > 0 ? (
+                      filteredSuppliers.map((sup, sIdx) => (
+                        <div
+                          key={sIdx}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setSupplierName(sup.name);
+                            setSupplierGstin(sup.gstin || '');
+                            if (sup.phone) setSupplierPhone(sup.phone);
+                            setSupplierDropdownOpen(false);
+                          }}
+                          className="p-2.5 hover:bg-blue-50 cursor-pointer flex items-center justify-between transition text-xs"
+                        >
+                          <div>
+                            <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                              {sup.name}
+                              {sup.name === supplierName && <Check className="w-3 h-3 text-blue-600" />}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono">
+                              {sup.gstin ? `GSTIN: ${sup.gstin}` : 'No GSTIN'} {sup.phone ? `| Ph: ${sup.phone}` : ''}
+                            </div>
+                          </div>
+                          <span
+                            className={`text-[9px] font-semibold px-2 py-0.5 rounded ${
+                              sup.isPreset ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'
+                            }`}
+                          >
+                            {sup.isPreset ? 'Verified Preset' : `${sup.billsCount || 1} Bills`}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-slate-500 text-center">
+                        No registered supplier found. Enter "{supplierName}" to proceed as new vendor.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Supplier GSTIN
                 </label>
                 <input
@@ -492,12 +637,12 @@ export default function PurchaseInwardPage() {
                   placeholder="e.g. 29AAACB2021A1Z8"
                   value={supplierGstin}
                   onChange={(e) => setSupplierGstin(e.target.value.toUpperCase())}
-                  className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-mono"
+                  className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Supplier Bill / Invoice # <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -506,32 +651,32 @@ export default function PurchaseInwardPage() {
                   placeholder="e.g. BOS-INV-2026-99"
                   value={billNumber}
                   onChange={(e) => setBillNumber(e.target.value)}
-                  className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-mono font-bold"
+                  className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-mono font-bold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Bill Date
                 </label>
                 <input
                   type="date"
                   value={billDate}
                   onChange={(e) => setBillDate(e.target.value)}
-                  className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Receiving Warehouse / Godown
                 </label>
                 <select
                   value={warehouseId}
                   onChange={(e) => setWarehouseId(e.target.value)}
-                  className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-medium"
+                  className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-medium"
                 >
                   {warehouses.map((wh) => (
                     <option key={wh.id} value={wh.id}>
@@ -542,23 +687,24 @@ export default function PurchaseInwardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Payment Terms
                 </label>
                 <select
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
-                  className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-medium"
+                  className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-medium"
                 >
-                  <option value="CREDIT">Credit Khata (Creditor Payable - A/c 2000)</option>
-                  <option value="BANK_TRANSFER">Bank Net Banking / RTGS (A/c 1010)</option>
-                  <option value="UPI">UPI Payment (A/c 1010)</option>
-                  <option value="CASH">Counter Cash Payout (A/c 1000)</option>
+                  <option value="CREDIT">Supplier Credit (Trade Payables - A/c 2000)</option>
+                  <option value="BANK_TRANSFER">Bank Transfer / NEFT / RTGS (A/c 1100)</option>
+                  <option value="UPI">UPI / Instant QR (A/c 1100)</option>
+                  <option value="CASH">Cash Purchase (A/c 1000)</option>
+                  <option value="CHEQUE">Cheque / Demand Draft (A/c 1100)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Tax Supply Type
                 </label>
                 <div className="text-xs px-3 py-2 rounded-lg bg-slate-100 font-semibold flex items-center justify-between">
@@ -571,7 +717,7 @@ export default function PurchaseInwardPage() {
             </div>
           </div>
 
-          {/* Full Fledged Line Items Grid with Margin Engine */}
+          {/* Full Fledged Line Items Grid with Clean Horizontal Control Alignment */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <div>
@@ -579,7 +725,7 @@ export default function PurchaseInwardPage() {
                   Line Items (Batchwise Inward & Sales Margin Engine)
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Set cost price, target sales margin %, and auto-calculate selling price with batch & expiry
+                  Search catalog products or type custom items. Each control is horizontally aligned across columns.
                 </p>
               </div>
               <button
@@ -592,19 +738,22 @@ export default function PurchaseInwardPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="min-w-[1360px] w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider">
-                    <th className="py-2.5 px-3 w-8">#</th>
-                    <th className="py-2.5 px-3 min-w-[220px]">Item Title / SKU</th>
-                    <th className="py-2.5 px-3 min-w-[140px]">Batch & Expiry</th>
-                    <th className="py-2.5 px-3 w-28">Qty & Unit</th>
-                    <th className="py-2.5 px-3 w-28 text-right">Cost Price (₹)</th>
-                    <th className="py-2.5 px-3 w-24 text-right">Disc %</th>
-                    <th className="py-2.5 px-3 min-w-[140px] text-center bg-blue-50/50 text-blue-900">Margin % & Selling Price</th>
-                    <th className="py-2.5 px-3 w-24 text-right">MRP (₹)</th>
-                    <th className="py-2.5 px-3 w-20 text-center">GST %</th>
-                    <th className="py-2.5 px-3 w-28 text-right">Line Total (₹)</th>
+                  <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 font-semibold uppercase tracking-wider text-[11px]">
+                    <th className="py-2.5 px-2 w-8 text-center">#</th>
+                    <th className="py-2.5 px-3 w-80">Item Name & SKU</th>
+                    <th className="py-2.5 px-2 w-20 text-center">HSN</th>
+                    <th className="py-2.5 px-2 w-28">Batch #</th>
+                    <th className="py-2.5 px-2 w-32">Expiry Date</th>
+                    <th className="py-2.5 px-2 w-20 text-center">Qty</th>
+                    <th className="py-2.5 px-2 w-20 text-center">Unit</th>
+                    <th className="py-2.5 px-2 w-24 text-right">Cost (₹)</th>
+                    <th className="py-2.5 px-2 w-16 text-right">Disc %</th>
+                    <th className="py-2.5 px-2 w-24 text-right bg-blue-50/70 text-blue-900">Margin %</th>
+                    <th className="py-2.5 px-2 w-32 text-right bg-emerald-50/70 text-emerald-900">Selling Price (₹)</th>
+                    <th className="py-2.5 px-2 w-20 text-center">GST %</th>
+                    <th className="py-2.5 px-3 w-28 text-right font-bold">Total (₹)</th>
                     <th className="py-2.5 px-2 w-10 text-center"></th>
                   </tr>
                 </thead>
@@ -619,86 +768,130 @@ export default function PurchaseInwardPage() {
 
                     return (
                       <tr key={idx} className="hover:bg-slate-50/70 transition">
-                        <td className="py-2.5 px-3 font-mono text-slate-400 text-center">{idx + 1}</td>
+                        {/* 1. Row Number */}
+                        <td className="py-2 px-2 font-mono text-slate-400 text-center align-middle">{idx + 1}</td>
 
-                        {/* Part Name / Product Selection */}
-                        <td className="py-2.5 px-3">
+                        {/* 2. Item Name & SKU (Searchable Combobox) */}
+                        <td className="py-2 px-3 align-middle relative">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              required
+                              placeholder="Search catalog or type item..."
+                              value={row.productName}
+                              onFocus={() => setActiveItemDropdownIdx(idx)}
+                              onChange={(e) => {
+                                updateItem(idx, 'productName', e.target.value);
+                                setActiveItemDropdownIdx(idx);
+                              }}
+                              className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs font-medium focus:ring-2 focus:ring-blue-500 bg-white"
+                            />
+                            {row.productId && (
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                Catalog SKU
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Searchable Dropdown for Catalog Items */}
+                          {activeItemDropdownIdx === idx && (
+                            <div className="absolute z-50 left-3 right-3 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
+                              {getFilteredProducts(row.productName).length > 0 ? (
+                                getFilteredProducts(row.productName).map((prod) => (
+                                  <div
+                                    key={prod.id}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      updateItem(idx, 'productId', prod.id);
+                                      setActiveItemDropdownIdx(null);
+                                    }}
+                                    className="p-2 hover:bg-blue-50 cursor-pointer flex items-center justify-between transition text-xs"
+                                  >
+                                    <div>
+                                      <span className="font-semibold text-slate-800">{prod.name}</span>
+                                      <div className="text-[10px] text-slate-400 font-mono">
+                                        SKU: {prod.sku} | HSN: {prod.hsnCode || '8708'}
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="font-mono font-bold text-slate-700">Cost: ₹{Number(prod.purchasePrice || 0).toFixed(2)}</span>
+                                      <div className="text-[10px] text-emerald-600 font-semibold">Stock: {Number(prod.currentStock || 0)} {prod.baseUnit}</div>
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="p-2 text-xs text-slate-500 text-center">
+                                  No catalog item matches "{row.productName}". Will save as manual part.
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 3. HSN Code */}
+                        <td className="py-2 px-2 align-middle">
                           <input
                             type="text"
-                            required
-                            placeholder="Part Name (e.g. Castrol 5W40 Oil)"
-                            value={row.productName}
-                            onChange={(e) => updateItem(idx, 'productName', e.target.value)}
-                            className="w-full border border-slate-300 rounded px-2 py-1 text-xs font-medium mb-1"
+                            placeholder="8708"
+                            value={row.hsnCode}
+                            onChange={(e) => updateItem(idx, 'hsnCode', e.target.value)}
+                            className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono"
                           />
+                        </td>
+
+                        {/* 4. Batch Number */}
+                        <td className="py-2 px-2 align-middle">
+                          <input
+                            type="text"
+                            placeholder="CAS-2026"
+                            value={row.batchNumber}
+                            onChange={(e) => updateItem(idx, 'batchNumber', e.target.value)}
+                            className="w-full uppercase border border-slate-300 rounded px-2 py-1.5 text-xs font-mono font-bold"
+                          />
+                        </td>
+
+                        {/* 5. Expiry Date */}
+                        <td className="py-2 px-2 align-middle">
+                          <input
+                            type="date"
+                            value={row.expiryDate}
+                            onChange={(e) => updateItem(idx, 'expiryDate', e.target.value)}
+                            className="w-full border border-slate-300 rounded px-1.5 py-1.5 text-xs text-slate-700 font-sans"
+                          />
+                        </td>
+
+                        {/* 6. Quantity */}
+                        <td className="py-2 px-2 align-middle">
+                          <input
+                            type="number"
+                            min="0.1"
+                            step="any"
+                            required
+                            value={row.quantity}
+                            onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                            className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold"
+                          />
+                        </td>
+
+                        {/* 7. Unit */}
+                        <td className="py-2 px-2 align-middle">
                           <select
-                            onChange={(e) => updateItem(idx, 'productId', e.target.value)}
-                            className="w-full border border-slate-200 rounded px-1.5 py-0.5 text-[10px] text-slate-500 bg-slate-50"
+                            value={row.unit}
+                            onChange={(e) => updateItem(idx, 'unit', e.target.value)}
+                            className="w-full border border-slate-300 rounded px-1 py-1.5 text-xs font-semibold bg-white text-center"
                           >
-                            <option value="">-- Match from Product Catalog --</option>
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} ({p.sku})
-                              </option>
-                            ))}
+                            <option value="PCS">PCS</option>
+                            <option value="CAN">CAN</option>
+                            <option value="BOX">BOX</option>
+                            <option value="SET">SET</option>
+                            <option value="KG">KG</option>
+                            <option value="LTR">LTR</option>
+                            <option value="MTR">MTR</option>
                           </select>
                         </td>
 
-                        {/* Batch Number & Expiry Date */}
-                        <td className="py-2.5 px-3">
-                          <input
-                            type="text"
-                            placeholder="Batch # (CAS-2026)"
-                            value={row.batchNumber}
-                            onChange={(e) => updateItem(idx, 'batchNumber', e.target.value)}
-                            className="w-full border border-slate-300 rounded px-2 py-1 text-xs font-mono mb-1 uppercase"
-                          />
-                          <input
-                            type="date"
-                            placeholder="Expiry Date"
-                            value={row.expiryDate}
-                            onChange={(e) => updateItem(idx, 'expiryDate', e.target.value)}
-                            className="w-full border border-slate-200 rounded px-1.5 py-0.5 text-[10px] text-slate-600 bg-slate-50"
-                          />
-                        </td>
-
-                        {/* Quantity & Unit */}
-                        <td className="py-2.5 px-3">
-                          <div className="flex gap-1 mb-1">
-                            <input
-                              type="number"
-                              min="0.1"
-                              step="any"
-                              required
-                              value={row.quantity}
-                              onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                              className="w-16 border border-slate-300 rounded px-2 py-1 text-xs font-mono font-bold"
-                            />
-                            <select
-                              value={row.unit}
-                              onChange={(e) => updateItem(idx, 'unit', e.target.value)}
-                              className="w-14 border border-slate-300 rounded px-1 py-1 text-[11px] font-semibold"
-                            >
-                              <option value="PCS">PCS</option>
-                              <option value="CAN">CAN</option>
-                              <option value="BOX">BOX</option>
-                              <option value="SET">SET</option>
-                              <option value="KG">KG</option>
-                              <option value="LTR">LTR</option>
-                            </select>
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            HSN: <input
-                              type="text"
-                              value={row.hsnCode}
-                              onChange={(e) => updateItem(idx, 'hsnCode', e.target.value)}
-                              className="w-12 border-b border-slate-300 font-mono text-[10px]"
-                            />
-                          </div>
-                        </td>
-
-                        {/* Purchase Cost Price */}
-                        <td className="py-2.5 px-3 text-right">
+                        {/* 8. Purchase Cost Price */}
+                        <td className="py-2 px-2 align-middle">
                           <input
                             type="number"
                             min="0"
@@ -706,17 +899,12 @@ export default function PurchaseInwardPage() {
                             required
                             value={row.purchasePrice}
                             onChange={(e) => updateItem(idx, 'purchasePrice', e.target.value)}
-                            className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right font-mono font-bold"
+                            className="w-full text-right border border-slate-300 rounded px-2 py-1.5 text-xs font-mono font-bold"
                           />
-                          {row.discountPercent > 0 && (
-                            <div className="text-[10px] text-emerald-600 font-mono mt-0.5">
-                              Net: ₹{cost.toFixed(2)}
-                            </div>
-                          )}
                         </td>
 
-                        {/* Discount % */}
-                        <td className="py-2.5 px-3 text-right">
+                        {/* 9. Discount % */}
+                        <td className="py-2 px-2 align-middle">
                           <input
                             type="number"
                             min="0"
@@ -724,62 +912,53 @@ export default function PurchaseInwardPage() {
                             step="any"
                             value={row.discountPercent}
                             onChange={(e) => updateItem(idx, 'discountPercent', e.target.value)}
-                            className="w-14 border border-slate-300 rounded px-1.5 py-1 text-xs text-right font-mono"
+                            className="w-full text-right border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono"
                           />
                         </td>
 
-                        {/* SALES MARGIN & SELLING PRICE (WORLD STANDARD BIDIRECTIONAL ENGINE) */}
-                        <td className="py-2.5 px-3 bg-blue-50/40">
-                          <div className="flex items-center gap-1.5 justify-center mb-1">
-                            <div className="flex items-center">
-                              <input
-                                type="number"
-                                step="0.1"
-                                value={row.marginPercent}
-                                onChange={(e) => updateItem(idx, 'marginPercent', e.target.value)}
-                                className="w-12 border border-blue-300 rounded px-1 py-0.5 text-xs text-right font-mono font-bold text-blue-700 bg-white"
-                              />
-                              <span className="text-[10px] font-bold text-blue-700 ml-0.5">%</span>
-                            </div>
-                            <span className="text-slate-400 text-[10px]">&rarr;</span>
-                            <div className="flex items-center">
-                              <span className="text-[10px] font-bold text-slate-500 mr-0.5">₹</span>
+                        {/* 10. Margin % (Bidirectional) */}
+                        <td className="py-2 px-2 align-middle bg-blue-50/40">
+                          <div className="relative">
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={row.marginPercent}
+                              onChange={(e) => updateItem(idx, 'marginPercent', e.target.value)}
+                              className="w-full text-right border border-blue-300 rounded pl-1.5 pr-4 py-1.5 text-xs font-mono font-bold text-blue-700 bg-white"
+                            />
+                            <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-bold text-blue-500 pointer-events-none">%</span>
+                          </div>
+                        </td>
+
+                        {/* 11. Selling Price (Bidirectional + Profit Badge) */}
+                        <td className="py-2 px-2 align-middle bg-emerald-50/40">
+                          <div>
+                            <div className="relative">
+                              <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-600 pointer-events-none">₹</span>
                               <input
                                 type="number"
                                 step="any"
                                 value={row.sellingPrice}
                                 onChange={(e) => updateItem(idx, 'sellingPrice', e.target.value)}
-                                className="w-16 border border-emerald-300 rounded px-1.5 py-0.5 text-xs text-right font-mono font-bold text-emerald-700 bg-white"
+                                className="w-full text-right border border-emerald-300 rounded pl-4 pr-1.5 py-1.5 text-xs font-mono font-bold text-emerald-700 bg-white"
                               />
                             </div>
-                          </div>
-                          {/* Live Profit Margin Badge */}
-                          <div className="text-center">
-                            <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold ${
-                              unitProfit > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                            }`}>
-                              Profit: ₹{unitProfit.toFixed(2)} ({row.marginPercent}%)
-                            </span>
+                            {unitProfit !== 0 && (
+                              <div className={`text-[10px] text-right font-mono font-semibold truncate mt-0.5 ${
+                                unitProfit > 0 ? 'text-emerald-600' : 'text-rose-600'
+                              }`}>
+                                {unitProfit > 0 ? `+₹${unitProfit.toFixed(1)}/unit` : `-₹${Math.abs(unitProfit).toFixed(1)}/unit`}
+                              </div>
+                            )}
                           </div>
                         </td>
 
-                        {/* MRP */}
-                        <td className="py-2.5 px-3 text-right">
-                          <input
-                            type="number"
-                            step="any"
-                            value={row.mrp}
-                            onChange={(e) => updateItem(idx, 'mrp', e.target.value)}
-                            className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right font-mono"
-                          />
-                        </td>
-
-                        {/* GST % */}
-                        <td className="py-2.5 px-3 text-center">
+                        {/* 12. GST % */}
+                        <td className="py-2 px-2 align-middle">
                           <select
                             value={row.gstRate}
                             onChange={(e) => updateItem(idx, 'gstRate', e.target.value)}
-                            className="border border-slate-300 rounded px-1.5 py-1 text-xs font-mono font-bold bg-white"
+                            className="w-full border border-slate-300 rounded px-1 py-1.5 text-xs font-mono font-bold bg-white text-center"
                           >
                             <option value="0">0%</option>
                             <option value="5">5%</option>
@@ -789,20 +968,20 @@ export default function PurchaseInwardPage() {
                           </select>
                         </td>
 
-                        {/* Line Total */}
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                        {/* 13. Line Total */}
+                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 align-middle">
                           ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
 
-                        {/* Delete Button */}
-                        <td className="py-2.5 px-2 text-center">
+                        {/* 14. Delete Button */}
+                        <td className="py-2 px-2 text-center align-middle">
                           <button
                             type="button"
                             onClick={() => removeItemRow(idx)}
                             disabled={items.length <= 1}
-                            className="text-slate-400 hover:text-rose-600 transition disabled:opacity-30"
+                            className="text-slate-400 hover:text-rose-600 transition disabled:opacity-30 p-1"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>

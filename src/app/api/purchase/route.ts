@@ -71,10 +71,36 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Extract distinct suppliers from purchase bills for instant search/selection
+    const uniqueSuppliersMap = new Map<string, { name: string; gstin: string | null; billsCount: number }>();
+    const pastBillsWithSuppliers = await prisma.purchaseBill.findMany({
+      where: { tenantId },
+      select: {
+        supplierName: true,
+        supplierGstin: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    for (const b of pastBillsWithSuppliers) {
+      const key = b.supplierName.trim().toLowerCase();
+      if (!uniqueSuppliersMap.has(key)) {
+        uniqueSuppliersMap.set(key, {
+          name: b.supplierName,
+          gstin: b.supplierGstin || null,
+          billsCount: 1,
+        });
+      } else {
+        const existing = uniqueSuppliersMap.get(key)!;
+        existing.billsCount += 1;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       bills,
       totalCount,
+      suppliers: Array.from(uniqueSuppliersMap.values()),
       summary: {
         totalPurchaseValue: Math.round(totalPurchaseValue * 100) / 100,
         totalTaxableValue: Math.round(totalTaxableValue * 100) / 100,
