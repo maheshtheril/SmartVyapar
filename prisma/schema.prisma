@@ -42,6 +42,8 @@ enum StockLogType {
   RETURN_IN
   MANUAL_ADJUSTMENT
   CONSUMPTION_OUT // For recipe / kitchen ingredient depletion
+  TRANSFER_OUT    // Dispatched to another warehouse
+  TRANSFER_IN     // Received from another warehouse
 }
 
 enum ProductType {
@@ -94,6 +96,8 @@ model Tenant {
   auditLogs            AuditLog[]
   printTemplates       PrintTemplate[]
   subscriptionPayments SubscriptionPayment[]
+  warehouses           Warehouse[]
+  stockTransfers       StockTransfer[]
 
   @@map("tenants")
 }
@@ -158,6 +162,8 @@ model Product {
   invoiceItems      InvoiceItem[]
   purchaseBillItems PurchaseBillItem[]
   creditNoteItems   CreditNoteItem[]
+  warehouseStocks   WarehouseStock[]
+  transferItems     StockTransferItem[]
   
   // Recipes: When this product is a finished dish (e.g. Chicken Biryani):
   recipeIngredients RecipeItem[]       @relation("MenuToIngredients")
@@ -614,6 +620,9 @@ enum AuditAction {
   EWAY_BILL_GENERATED
   EINVOICE_GENERATED
   EINVOICE_CANCELLED
+  STOCK_TRANSFER_CREATED
+  STOCK_TRANSFER_RECEIVED
+  STOCK_TRANSFER_CANCELLED
   PAYMENT_RECEIVED
 }
 
@@ -704,5 +713,88 @@ model SubscriptionPayment {
   @@map("subscription_payments")
 }
 
+// ----------------------------------------------------
+// 18. MULTI-WAREHOUSE, GODOWNS & STOCK TRANSFERS
+// ----------------------------------------------------
+model Warehouse {
+  id         String   @id @default(uuid())
+  tenantId   String
+  name       String   // e.g. "Main Central Godown", "Retail Counter Rack", "Workshop Depot"
+  code       String   // e.g. "WH-MAIN", "WH-SHOP"
+  address    String?
+  city       String?  @default("Kochi")
+  isDefault  Boolean  @default(false)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stocks            WarehouseStock[]
+  transfersSent     StockTransfer[]   @relation("FromWarehouse")
+  transfersReceived StockTransfer[]   @relation("ToWarehouse")
 
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("warehouses")
+}
+
+model WarehouseStock {
+  id            String   @id @default(uuid())
+  warehouseId   String
+  productId     String
+  quantity      Decimal  @default(0.0) @db.Decimal(12, 3)
+  rackLocation  String?  // e.g. "Aisle 3, Rack B, Bin 12"
+  minStockAlert Decimal  @default(5.0) @db.Decimal(12, 3)
+  updatedAt     DateTime @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, productId])
+  @@index([warehouseId])
+  @@index([productId])
+  @@map("warehouse_stocks")
+}
+
+model StockTransfer {
+  id              String              @id @default(uuid())
+  tenantId        String
+  transferNumber  String              // e.g. "ST-2026-0001"
+  fromWarehouseId String
+  toWarehouseId   String
+  status          String              @default("DISPATCHED") // DISPATCHED, RECEIVED, CANCELLED
+  dispatchDate    DateTime            @default(now())
+  receivedDate    DateTime?
+  vehicleNo       String?
+  driverName      String?
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fromWarehouse Warehouse           @relation("FromWarehouse", fields: [fromWarehouseId], references: [id], onDelete: Restrict)
+  toWarehouse   Warehouse           @relation("ToWarehouse", fields: [toWarehouseId], references: [id], onDelete: Restrict)
+  items         StockTransferItem[]
+
+  @@unique([tenantId, transferNumber])
+  @@index([tenantId, status])
+  @@index([fromWarehouseId])
+  @@index([toWarehouseId])
+  @@map("stock_transfers")
+}
+
+model StockTransferItem {
+  id          String   @id @default(uuid())
+  transferId  String
+  productId   String
+  productName String
+  quantity    Decimal  @db.Decimal(12, 3)
+  unit        String   @default("PCS")
+
+  transfer StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product  Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([transferId])
+  @@index([productId])
+  @@map("stock_transfer_items")
+}

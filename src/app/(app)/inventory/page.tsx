@@ -16,7 +16,8 @@ import {
   Grid,
   Boxes,
   UploadCloud,
-  Download
+  Download,
+  ArrowLeftRight
 } from 'lucide-react';
 import BulkImportModal from '@/components/BulkImportModal';
 
@@ -128,6 +129,13 @@ export default function InventoryPage() {
           >
             <Boxes className="h-4 w-4 text-indigo-600" />
             <span>Batches & Expiry</span>
+          </Link>
+          <Link
+            href="/inventory/transfers"
+            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-indigo-600 flex items-center space-x-1.5 transition"
+          >
+            <ArrowLeftRight className="h-4 w-4 text-indigo-600" />
+            <span>Warehouses & Transfers</span>
           </Link>
           <Link
             href="/inventory/barcode-generator"
