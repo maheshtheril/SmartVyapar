@@ -24,6 +24,8 @@ import Link from 'next/link';
 import ProductSearchCombobox, { ProductOption } from '@/components/ProductSearchCombobox';
 import CustomerSearch, { CustomerOption } from '@/components/CustomerSearch';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
+import { cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
+import OfflineStatusPill from '@/components/OfflineStatusPill';
 
 interface BillItem {
   id: string;
@@ -118,22 +120,22 @@ export default function NewInvoicePage() {
         const res = await fetch("/api/products");
         const data = await res.json();
         if (data.success && Array.isArray(data.products)) {
-          setCatalog(
-            data.products.map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              sku: p.sku,
-              barcode: p.barcode,
-              hsnCode: p.hsnCode,
-              sellingPrice: Number(p.sellingPrice),
-              gstRate: Number(p.gstRate),
-              currentStock: Number(p.currentStock),
-              minStockAlert: Number(p.minStockAlert),
-            }))
-          );
+          const mappedProducts = data.products.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            barcode: p.barcode,
+            hsnCode: p.hsnCode,
+            sellingPrice: Number(p.sellingPrice),
+            gstRate: Number(p.gstRate),
+            currentStock: Number(p.currentStock),
+            minStockAlert: Number(p.minStockAlert),
+          }));
+          setCatalog(mappedProducts);
+          cacheProductsLocally(mappedProducts);
         }
         if (data.tenant) {
-          setBusiness({
+          const biz = {
             name: data.tenant.businessName,
             logoUrl: data.tenant.logoUrl || "",
             gstin: data.tenant.gstin || "",
@@ -141,10 +143,16 @@ export default function NewInvoicePage() {
             address: data.tenant.address || "",
             phone: data.tenant.phone || "",
             upiId: data.tenant.upiId || "",
-          });
+          };
+          setBusiness(biz);
+          cacheBusinessProfile(biz);
         }
       } catch (err) {
-        console.error("Error loading products:", err);
+        console.warn("Network error loading products, falling back to IndexedDB offline cache:", err);
+        const cached = await getCachedProducts();
+        if (cached && cached.length > 0) {
+          setCatalog(cached);
+        }
       } finally {
         setLoading(false);
       }
@@ -448,51 +456,99 @@ export default function NewInvoicePage() {
     }
 
     setIsSubmitting(true);
+    const computedPaid = paymentStatus === "PAID" ? grandTotal : (paymentMode === "CASH" && numericCashReceived > 0 ? Math.min(grandTotal, numericCashReceived) : 0);
+    const computedDue = Math.max(0, grandTotal - computedPaid);
+
+    const invoicePayload = {
+      customerName: customerName || "Walk-in Cash Customer",
+      customerPhone: customerPhone || "9999999999",
+      customerStateCode: customerState,
+      paymentStatus,
+      paymentMode,
+      paidAmount: computedPaid,
+      items: validItems.map((i) => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        price: i.price,
+        batchId: i.batchId,
+        batchNumber: i.batchNumber,
+      })),
+    };
+
+    // Calculate savings from catalog / batch MRP
+    let totalSavings = 0;
+    const receiptItems = validItems.map((item) => {
+      const catItem = catalog.find((c) => c.id === item.productId);
+      const itemMrp = item.batchMrp || (catItem && catItem.sellingPrice ? Math.max(item.price, Number(catItem.sellingPrice) * 1.15) : item.price);
+      if (itemMrp > item.price) {
+        totalSavings += (itemMrp - item.price) * item.quantity;
+      }
+      return {
+        name: item.batchNumber ? `${item.name} [${item.batchNumber}]` : item.name,
+        hsn: item.hsn,
+        quantity: item.quantity,
+        unit: item.unitSold || "PCS",
+        price: item.price,
+        mrp: itemMrp,
+        gstRate: item.gst,
+        total: item.price * item.quantity,
+      };
+    });
+
+    // Check if offline
+    if (typeof window !== "undefined" && !navigator.onLine) {
+      const offlineRecord = await enqueueOfflineInvoice(invoicePayload);
+
+      // Decrement stock in local state
+      setCatalog((prev) =>
+        prev.map((prod) => {
+          const matchedItem = validItems.find((vi) => vi.productId === prod.id);
+          if (matchedItem) {
+            return { ...prod, currentStock: Math.max(0, prod.currentStock - matchedItem.quantity) };
+          }
+          return prod;
+        })
+      );
+
+      setReceiptData({
+        invoiceNumber: offlineRecord.offlineInvoiceNumber,
+        invoiceDate: offlineRecord.createdAt,
+        customerName: customerName || "Walk-in Cash Customer",
+        customerPhone: customerPhone,
+        customerState: customerState,
+        cashierName: "Counter 1 (Offline)",
+        items: receiptItems,
+        subTotal: Number(totalTaxable),
+        taxableAmount: Number(totalTaxable),
+        cgstAmount: Number(isIntraState ? totalCgst : 0),
+        sgstAmount: Number(isIntraState ? totalSgst : 0),
+        igstAmount: Number(!isIntraState ? totalIgst : 0),
+        totalAmount: Number(grandTotal),
+        paidAmount: Number(computedPaid),
+        dueAmount: Number(computedDue),
+        paymentMode,
+        cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
+        changeReturned: changeDue > 0 ? changeDue : undefined,
+        totalSavings: totalSavings > 0 ? totalSavings : undefined,
+        upiUri: currentUpiUri,
+      });
+
+      setShowReceiptModal(true);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerName: customerName || "Walk-in Cash Customer",
-          customerPhone: customerPhone || "9999999999",
-          customerStateCode: customerState,
-          paymentStatus,
-          paymentMode,
-          paidAmount: paymentStatus === "PAID" ? grandTotal : (paymentMode === "CASH" && numericCashReceived > 0 ? Math.min(grandTotal, numericCashReceived) : 0),
-          items: validItems.map((i) => ({
-            productId: i.productId,
-            quantity: i.quantity,
-            price: i.price,
-            batchId: i.batchId,
-            batchNumber: i.batchNumber,
-          })),
-        }),
+        body: JSON.stringify(invoicePayload),
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to create invoice");
       }
-
-      // Calculate savings from catalog / batch MRP
-      let totalSavings = 0;
-      const receiptItems = validItems.map((item) => {
-        const catItem = catalog.find((c) => c.id === item.productId);
-        const itemMrp = item.batchMrp || (catItem && catItem.sellingPrice ? Math.max(item.price, Number(catItem.sellingPrice) * 1.15) : item.price);
-        if (itemMrp > item.price) {
-          totalSavings += (itemMrp - item.price) * item.quantity;
-        }
-        return {
-          name: item.batchNumber ? `${item.name} [${item.batchNumber}]` : item.name,
-          hsn: item.hsn,
-          quantity: item.quantity,
-          unit: item.unitSold || "PCS",
-          price: item.price,
-          mrp: itemMrp,
-          gstRate: item.gst,
-          total: item.price * item.quantity,
-        };
-      });
 
       setReceiptData({
         invoiceNumber: data.invoice.invoiceNumber,
@@ -519,7 +575,39 @@ export default function NewInvoicePage() {
 
       setShowReceiptModal(true);
     } catch (err: any) {
-      alert("Error: " + err.message);
+      if (typeof window !== "undefined" && (!navigator.onLine || err.message?.includes("Failed to fetch") || err.message?.includes("network"))) {
+        try {
+          const offlineRecord = await enqueueOfflineInvoice(invoicePayload);
+          setReceiptData({
+            invoiceNumber: offlineRecord.offlineInvoiceNumber,
+            invoiceDate: offlineRecord.createdAt,
+            customerName: customerName || "Walk-in Cash Customer",
+            customerPhone: customerPhone,
+            customerState: customerState,
+            cashierName: "Counter 1 (Offline)",
+            items: receiptItems,
+            subTotal: Number(totalTaxable),
+            taxableAmount: Number(totalTaxable),
+            cgstAmount: Number(isIntraState ? totalCgst : 0),
+            sgstAmount: Number(isIntraState ? totalSgst : 0),
+            igstAmount: Number(!isIntraState ? totalIgst : 0),
+            totalAmount: Number(grandTotal),
+            paidAmount: Number(computedPaid),
+            dueAmount: Number(computedDue),
+            paymentMode,
+            cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
+            changeReturned: changeDue > 0 ? changeDue : undefined,
+            totalSavings: totalSavings > 0 ? totalSavings : undefined,
+            upiUri: currentUpiUri,
+          });
+          setShowReceiptModal(true);
+          return;
+        } catch (enqueueErr) {
+          alert("Error: " + err.message);
+        }
+      } else {
+        alert("Error: " + err.message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -539,8 +627,10 @@ export default function NewInvoicePage() {
           </div>
         </div>
 
-        {/* Hold & Recall Actions */}
+        {/* Hold & Recall Actions & Offline Pill */}
         <div className="flex items-center space-x-2">
+          <OfflineStatusPill />
+
           {/* Hold Current Bill Button */}
           <button
             type="button"

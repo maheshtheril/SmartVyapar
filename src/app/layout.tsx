@@ -23,17 +23,17 @@ export const metadata: Metadata = {
   },
 };
 
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Read the path to determine if we're on the login page.
-  // next/headers referer is not reliable; instead the login page
-  // renders its own full-screen layout without Sidebar.
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+        <ServiceWorkerRegister />
         {children}
       </body>
     </html>
