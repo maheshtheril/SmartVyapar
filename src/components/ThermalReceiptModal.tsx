@@ -128,6 +128,34 @@ export default function ThermalReceiptModal({
         )}&cu=INR&tn=Bill-${data.invoiceNumber}`
       : '');
 
+  const [cloudStatus, setCloudStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [cloudFeedback, setCloudFeedback] = useState<string>('');
+
+  const handleCloudDispatch = async (channel: 'WHATSAPP' | 'SMS') => {
+    if (!data?.customerPhone) return;
+    setCloudStatus('sending');
+    setCloudFeedback('');
+    try {
+      const res = await fetch('/api/notifications/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel,
+          type: 'CUSTOM',
+          recipientPhone: data.customerPhone,
+          customMessage: decodeURIComponent(whatsappText),
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to dispatch');
+      setCloudStatus('sent');
+      setCloudFeedback(`Dispatched via ${channel} (${result.results?.[0]?.provider || 'Gateway'})`);
+    } catch (err: any) {
+      setCloudStatus('error');
+      setCloudFeedback(err.message || 'Dispatch error');
+    }
+  };
+
   const is58mm = paperWidth === '58mm';
 
   return (
@@ -207,7 +235,7 @@ export default function ThermalReceiptModal({
                 <span>Print Thermal Receipt (Enter)</span>
               </button>
 
-              {/* WhatsApp Share Button */}
+              {/* WhatsApp Share Button (Client) */}
               <a
                 href={
                   data.customerPhone
@@ -225,6 +253,37 @@ export default function ThermalReceiptModal({
                     : "Share Bill via WhatsApp"}
                 </span>
               </a>
+
+              {/* Cloud Gateway Dispatch */}
+              {data.customerPhone && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={cloudStatus === 'sending'}
+                      onClick={() => handleCloudDispatch('WHATSAPP')}
+                      className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl border border-emerald-500/40 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 active:scale-[0.99] transition disabled:opacity-60 shadow-sm"
+                    >
+                      <span>{cloudStatus === 'sending' ? 'Sending...' : '☁️ Cloud WhatsApp'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={cloudStatus === 'sending'}
+                      onClick={() => handleCloudDispatch('SMS')}
+                      className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl border border-blue-500/40 bg-blue-50 px-3 py-2.5 text-xs font-bold text-blue-800 hover:bg-blue-100 active:scale-[0.99] transition disabled:opacity-60 shadow-sm"
+                    >
+                      <span>{cloudStatus === 'sending' ? 'Sending...' : '📱 Cloud SMS'}</span>
+                    </button>
+                  </div>
+                  {cloudFeedback && (
+                    <p className={`text-[11px] font-semibold text-center py-1 px-2 rounded-lg ${
+                      cloudStatus === 'sent' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'
+                    }`}>
+                      {cloudFeedback}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Thermal Printer Tips */}
               <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2 text-xs text-slate-600 shadow-sm">

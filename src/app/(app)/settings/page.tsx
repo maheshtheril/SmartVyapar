@@ -26,14 +26,18 @@ import {
   Sparkles,
   Zap,
   Check,
-  Receipt
+  Receipt,
+  MessageSquare,
+  Send,
+  Smartphone,
+  CheckCheck
 } from 'lucide-react';
 import { getStateFromGstin } from '@/lib/schemas/register';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'users' ? 'USERS' : searchParams.get('tab') === 'billing' ? 'BILLING' : 'PROFILE';
-  const [activeTab, setActiveTab] = useState<'PROFILE' | 'USERS' | 'BILLING'>(initialTab);
+  const initialTab = searchParams.get('tab') === 'users' ? 'USERS' : searchParams.get('tab') === 'billing' ? 'BILLING' : searchParams.get('tab') === 'messaging' ? 'MESSAGING' : 'PROFILE';
+  const [activeTab, setActiveTab] = useState<'PROFILE' | 'USERS' | 'BILLING' | 'MESSAGING'>(initialTab);
 
   // Profile Form State
   const [profile, setProfile] = useState({
@@ -76,6 +80,15 @@ function SettingsContent() {
   const [newUserRole, setNewUserRole] = useState<'STAFF' | 'MANAGER' | 'OWNER'>('STAFF');
   const [addingUser, setAddingUser] = useState(false);
   const [userError, setUserError] = useState<string | null>(null);
+
+  // Messaging Gateway State
+  const [testPhone, setTestPhone] = useState('');
+  const [testChannel, setTestChannel] = useState<'WHATSAPP' | 'SMS' | 'BOTH'>('WHATSAPP');
+  const [testType, setTestType] = useState<'TEST' | 'CUSTOM'>('TEST');
+  const [testCustomMsg, setTestCustomMsg] = useState('');
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   // Load tenant profile & permissions
   const loadProfile = async () => {
@@ -300,6 +313,35 @@ function SettingsContent() {
     }
   };
 
+  // Handle Send Test Notification
+  const handleSendTestMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendingTest(true);
+    setTestError(null);
+    setTestResult(null);
+
+    try {
+      const res = await fetch('/api/notifications/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: testChannel,
+          type: testType,
+          recipientPhone: testPhone,
+          customMessage: testType === 'CUSTOM' ? testCustomMsg : undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to dispatch test notification');
+      setTestResult(data);
+    } catch (err: any) {
+      setTestError(err.message || 'Dispatch failed');
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   // Handle Add New User
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -442,6 +484,18 @@ function SettingsContent() {
         >
           <CreditCard className="h-4 w-4" />
           <span>Plans & Billing (Razorpay)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('MESSAGING')}
+          className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+            activeTab === 'MESSAGING'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <MessageSquare className="h-4 w-4" />
+          <span>WhatsApp & SMS Gateway</span>
         </button>
       </div>
 
@@ -1329,6 +1383,195 @@ function SettingsContent() {
             ) : (
               <div className="p-6 text-center text-xs text-slate-400 rounded-xl bg-slate-50 border border-dashed border-slate-200">
                 No past billing transactions. Upgrade to Pro to start your subscription record.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: WhatsApp & SMS Gateway */}
+      {activeTab === 'MESSAGING' && (
+        <div className="space-y-6">
+          {/* Overview & Architecture Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                  <MessageSquare className="h-5 w-5 text-emerald-600" />
+                  <span>Meta WhatsApp Cloud API & Indian SMS Gateway</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Automated customer communications engine with live Meta Graph API v20.0, DLT SMS routing, and sandbox simulation.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <span className="flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Gateway Active</span>
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                  Dual-Mode Sandbox
+                </span>
+              </div>
+            </div>
+
+            {/* Feature Highlights Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-emerald-700 font-bold text-xs">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Meta WhatsApp Cloud API</span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Official Graph API v20.0 integration dispatches rich GST tax invoice summaries, payment due alerts, and dynamic UPI QR links directly to customer WhatsApp.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-blue-700 font-bold text-xs">
+                  <Smartphone className="h-4 w-4" />
+                  <span>Indian DLT SMS Gateway</span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  TRAI DLT-compliant transactional route (Fast2SMS / Msg91) sending real-time SMS bills, OTPs, and balance recovery alerts to 10-digit Indian numbers.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-purple-700 font-bold text-xs">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>MCA Audit Trail</span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Every automated message dispatch is recorded in the statutory unalterable electronic audit log with timestamp, operator ID, and provider receipt ID.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Live Message Tester */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                <Send className="h-4 w-4 text-indigo-600" />
+                <span>Live Gateway Dispatch Tester</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Send an immediate test dispatch to verify phone formatting, WhatsApp delivery, and SMS fallback.
+              </p>
+            </div>
+
+            <form onSubmit={handleSendTestMessage} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Phone Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Recipient Indian Mobile *</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-xs font-semibold text-slate-400">
+                      +91
+                    </span>
+                    <input
+                      type="text"
+                      required
+                      placeholder="9876543210"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 py-2.5 pl-11 pr-3 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Channel Switcher */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Delivery Channel</label>
+                  <select
+                    value={testChannel}
+                    onChange={(e: any) => setTestChannel(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 py-2.5 px-3 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="WHATSAPP">WhatsApp (Meta Cloud API)</option>
+                    <option value="SMS">SMS (Indian DLT Gateway)</option>
+                    <option value="BOTH">Both (WhatsApp + SMS)</option>
+                  </select>
+                </div>
+
+                {/* Message Type */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Message Content Type</label>
+                  <select
+                    value={testType}
+                    onChange={(e: any) => setTestType(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 py-2.5 px-3 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="TEST">Standard Gateway Ping</option>
+                    <option value="CUSTOM">Custom Text Message</option>
+                  </select>
+                </div>
+              </div>
+
+              {testType === 'CUSTOM' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Custom Message Text</label>
+                  <textarea
+                    rows={2}
+                    value={testCustomMsg}
+                    onChange={(e) => setTestCustomMsg(e.target.value)}
+                    placeholder="Enter message to send..."
+                    className="w-full rounded-xl border border-slate-200 py-2 px-3 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center space-x-3">
+                <button
+                  type="submit"
+                  disabled={sendingTest || !testPhone}
+                  className="flex items-center space-x-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span>{sendingTest ? 'Dispatching Message...' : 'Send Live Test Message'}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Error Banner */}
+            {testError && (
+              <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
+                <span>{testError}</span>
+              </div>
+            )}
+
+            {/* Success Result Card */}
+            {testResult && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-emerald-800 font-bold text-xs">
+                    <CheckCheck className="h-4 w-4 text-emerald-600" />
+                    <span>{testResult.summary}</span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                    HTTP 200 OK
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {testResult.results?.map((res: any, idx: number) => (
+                    <div key={idx} className="bg-white rounded-lg border border-emerald-100 p-3 text-[11px] space-y-1">
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span className="font-bold">Channel: {res.channel}</span>
+                        <span className="font-mono text-[10px] text-slate-500">Provider: {res.provider}</span>
+                      </div>
+                      <div className="text-slate-500 font-mono text-[10px]">
+                        Recipient: +{res.recipientPhone} • ID: {res.messageId}
+                      </div>
+                      <div className="text-slate-600 italic bg-slate-50 p-2 rounded border border-slate-100 mt-1">
+                        "{res.previewMessage}"
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
