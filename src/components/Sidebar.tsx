@@ -15,6 +15,7 @@ import {
   Building2,
   ChevronRight,
   ChevronDown,
+  Search,
   BookOpen,
   Sparkles,
   Tag,
@@ -250,6 +251,27 @@ export default function Sidebar() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Quick Menu Search Trigger (World Standard Ctrl+K) */}
+        <div className="px-3 pb-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileOpen(false);
+              window.dispatchEvent(new CustomEvent('open-command-palette'));
+            }}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition text-xs font-medium group cursor-pointer shadow-2xs"
+            title="Search all menus & actions (Ctrl + K)"
+          >
+            <div className="flex items-center space-x-2">
+              <Search className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600 transition" />
+              <span className="text-slate-500 group-hover:text-slate-700 text-xs">Search menus...</span>
+            </div>
+            <kbd className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold text-slate-400 bg-white border border-slate-200 rounded shadow-2xs">
+              Ctrl K
+            </kbd>
+          </button>
         </div>
 
         {/* Dynamic Tree Navigation from Database */}

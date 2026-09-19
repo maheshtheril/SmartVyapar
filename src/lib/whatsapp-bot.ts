@@ -69,20 +69,25 @@ export async function processCustomerCommand(
   const command = rawMessage.trim().toUpperCase();
 
   // Find customer in database by phone number
-  const customer = await prisma.customer.findFirst({
-    where: {
-      phone: {
-        contains: tenDigit,
+  let customer: any = null;
+  try {
+    customer = await prisma.customer.findFirst({
+      where: {
+        phone: {
+          contains: tenDigit,
+        },
       },
-    },
-    include: {
-      tenant: true,
-      invoices: {
-        orderBy: { invoiceDate: "desc" },
-        take: 3,
+      include: {
+        tenant: true,
+        invoices: {
+          orderBy: { invoiceDate: "desc" },
+          take: 3,
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    console.warn("⚠️ [WhatsApp Bot] Database lookup bypassed/failed:", err);
+  }
 
   const businessName = customer?.tenant?.businessName || "SmartVyapar Merchant";
   const upiId = customer?.tenant?.upiId || "merchant@upi";
