@@ -32,7 +32,9 @@ import {
   Layers,
   Settings,
   ShieldCheck,
-  Printer
+  Printer,
+  CreditCard,
+  MessageSquare
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -59,6 +61,8 @@ const ICON_MAP: Record<string, any> = {
   Settings,
   ShieldCheck,
   Printer,
+  CreditCard,
+  MessageSquare,
 };
 
 interface NavChildNode {

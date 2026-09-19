@@ -41,6 +41,15 @@ function SettingsContent() {
   const initialTab = searchParams.get('tab') === 'users' ? 'USERS' : searchParams.get('tab') === 'billing' ? 'BILLING' : searchParams.get('tab') === 'messaging' ? 'MESSAGING' : 'PROFILE';
   const [activeTab, setActiveTab] = useState<'PROFILE' | 'USERS' | 'BILLING' | 'MESSAGING'>(initialTab);
 
+  // Keep tab state synchronized when query params change
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'billing') setActiveTab('BILLING');
+    else if (tab === 'users') setActiveTab('USERS');
+    else if (tab === 'messaging') setActiveTab('MESSAGING');
+    else if (tab === 'profile') setActiveTab('PROFILE');
+  }, [searchParams]);
+
   // Profile Form State
   const [profile, setProfile] = useState({
     businessName: '',
@@ -506,11 +515,14 @@ function SettingsContent() {
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center space-x-2 border-b border-slate-200 pb-2">
+      {/* Responsive Horizontal Tabs */}
+      <div className="flex items-center space-x-2 border-b border-slate-200 pb-2 overflow-x-auto no-scrollbar scrollbar-thin">
         <button
-          onClick={() => setActiveTab('PROFILE')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+          onClick={() => {
+            setActiveTab('PROFILE');
+            window.history.replaceState(null, '', '/settings?tab=profile');
+          }}
+          className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
             activeTab === 'PROFILE'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
@@ -521,8 +533,29 @@ function SettingsContent() {
         </button>
 
         <button
-          onClick={() => setActiveTab('USERS')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+          onClick={() => {
+            setActiveTab('BILLING');
+            window.history.replaceState(null, '', '/settings?tab=billing');
+          }}
+          className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+            activeTab === 'BILLING'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-extrabold'
+          }`}
+        >
+          <CreditCard className="h-4 w-4 text-indigo-600" />
+          <span>Plans & Billing (Razorpay)</span>
+          <span className="rounded-full bg-amber-400 text-slate-900 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider ml-1">
+            Pro Upgrade
+          </span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('USERS');
+            window.history.replaceState(null, '', '/settings?tab=users');
+          }}
+          className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
             activeTab === 'USERS'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
@@ -533,20 +566,11 @@ function SettingsContent() {
         </button>
 
         <button
-          onClick={() => setActiveTab('BILLING')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
-            activeTab === 'BILLING'
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <CreditCard className="h-4 w-4" />
-          <span>Plans & Billing (Razorpay)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('MESSAGING')}
-          className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+          onClick={() => {
+            setActiveTab('MESSAGING');
+            window.history.replaceState(null, '', '/settings?tab=messaging');
+          }}
+          className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
             activeTab === 'MESSAGING'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'

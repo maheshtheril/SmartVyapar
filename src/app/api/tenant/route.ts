@@ -158,6 +158,14 @@ export async function GET(req: NextRequest) {
             href: "/inventory/recipes", 
             icon: "ChefHat" 
           },
+          { 
+            id: "transfers", 
+            name: "Warehouses & Transfers", 
+            href: "/inventory/transfers", 
+            icon: "Truck",
+            badge: "Multi-Store",
+            badgeColor: "indigo"
+          },
         ],
       },
       {
@@ -249,6 +257,21 @@ export async function GET(req: NextRequest) {
             name: "Company Profile & Logo",
             href: "/settings",
             icon: "Building2",
+          },
+          {
+            id: "plans-billing",
+            name: "Plans & Billing (Razorpay)",
+            href: "/settings?tab=billing",
+            icon: "CreditCard",
+            highlight: true,
+            badge: "PRO",
+            badgeColor: "indigo",
+          },
+          {
+            id: "whatsapp-gateway",
+            name: "WhatsApp & SMS Gateway",
+            href: "/settings?tab=messaging",
+            icon: "MessageSquare",
           },
           {
             id: "team-rbac",
