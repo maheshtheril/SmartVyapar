@@ -14,14 +14,18 @@ import {
   Printer,
   Tag,
   Grid,
-  Boxes
+  Boxes,
+  UploadCloud,
+  Download
 } from 'lucide-react';
+import BulkImportModal from '@/components/BulkImportModal';
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Form State
   const [name, setName] = useState("");
@@ -132,6 +136,21 @@ export default function InventoryPage() {
             <Tag className="h-4 w-4 text-indigo-600" />
             <span>Print Barcodes</span>
           </Link>
+          <a
+            href="/api/inventory/export"
+            download
+            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-indigo-600 flex items-center space-x-1.5 transition"
+          >
+            <Download className="h-4 w-4 text-slate-500" />
+            <span>Export CSV</span>
+          </a>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 shadow-sm hover:bg-indigo-100 flex items-center space-x-1.5 transition"
+          >
+            <UploadCloud className="h-4 w-4 text-indigo-600" />
+            <span>Import CSV</span>
+          </button>
           <button
             onClick={() => setShowModal(true)}
             className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 flex items-center space-x-1.5 transition"
@@ -379,6 +398,13 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+
+      {/* Bulk Inventory CSV / Excel Import Modal */}
+      <BulkImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={loadProducts}
+      />
     </div>
   );
 }
