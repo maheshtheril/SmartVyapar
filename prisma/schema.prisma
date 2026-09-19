@@ -70,25 +70,30 @@ model Tenant {
   currency         String           @default("INR")
   logoUrl          String?
   businessType     String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES"
-  subscriptionTier SubscriptionTier @default(FREE)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  subscriptionTier   SubscriptionTier @default(FREE)
+  subscriptionStatus String           @default("ACTIVE") // "ACTIVE", "CANCELLED", "EXPIRED", "TRIALING"
+  planBillingCycle   String           @default("MONTHLY") // "MONTHLY", "ANNUAL"
+  planExpiresAt      DateTime?
+  razorpayCustomerId String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
-  users         User[]
-  products      Product[]
-  stockLogs     StockLog[]
-  customers     Customer[]
-  invoices      Invoice[]
-  purchaseBills PurchaseBill[]
-  accounts            Account[]
-  recipeItems         RecipeItem[]
-  batches             Batch[]
-  restaurantTables    RestaurantTable[]
-  kitchenOrderTickets KitchenOrderTicket[]
-  invoiceSequences    InvoiceSequence[]
-  creditNotes         CreditNote[]
-  auditLogs           AuditLog[]
-  printTemplates      PrintTemplate[]
+  users                User[]
+  products             Product[]
+  stockLogs            StockLog[]
+  customers            Customer[]
+  invoices             Invoice[]
+  purchaseBills        PurchaseBill[]
+  accounts             Account[]
+  recipeItems          RecipeItem[]
+  batches              Batch[]
+  restaurantTables     RestaurantTable[]
+  kitchenOrderTickets  KitchenOrderTicket[]
+  invoiceSequences     InvoiceSequence[]
+  creditNotes          CreditNote[]
+  auditLogs            AuditLog[]
+  printTemplates       PrintTemplate[]
+  subscriptionPayments SubscriptionPayment[]
 
   @@map("tenants")
 }
@@ -663,6 +668,29 @@ model PasswordResetToken {
   @@index([token])
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+// ----------------------------------------------------
+// 17. SAAS SUBSCRIPTION & BILLING PAYMENTS
+// ----------------------------------------------------
+model SubscriptionPayment {
+  id           String           @id @default(uuid())
+  tenantId     String
+  orderId      String           // Razorpay order id or simulated order id
+  paymentId    String?          // Razorpay payment id
+  signature    String?          // HMAC SHA256 signature
+  amount       Float            // In INR (e.g. 499 or 4999)
+  currency     String           @default("INR")
+  tier         SubscriptionTier @default(PRO)
+  billingCycle String           @default("MONTHLY") // "MONTHLY", "ANNUAL"
+  status       String           @default("PAID")    // "PAID", "FAILED", "PENDING"
+  createdAt    DateTime         @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@map("subscription_payments")
 }
 
 

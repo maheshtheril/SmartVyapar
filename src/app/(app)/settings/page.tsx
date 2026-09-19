@@ -21,14 +21,19 @@ import {
   ExternalLink,
   ShieldAlert,
   SlidersHorizontal,
-  BadgeCheck
+  BadgeCheck,
+  CreditCard,
+  Sparkles,
+  Zap,
+  Check,
+  Receipt
 } from 'lucide-react';
 import { getStateFromGstin } from '@/lib/schemas/register';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'users' ? 'USERS' : 'PROFILE';
-  const [activeTab, setActiveTab] = useState<'PROFILE' | 'USERS'>(initialTab);
+  const initialTab = searchParams.get('tab') === 'users' ? 'USERS' : searchParams.get('tab') === 'billing' ? 'BILLING' : 'PROFILE';
+  const [activeTab, setActiveTab] = useState<'PROFILE' | 'USERS' | 'BILLING'>(initialTab);
 
   // Profile Form State
   const [profile, setProfile] = useState({
@@ -55,6 +60,13 @@ function SettingsContent() {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string>('STAFF');
   const [currentUserId, setCurrentUserId] = useState<string>('');
+
+  // Subscription / Billing State
+  const [subData, setSubData] = useState<any>(null);
+  const [loadingSub, setLoadingSub] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'ANNUAL'>('MONTHLY');
+  const [upgrading, setUpgrading] = useState(false);
+  const [subMsg, setSubMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Add User Form State
   const [newUserName, setNewUserName] = useState('');
@@ -114,13 +126,150 @@ function SettingsContent() {
     }
   };
 
+  // Load subscription status & transaction history
+  const loadSubscription = async () => {
+    setLoadingSub(true);
+    try {
+      const res = await fetch('/api/subscription/status');
+      const data = await res.json();
+      if (data.success) {
+        setSubData(data.subscription);
+      }
+    } catch (err) {
+      console.error('Failed to load subscription:', err);
+    } finally {
+      setLoadingSub(false);
+    }
+  };
+
+  const handleUpgrade = async (cycle: 'MONTHLY' | 'ANNUAL') => {
+    if (currentUserRole !== 'OWNER') {
+      setSubMsg({
+        type: 'error',
+        text: 'Only the business owner (OWNER) can purchase or upgrade subscriptions.',
+      });
+      return;
+    }
+
+    setUpgrading(true);
+    setSubMsg(null);
+
+    try {
+      const res = await fetch('/api/subscription/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cycle, tier: 'PRO' }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create payment order.');
+      }
+
+      const order = data.order;
+
+      // 1. Sandbox Simulation Fallback
+      if (order.isSimulated) {
+        const verifyRes = await fetch('/api/subscription/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: order.id,
+            paymentId: `pay_sim_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            signature: `sim_sig_${order.id}`,
+            cycle,
+            tier: 'PRO',
+          }),
+        });
+
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok || !verifyData.success) {
+          throw new Error(verifyData.error || 'Failed to complete subscription activation.');
+        }
+
+        setSubMsg({
+          type: 'success',
+          text: `🎉 ${verifyData.message} (Sandbox Simulation Verified)`,
+        });
+        await loadSubscription();
+        await loadProfile();
+        return;
+      }
+
+      // 2. Live Razorpay Modal Integration
+      const options = {
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'SmartVyapar ERP',
+        description: `Upgrade to SmartVyapar Pro (${cycle})`,
+        order_id: order.id,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch('/api/subscription/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                cycle,
+                tier: 'PRO',
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              setSubMsg({
+                type: 'success',
+                text: `🎉 ${verifyData.message}`,
+              });
+              await loadSubscription();
+              await loadProfile();
+            } else {
+              setSubMsg({ type: 'error', text: verifyData.error || 'Payment verification failed.' });
+            }
+          } catch (err: any) {
+            setSubMsg({ type: 'error', text: err.message || 'Payment verification error.' });
+          }
+        },
+        prefill: {
+          name: profile.businessName,
+          email: profile.email,
+          contact: profile.phone,
+        },
+        theme: {
+          color: '#4f46e5',
+        },
+      };
+
+      if (typeof window !== 'undefined' && !(window as any).Razorpay) {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise((resolve) => (script.onload = resolve));
+      }
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      setSubMsg({ type: 'error', text: err.message || 'Failed to process subscription upgrade.' });
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
   useEffect(() => {
     loadProfile();
+    loadSubscription();
   }, []);
 
   useEffect(() => {
     if (activeTab === 'USERS') {
       loadUsers();
+    } else if (activeTab === 'BILLING') {
+      loadSubscription();
     }
   }, [activeTab]);
 
@@ -245,10 +394,16 @@ function SettingsContent() {
         </div>
 
         {/* Plan Badge */}
-        <div className="flex items-center space-x-2 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
+        <button
+          onClick={() => setActiveTab('BILLING')}
+          className="flex items-center space-x-2 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl hover:bg-indigo-100 transition cursor-pointer"
+        >
           <BadgeCheck className="h-4 w-4 text-indigo-600" />
           <span className="text-xs font-bold text-indigo-900">Plan: {profile.subscriptionTier}</span>
-        </div>
+          <span className="text-[10px] font-semibold text-indigo-600 bg-white px-1.5 py-0.5 rounded border border-indigo-200">
+            Manage
+          </span>
+        </button>
       </div>
 
       {/* Tabs */}
@@ -275,6 +430,18 @@ function SettingsContent() {
         >
           <Users className="h-4 w-4" />
           <span>Team & Permissions (RBAC)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('BILLING')}
+          className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+            activeTab === 'BILLING'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <CreditCard className="h-4 w-4" />
+          <span>Plans & Billing (Razorpay)</span>
         </button>
       </div>
 
@@ -766,6 +933,405 @@ function SettingsContent() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB 3: Plans & Billing (Razorpay) */}
+      {activeTab === 'BILLING' && (
+        <div className="space-y-6">
+          {subMsg && (
+            <div
+              className={`p-4 rounded-xl text-xs font-semibold flex items-center space-x-2 ${
+                subMsg.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border border-rose-200'
+              }`}
+            >
+              {subMsg.type === 'success' ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              ) : (
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+              )}
+              <span>{subMsg.text}</span>
+            </div>
+          )}
+
+          {/* Current Subscription & Quota Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Active Subscription Plan
+                </span>
+                <div className="flex items-center space-x-2 mt-1">
+                  <h2 className="text-xl font-extrabold text-slate-900">
+                    {subData?.planDetails?.name || (profile.subscriptionTier === 'PRO' ? 'SmartVyapar Pro' : 'Starter Free')}
+                  </h2>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${
+                      profile.subscriptionTier === 'PRO'
+                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {subData?.status || 'ACTIVE'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {subData?.planDetails?.tagline || 'Essential tools for business and GST invoicing'}
+                </p>
+              </div>
+
+              {subData?.expiresAt ? (
+                <div className="text-left sm:text-right">
+                  <span className="text-[11px] text-slate-400 font-medium">Valid until</span>
+                  <p className="text-xs font-bold text-slate-800">
+                    {new Date(subData.expiresAt).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </p>
+                  <span className="text-[10px] text-emerald-600 font-semibold">
+                    {subData.isExpired ? '⚠️ Expired' : 'Auto-renew enabled'}
+                  </span>
+                </div>
+              ) : (
+                <div className="text-left sm:text-right">
+                  <span className="text-[11px] text-slate-400 font-medium">Billing Term</span>
+                  <p className="text-xs font-bold text-slate-800">Lifetime Free</p>
+                </div>
+              )}
+            </div>
+
+            {/* Monthly Quota Progress Meters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Invoices Quota */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700">Monthly Invoices Issued</span>
+                  <span className="font-bold text-slate-900">
+                    {subData?.usage?.monthlyInvoices ?? 0} /{' '}
+                    {subData?.planDetails?.invoiceLimitPerMonth ?? 'Unlimited'}
+                  </span>
+                </div>
+                {subData?.planDetails?.invoiceLimitPerMonth ? (
+                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        (subData?.usage?.monthlyInvoices ?? 0) >= subData.planDetails.invoiceLimitPerMonth
+                          ? 'bg-rose-500'
+                          : 'bg-indigo-600'
+                      }`}
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          ((subData?.usage?.monthlyInvoices ?? 0) / subData.planDetails.invoiceLimitPerMonth) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1.5 text-xs text-emerald-700 font-bold">
+                    <Check className="h-3.5 w-3.5" />
+                    <span>Unlimited GST Invoices (No cap)</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Multi-User Quota */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700">Team Members Active</span>
+                  <span className="font-bold text-slate-900">
+                    {subData?.usage?.userCount ?? users.length ?? 1} /{' '}
+                    {subData?.planDetails?.userLimit ?? 'Unlimited'}
+                  </span>
+                </div>
+                {subData?.planDetails?.userLimit ? (
+                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-indigo-600 h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          ((subData?.usage?.userCount ?? 1) / subData.planDetails.userLimit) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1.5 text-xs text-emerald-700 font-bold">
+                    <Check className="h-3.5 w-3.5" />
+                    <span>Unlimited Staff & Granular RBAC</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing Plans & Upgrade Selector */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Choose Your Plan</h3>
+                <p className="text-xs text-slate-500">
+                  Upgrade your business workspace to unlock automation, compliance, and multi-user access
+                </p>
+              </div>
+
+              {/* Monthly vs Annual Toggle */}
+              <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('MONTHLY')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                    billingCycle === 'MONTHLY'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('ANNUAL')}
+                  className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1 transition ${
+                    billingCycle === 'ANNUAL'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>Annual</span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
+                    Save 17%
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Plan 1: Free Starter */}
+              <div
+                className={`rounded-2xl border p-6 flex flex-col justify-between transition ${
+                  profile.subscriptionTier === 'FREE'
+                    ? 'border-slate-300 bg-white shadow-sm'
+                    : 'border-slate-200 bg-slate-50/50'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900">Starter Free</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Essential tools for independent retailers</p>
+                  </div>
+
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-3xl font-extrabold text-slate-900">₹0</span>
+                    <span className="text-xs text-slate-500">/ forever</span>
+                  </div>
+
+                  <hr className="border-slate-100" />
+
+                  <ul className="space-y-2.5 text-xs text-slate-600">
+                    <li className="flex items-center space-x-2">
+                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Up to 100 GST Invoices per month</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>POS Thermal & A4 Invoice Printing</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Customer Khata (Credit Ledger)</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Single User (Owner Only)</span>
+                    </li>
+                    <li className="flex items-center space-x-2 text-slate-400 line-through">
+                      <span className="h-4 w-4 text-center shrink-0">✕</span>
+                      <span>AI Purchase Bill Scanner</span>
+                    </li>
+                    <li className="flex items-center space-x-2 text-slate-400 line-through">
+                      <span className="h-4 w-4 text-center shrink-0">✕</span>
+                      <span>Government NIC E-Way Bill JSON</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="pt-6">
+                  {profile.subscriptionTier === 'FREE' ? (
+                    <button
+                      disabled
+                      className="w-full py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-500 bg-slate-100 cursor-default"
+                    >
+                      Current Plan
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 bg-slate-50"
+                    >
+                      Free Tier
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Plan 2: SmartVyapar Pro */}
+              <div className="rounded-2xl border-2 border-indigo-600 bg-white p-6 shadow-md relative flex flex-col justify-between">
+                <div className="absolute -top-3 right-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full shadow-sm flex items-center space-x-1">
+                  <Sparkles className="h-3 w-3" />
+                  <span>Most Popular</span>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900 flex items-center space-x-1.5">
+                      <span>SmartVyapar Pro</span>
+                      <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Full GST compliance, AI automation & team scale
+                    </p>
+                  </div>
+
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-3xl font-extrabold text-indigo-600">
+                      {billingCycle === 'ANNUAL' ? '₹4,999' : '₹499'}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      {billingCycle === 'ANNUAL' ? '/ year (₹416/mo)' : '/ month'}
+                    </span>
+                  </div>
+
+                  <hr className="border-slate-100" />
+
+                  <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                      <span><strong>Unlimited</strong> GST Invoices & Bills</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                      <span><strong>Unlimited</strong> Multi-User Team & Roles</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                      <span>AI Purchase Bill Scanner (Gemini OCR)</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                      <span>NIC E-Way Bill JSON Bulk Generator</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                      <span>Excel / CSV Bulk Inventory Import Engine</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                      <span>Print Studio: 7 Palettes, Logos & Fonts</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                      <span>MCA Electronic Audit Trail Logs</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="pt-6 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => handleUpgrade(billingCycle)}
+                    disabled={upgrading || currentUserRole !== 'OWNER'}
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-md hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50 flex items-center justify-center space-x-2"
+                  >
+                    {upgrading ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span>Connecting to Gateway...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4" />
+                        <span>
+                          {profile.subscriptionTier === 'PRO'
+                            ? `Extend Pro (${billingCycle === 'ANNUAL' ? '₹4,999/yr' : '₹499/mo'})`
+                            : `Upgrade to Pro (${billingCycle === 'ANNUAL' ? '₹4,999/yr' : '₹499/mo'})`}
+                        </span>
+                      </>
+                    )}
+                  </button>
+
+                  {currentUserRole !== 'OWNER' && (
+                    <p className="text-[11px] text-amber-700 font-semibold text-center">
+                      🔒 Only the Business Owner can initiate billing & subscription upgrades.
+                    </p>
+                  )}
+
+                  <p className="text-[10px] text-slate-400 text-center">
+                    🔒 Secured by Razorpay. Zero setup test simulation enabled in evaluation mode.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Billing & Payment Transactions History */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <Receipt className="h-4 w-4 text-indigo-600" />
+              <span>Billing Invoices & Payment History</span>
+            </h3>
+
+            {subData?.payments && subData.payments.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="py-2.5 px-3">Date</th>
+                      <th className="py-2.5 px-3">Plan / Cycle</th>
+                      <th className="py-2.5 px-3">Order ID</th>
+                      <th className="py-2.5 px-3">Amount</th>
+                      <th className="py-2.5 px-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {subData.payments.map((p: any) => (
+                      <tr key={p.id} className="hover:bg-slate-50/60">
+                        <td className="py-2.5 px-3 font-medium text-slate-800">
+                          {new Date(p.createdAt).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="font-bold text-indigo-900">{p.tier}</span> ({p.billingCycle})
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
+                          {p.orderId}
+                        </td>
+                        <td className="py-2.5 px-3 font-bold text-slate-900">
+                          ₹{p.amount.toLocaleString('en-IN')}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                            {p.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-6 text-center text-xs text-slate-400 rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                No past billing transactions. Upgrade to Pro to start your subscription record.
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
