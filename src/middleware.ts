@@ -8,6 +8,10 @@ const PUBLIC_PATHS = [
   "/api/health",
   "/register",
   "/api/auth/register",
+  "/forgot-password",
+  "/reset-password",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
 ];
 
 export async function middleware(req: NextRequest) {

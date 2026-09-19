@@ -110,6 +110,7 @@ model User {
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   auditLogs AuditLog[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([tenantId])
   @@map("users")
@@ -644,6 +645,24 @@ model PrintTemplate {
   @@index([tenantId, docType])
   @@index([tenantId, docType, isDefault])
   @@map("print_templates")
+}
+
+// ----------------------------------------------------
+// 16. PASSWORD RESET & ACCOUNT RECOVERY TOKENS
+// ----------------------------------------------------
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 
