@@ -24,17 +24,27 @@ describe("SaaS Subscription & Razorpay Engine", () => {
   });
 
   it("should generate a sandbox simulated Razorpay order when API keys are omitted", async () => {
-    const order = await createRazorpayOrder({
-      amountPaise: 49900,
-      receipt: "rcpt_test_123",
-      notes: { tier: "PRO", cycle: "MONTHLY" },
-    });
+    const origKey = process.env.RAZORPAY_KEY_ID;
+    const origSecret = process.env.RAZORPAY_KEY_SECRET;
+    delete process.env.RAZORPAY_KEY_ID;
+    delete process.env.RAZORPAY_KEY_SECRET;
 
-    assert.ok(order.id.startsWith("order_sim_"), "Order ID should start with order_sim_ in test mode");
-    assert.strictEqual(order.amount, 49900);
-    assert.strictEqual(order.currency, "INR");
-    assert.strictEqual(order.isSimulated, true);
-    assert.strictEqual(order.keyId, "rzp_test_simulated_key");
+    try {
+      const order = await createRazorpayOrder({
+        amountPaise: 49900,
+        receipt: "rcpt_test_123",
+        notes: { tier: "PRO", cycle: "MONTHLY" },
+      });
+
+      assert.ok(order.id.startsWith("order_sim_"), "Order ID should start with order_sim_ in test mode");
+      assert.strictEqual(order.amount, 49900);
+      assert.strictEqual(order.currency, "INR");
+      assert.strictEqual(order.isSimulated, true);
+      assert.strictEqual(order.keyId, "rzp_test_simulated_key");
+    } finally {
+      if (origKey) process.env.RAZORPAY_KEY_ID = origKey;
+      if (origSecret) process.env.RAZORPAY_KEY_SECRET = origSecret;
+    }
   });
 
   it("should verify simulated sandbox payment signatures correctly", () => {
