@@ -30,7 +30,9 @@ import {
   MessageSquare,
   Send,
   Smartphone,
-  CheckCheck
+  CheckCheck,
+  Bot,
+  Globe
 } from 'lucide-react';
 import { getStateFromGstin } from '@/lib/schemas/register';
 
@@ -89,6 +91,21 @@ function SettingsContent() {
   const [sendingTest, setSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
   const [testError, setTestError] = useState<string | null>(null);
+
+  // Two-Way WhatsApp Bot Simulator State
+  const [botSimPhone, setBotSimPhone] = useState('');
+  const [botSimMessage, setBotSimMessage] = useState('BILL');
+  const [botSimLoading, setBotSimLoading] = useState(false);
+  const [botConversation, setBotConversation] = useState<
+    Array<{ sender: 'USER' | 'BOT'; text: string; intent?: string; time: string }>
+  >([
+    {
+      sender: 'BOT',
+      text: "🙏 *Namaste! Welcome to SmartVyapar WhatsApp Assistant.*\n\nSend *BILL* for your latest invoice, *BALANCE* for your Khata balance, or *PAY* for an instant UPI link.",
+      intent: 'GREETING',
+      time: 'Just now',
+    },
+  ]);
 
   // Load tenant profile & permissions
   const loadProfile = async () => {
@@ -339,6 +356,47 @@ function SettingsContent() {
       setTestError(err.message || 'Dispatch failed');
     } finally {
       setSendingTest(false);
+    }
+  };
+
+  // Handle Simulate Two-Way WhatsApp Bot Message
+  const handleSimulateBotMessage = async (msgToSend?: string) => {
+    const text = (msgToSend || botSimMessage).trim();
+    if (!text) return;
+    const phone = botSimPhone.trim() || profile.phone || '9876543210';
+    setBotSimLoading(true);
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userBubble = { sender: 'USER' as const, text, time: timeStr };
+    const updatedConvo = [...botConversation, userBubble];
+    setBotConversation(updatedConvo);
+
+    try {
+      const res = await fetch('/api/whatsapp/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          testPhone: phone,
+          testMessage: text,
+          dryRun: true,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.result) {
+        setBotConversation([
+          ...updatedConvo,
+          {
+            sender: 'BOT' as const,
+            text: data.result.replyText,
+            intent: data.result.intent,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error('Bot simulation error:', err);
+    } finally {
+      setBotSimLoading(false);
     }
   };
 
@@ -1574,6 +1632,204 @@ function SettingsContent() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Two-Way WhatsApp Bot Studio & Webhook Simulator */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                  <Bot className="h-5 w-5 text-emerald-600" />
+                  <span>Two-Way Automated WhatsApp Bot & Webhook Studio</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Customers can reply directly to WhatsApp notifications with keywords like <strong>BILL</strong>, <strong>BALANCE</strong>, or <strong>PAY</strong> to receive real-time statements.
+                </p>
+              </div>
+
+              <span className="flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span>24x7 Webhook Active</span>
+              </span>
+            </div>
+
+            {/* Meta Webhook Endpoint Card */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                <Globe className="h-4 w-4 text-slate-500" />
+                <span>Official Meta Cloud API Webhook Endpoints</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Callback URL (POST / GET):</span>
+                  <code className="font-mono text-indigo-700 bg-white px-2.5 py-1 rounded border border-slate-200 block text-[11px] truncate">
+                    https://smartvyapar.vercel.app/api/whatsapp/webhook
+                  </code>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Verification Token (verify_token):</span>
+                  <code className="font-mono text-emerald-700 bg-white px-2.5 py-1 rounded border border-slate-200 block text-[11px]">
+                    smartvyapar_webhook_secret_2026
+                  </code>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Subscribe to <code>messages</code> field under WhatsApp Business Webhook settings in Meta Developer Portal.
+              </p>
+            </div>
+
+            {/* Interactive Bot Simulator */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800">
+                  Interactive WhatsApp Bot Simulator
+                </label>
+                <span className="text-[11px] text-slate-400">
+                  Test customer queries without consuming Meta API quota
+                </span>
+              </div>
+
+              {/* Customer Mobile for context */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="relative flex-1">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-xs font-semibold text-slate-400">
+                    +91
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Customer Mobile (e.g. 9845012345)"
+                    value={botSimPhone}
+                    onChange={(e) => setBotSimPhone(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 py-2 pl-11 pr-3 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Quick Keyword Chips */}
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  <span className="text-xs text-slate-400 font-medium">Quick keywords:</span>
+                  {[
+                    { label: 'BILL', desc: 'Latest invoice' },
+                    { label: 'BALANCE', desc: 'Khata due' },
+                    { label: 'PAY', desc: 'UPI pay link' },
+                    { label: 'HELP', desc: 'Full menu' },
+                  ].map((kw) => (
+                    <button
+                      key={kw.label}
+                      type="button"
+                      onClick={() => {
+                        setBotSimMessage(kw.label);
+                        handleSimulateBotMessage(kw.label);
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition"
+                      title={kw.desc}
+                    >
+                      {kw.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* WhatsApp Mock Chat Window */}
+              <div className="rounded-2xl border border-slate-200 bg-[#efeae2] overflow-hidden shadow-inner flex flex-col h-[320px]">
+                {/* Chat Window Header */}
+                <div className="bg-[#075e54] text-white px-4 py-2.5 flex items-center justify-between shrink-0">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs">
+                      SV
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs leading-tight">
+                        {profile.businessName || 'SmartVyapar Assistant'}
+                      </div>
+                      <div className="text-[10px] text-emerald-200">
+                        Online • Automated Support
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setBotConversation([
+                        {
+                          sender: 'BOT',
+                          text: "🙏 *Namaste! Welcome to SmartVyapar WhatsApp Assistant.*\n\nSend *BILL* for your latest invoice, *BALANCE* for your Khata balance, or *PAY* for an instant UPI link.",
+                          intent: 'GREETING',
+                          time: 'Just now',
+                        },
+                      ])
+                    }
+                    className="text-[11px] text-white/80 hover:text-white px-2 py-0.5 rounded bg-white/10"
+                  >
+                    Clear Chat
+                  </button>
+                </div>
+
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
+                  {botConversation.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex ${
+                        msg.sender === 'USER' ? 'justify-end' : 'justify-start'
+                      }`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-xl px-3 py-2 shadow-xs leading-relaxed ${
+                          msg.sender === 'USER'
+                            ? 'bg-[#d9fdd3] text-slate-900 rounded-tr-none'
+                            : 'bg-white text-slate-900 rounded-tl-none'
+                        }`}
+                      >
+                        {msg.intent && (
+                          <span className="inline-block text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded mb-1 border border-emerald-200">
+                            Intent: {msg.intent}
+                          </span>
+                        )}
+                        <div className="whitespace-pre-wrap font-sans text-xs">
+                          {msg.text}
+                        </div>
+                        <div className="text-[9px] text-slate-400 text-right mt-1 font-mono">
+                          {msg.time}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {botSimLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white rounded-xl px-3 py-2 text-slate-400 italic text-xs shadow-xs rounded-tl-none flex items-center space-x-1.5">
+                        <RefreshCw className="h-3 w-3 animate-spin text-emerald-600" />
+                        <span>SmartVyapar Assistant is typing...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chat Input Box */}
+                <div className="p-2.5 bg-[#f0f2f5] border-t border-slate-200 flex items-center space-x-2 shrink-0">
+                  <input
+                    type="text"
+                    value={botSimMessage}
+                    onChange={(e) => setBotSimMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSimulateBotMessage();
+                      }
+                    }}
+                    placeholder="Type a message (e.g. BILL, BALANCE, PAY)..."
+                    className="flex-1 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSimulateBotMessage()}
+                    disabled={botSimLoading || !botSimMessage.trim()}
+                    className="p-2 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white disabled:opacity-50 transition"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
