@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { getStateFromGstin } from '@/lib/schemas/register';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'users' ? 'USERS' : 'PROFILE';
   const [activeTab, setActiveTab] = useState<'PROFILE' | 'USERS'>(initialTab);
@@ -732,5 +732,19 @@ export default function SettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        </div>
+      }
+    >
+      <SettingsContent />
+    </React.Suspense>
   );
 }
