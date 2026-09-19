@@ -15,11 +15,13 @@ import {
   Receipt,
   Layers,
   Truck,
-  FileCode
+  FileCode,
+  FileCheck2
 } from 'lucide-react';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
 import CreditNoteModal from '@/components/CreditNoteModal';
 import EWayBillModal from '@/components/EWayBillModal';
+import EInvoiceModal from '@/components/EInvoiceModal';
 
 export default function InvoicesPage() {
   const [activeTab, setActiveTab] = useState<'INVOICES' | 'CREDIT_NOTES'>('INVOICES');
@@ -28,6 +30,8 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [selectedInvoiceForEway, setSelectedInvoiceForEway] = useState<any | null>(null);
   const [showEwayModal, setShowEwayModal] = useState(false);
+  const [selectedInvoiceForEinvoice, setSelectedInvoiceForEinvoice] = useState<any | null>(null);
+  const [showEinvoiceModal, setShowEinvoiceModal] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -178,6 +182,11 @@ export default function InvoicesPage() {
   const handleOpenEway = (inv: any) => {
     setSelectedInvoiceForEway(inv);
     setShowEwayModal(true);
+  };
+
+  const handleOpenEinvoice = (inv: any) => {
+    setSelectedInvoiceForEinvoice(inv);
+    setShowEinvoiceModal(true);
   };
 
   // Export GSTR-1 Sales Register (Table 4 / 5 / 7)
@@ -553,23 +562,43 @@ export default function InvoicesPage() {
                     <tr key={inv.id} className="hover:bg-slate-50/50">
                       <td className="px-4 py-3 font-bold text-slate-900">
                         <div>{inv.invoiceNumber}</div>
-                        {inv.ewayBillNo ? (
-                          <span
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md mt-0.5"
-                            title={`E-Way Bill No: ${inv.ewayBillNo}`}
-                          >
-                            <Truck className="h-2.5 w-2.5" />
-                            <span>EWB: {inv.ewayBillNo.slice(0, 4)}...{inv.ewayBillNo.slice(-4)}</span>
-                          </span>
-                        ) : Number(inv.totalAmount) >= 50000 ? (
-                          <span
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md mt-0.5"
-                            title="Statutory Rule 138: Mandatory E-Way Bill for consignments over ₹50,000"
-                          >
-                            <Truck className="h-2.5 w-2.5 text-amber-600" />
-                            <span>E-Way Req.</span>
-                          </span>
-                        ) : null}
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {inv.irn ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-md"
+                              title={`IRN: ${inv.irn}`}
+                            >
+                              <FileCheck2 className="h-2.5 w-2.5 text-indigo-600" />
+                              <span>IRN Active</span>
+                            </span>
+                          ) : inv.customerGstin && inv.customerGstin.length === 15 ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md"
+                              title="B2B Supply: E-Invoice IRN registration recommended"
+                            >
+                              <FileCheck2 className="h-2.5 w-2.5 text-blue-500" />
+                              <span>B2B E-Inv</span>
+                            </span>
+                          ) : null}
+
+                          {inv.ewayBillNo ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md"
+                              title={`E-Way Bill No: ${inv.ewayBillNo}`}
+                            >
+                              <Truck className="h-2.5 w-2.5" />
+                              <span>EWB: {inv.ewayBillNo.slice(0, 4)}...{inv.ewayBillNo.slice(-4)}</span>
+                            </span>
+                          ) : Number(inv.totalAmount) >= 50000 ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md"
+                              title="Statutory Rule 138: Mandatory E-Way Bill for consignments over ₹50,000"
+                            >
+                              <Truck className="h-2.5 w-2.5 text-amber-600" />
+                              <span>E-Way Req.</span>
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-slate-500">
                         {new Date(inv.invoiceDate).toLocaleDateString("en-IN")}
@@ -625,11 +654,21 @@ export default function InvoicesPage() {
 
                           <button
                             type="button"
+                            onClick={() => handleOpenEinvoice(inv)}
+                            className="inline-flex items-center space-x-1 rounded-lg border border-indigo-200 bg-indigo-50/60 px-2 py-1 text-indigo-700 hover:bg-indigo-100 transition shadow-xs font-semibold"
+                            title="Generate NIC Statutory E-Invoice (IRN / Rule 48(4))"
+                          >
+                            <FileCheck2 className="h-3 w-3 text-indigo-600" />
+                            <span>E-Inv</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => handleOpenEway(inv)}
                             className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50 transition shadow-xs font-semibold"
                             title="Generate NIC E-Way Bill (Rule 138)"
                           >
-                            <Truck className="h-3 w-3 text-indigo-600" />
+                            <Truck className="h-3 w-3 text-slate-600" />
                             <span>E-Way</span>
                           </button>
 
@@ -755,6 +794,16 @@ export default function InvoicesPage() {
           isOpen={showEwayModal}
           onClose={() => setShowEwayModal(false)}
           invoice={selectedInvoiceForEway}
+          onSuccess={loadInvoices}
+        />
+      )}
+
+      {/* Statutory E-Invoice Modal (Rule 48(4)) */}
+      {selectedInvoiceForEinvoice && (
+        <EInvoiceModal
+          isOpen={showEinvoiceModal}
+          onClose={() => setShowEinvoiceModal(false)}
+          invoice={selectedInvoiceForEinvoice}
           onSuccess={loadInvoices}
         />
       )}

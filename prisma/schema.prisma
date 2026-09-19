@@ -275,6 +275,15 @@ model Invoice {
   vehicleType       String?       @default("R") // R: Regular, O: Over Dimensional Cargo
   transportMode     String?       @default("1") // 1: Road, 2: Rail, 3: Air, 4: Ship
 
+  // E-Invoice (GST Rule 48(4) - NIC / IRP Standard INV-01)
+  irn                  String?       // 64-character SHA-256 hash
+  ackNo                String?       // 15-16 digit IRP acknowledgment number
+  ackDate              DateTime?     // IRP acknowledgment timestamp
+  signedQrCode         String?       @db.Text // Statutory signed JWT QR string
+  einvoiceStatus       String?       @default("PENDING") // PENDING, GENERATED, CANCELLED, FAILED
+  einvoiceCancelReason String?
+  einvoiceCancelDate   DateTime?
+
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
@@ -603,6 +612,8 @@ enum AuditAction {
   STOCK_ADJUSTMENT
   CREDIT_NOTE_ISSUED
   EWAY_BILL_GENERATED
+  EINVOICE_GENERATED
+  EINVOICE_CANCELLED
   PAYMENT_RECEIVED
 }
 

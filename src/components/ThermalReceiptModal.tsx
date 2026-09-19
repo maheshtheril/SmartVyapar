@@ -47,6 +47,9 @@ export interface ThermalReceiptData {
   changeReturned?: number;
   totalSavings?: number;
   upiUri?: string;
+  irn?: string;
+  ackNo?: string;
+  signedQrCode?: string;
   notes?: string;
 }
 
@@ -513,8 +516,30 @@ export default function ThermalReceiptModal({
                 </div>
               </div>
 
-              {/* Dynamic UPI QR Code for instant scan & pay */}
-              {upiPayUri && (
+              {/* Statutory B2B e-Invoice QR or Dynamic UPI QR Code */}
+              {data.irn ? (
+                <div className="text-center py-2.5 my-1 border-t border-dashed border-black space-y-1">
+                  <div className="text-[9px] font-bold uppercase tracking-wider">
+                    GST Statutory e-Invoice (IRN)
+                  </div>
+                  <div className="text-[7px] font-mono break-all px-1 leading-tight text-slate-800">
+                    IRN: {data.irn}
+                  </div>
+                  {data.ackNo && (
+                    <div className="text-[8px] font-mono text-slate-700">
+                      Ack No: {data.ackNo}
+                    </div>
+                  )}
+                  {data.signedQrCode && (
+                    <div className="flex justify-center py-1">
+                      <QrCodeCanvas value={data.signedQrCode} size={is58mm ? 95 : 120} />
+                    </div>
+                  )}
+                  <div className="text-[8px] text-slate-600 font-sans">
+                    NIC IRP Verified • GST Rule 48(4)
+                  </div>
+                </div>
+              ) : upiPayUri ? (
                 <div className="text-center py-2.5 my-1 border-t border-dashed border-black space-y-1">
                   <div className="text-[9px] font-bold uppercase tracking-wider">
                     Scan UPI QR to Pay / Verify
@@ -526,7 +551,7 @@ export default function ThermalReceiptModal({
                     GPay • PhonePe • Paytm • BHIM
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* Invoice Barcode */}
               <div className="text-center py-1.5 border-t border-dashed border-black space-y-0.5">
