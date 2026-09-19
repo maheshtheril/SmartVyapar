@@ -37,7 +37,8 @@ import {
   CreditCard,
   MessageSquare,
   FileCheck,
-  Scale
+  Scale,
+  ClipboardCheck
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -68,6 +69,7 @@ const ICON_MAP: Record<string, any> = {
   Printer,
   CreditCard,
   MessageSquare,
+  ClipboardCheck,
 };
 
 interface NavChildNode {

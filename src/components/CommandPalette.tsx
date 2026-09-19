@@ -31,6 +31,7 @@ import {
   HelpCircle,
   FileCheck,
   Scale,
+  ClipboardCheck,
 } from 'lucide-react';
 
 interface PaletteItem {
@@ -101,6 +102,17 @@ const PALETTE_ITEMS: PaletteItem[] = [
     keywords: ['scan', 'ai', 'gemini', 'ocr', 'purchase', 'bill', 'camera', 'upload'],
     badge: 'AI Vision',
     badgeColor: 'violet',
+  },
+  {
+    id: 'act-new-purchase-grn',
+    title: 'Record Purchase Bill & GRN Inward',
+    subtitle: 'Enter supplier invoice, batches, calculate sales margin, and print barcode labels',
+    category: 'ACTIONS',
+    href: '/inventory/purchase',
+    icon: ClipboardCheck,
+    keywords: ['purchase', 'grn', 'goods receipt note', 'supplier', 'inward', 'batch', 'margin', 'cost', 'selling price', 'barcode'],
+    badge: 'GRN Inward',
+    badgeColor: 'indigo',
   },
 
   // 🧭 CORE MODULES
@@ -173,6 +185,17 @@ const PALETTE_ITEMS: PaletteItem[] = [
   },
 
   // 📦 INVENTORY & LOGISTICS
+  {
+    id: 'inv-purchase-register',
+    title: 'Purchase Bills & GRN Inward Register',
+    subtitle: 'Track supplier invoices, claimed ITC, payment statuses, and print GRN slips',
+    category: 'INVENTORY',
+    href: '/inventory/purchase',
+    icon: ClipboardCheck,
+    keywords: ['purchase', 'register', 'grn', 'history', 'bills', 'itc', 'vendor', 'supplier', 'inward', 'goods receipt'],
+    badge: 'Inward',
+    badgeColor: 'indigo',
+  },
   {
     id: 'inv-transfers',
     title: 'Warehouses & Inter-Branch Transfers',

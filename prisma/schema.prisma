@@ -338,9 +338,13 @@ model PurchaseBill {
   id                 String   @id @default(uuid())
   tenantId           String
   billNumber         String   // Supplier's bill number
+  grnNumber          String?  // e.g. "GRN-2026-0001"
   billDate           DateTime @default(now())
   supplierName       String
   supplierGstin      String?
+  warehouseId        String?
+  paymentTerms       String?  @default("CREDIT") // CREDIT, CASH, BANK_TRANSFER, UPI
+  notes              String?
   totalTaxable       Decimal  @db.Decimal(10, 2)
   cgstAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
   sgstAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
@@ -365,6 +369,7 @@ model PurchaseBillItem {
   productId      String?   // Matched to catalog product (or null if new item)
   productName    String
   batchNumber    String?
+  mfgDate        DateTime?
   expiryDate     DateTime?
   hsnCode        String?
   unit           String    @default("PCS") // Unit billed by vendor (e.g. BOX, CTN, PCS, KG)
@@ -372,7 +377,10 @@ model PurchaseBillItem {
   packageSize    Decimal   @default(1.0) @db.Decimal(10, 3) // E.g. 10 Pcs/Box
   baseQuantity   Decimal   @default(0.0) @db.Decimal(12, 3) // Total base units entering stock: quantity * packageSize
   purchasePrice  Decimal   @db.Decimal(10, 2) // Price per unit billed by vendor (e.g. ₹1,000 / Box)
+  discountPercent Decimal? @default(0.0) @db.Decimal(5, 2)
   baseCostPrice  Decimal?  @db.Decimal(10, 2) // Cost per base unit (e.g. ₹1,000 / 10 = ₹100 / PC)
+  sellingPrice   Decimal?  @db.Decimal(10, 2) // Target selling price
+  marginPercent  Decimal?  @db.Decimal(5, 2)  // Target sales margin %
   mrp            Decimal?  @db.Decimal(10, 2)
   gstRate        Decimal   @db.Decimal(5, 2)
   lineTotal      Decimal   @db.Decimal(10, 2)

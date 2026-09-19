@@ -135,6 +135,14 @@ export async function GET(req: NextRequest) {
             badgeColor: "rose"
           },
           { 
+            id: "purchase-inward", 
+            name: "Purchase Bills & GRN", 
+            href: "/inventory/purchase", 
+            icon: "ClipboardCheck",
+            badge: "Inward",
+            badgeColor: "indigo"
+          },
+          { 
             id: "barcode", 
             name: "Barcode Labels (EAN/Code128)", 
             href: "/inventory/barcode-generator", 

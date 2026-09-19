@@ -68,25 +68,27 @@ export async function processCustomerCommand(
   const { tenDigit } = normalizeIndianPhone(rawPhone);
   const command = rawMessage.trim().toUpperCase();
 
-  // Find customer in database by phone number
+  // Find customer in database by phone number (skip when dryRun is true)
   let customer: any = null;
-  try {
-    customer = await prisma.customer.findFirst({
-      where: {
-        phone: {
-          contains: tenDigit,
+  if (!dryRun) {
+    try {
+      customer = await prisma.customer.findFirst({
+        where: {
+          phone: {
+            contains: tenDigit,
+          },
         },
-      },
-      include: {
-        tenant: true,
-        invoices: {
-          orderBy: { invoiceDate: "desc" },
-          take: 3,
+        include: {
+          tenant: true,
+          invoices: {
+            orderBy: { invoiceDate: "desc" },
+            take: 3,
+          },
         },
-      },
-    });
-  } catch (err) {
-    console.warn("⚠️ [WhatsApp Bot] Database lookup bypassed/failed:", err);
+      });
+    } catch (dbErr) {
+      console.warn("[WhatsApp Bot] Database lookup bypassed/failed:", dbErr);
+    }
   }
 
   const businessName = customer?.tenant?.businessName || "SmartVyapar Merchant";
