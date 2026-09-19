@@ -17,6 +17,8 @@ const PUBLIC_PATHS = [
   "/refund-policy",
   "/contact",
   "/pricing",
+  "/api/whatsapp/webhook",
+  "/api/admin/backup",
 ];
 
 export async function middleware(req: NextRequest) {
