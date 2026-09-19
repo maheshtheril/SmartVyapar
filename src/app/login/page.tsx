@@ -150,9 +150,22 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-[11px] text-slate-400 mt-6">
-          SmartVyapar ERP • Secured with JWT • Indian GST Compliant
-        </p>
+        <div className="text-center mt-6 space-y-2">
+          <p className="text-[11px] text-slate-400">
+            SmartVyapar ERP • Indian GST Compliant
+          </p>
+          <div className="flex items-center justify-center space-x-3 text-[10px] text-slate-400">
+            <Link href="/terms" className="hover:text-indigo-600 underline">Terms</Link>
+            <span>•</span>
+            <Link href="/privacy" className="hover:text-indigo-600 underline">Privacy</Link>
+            <span>•</span>
+            <Link href="/refund-policy" className="hover:text-indigo-600 underline">Refund Policy</Link>
+            <span>•</span>
+            <Link href="/contact" className="hover:text-indigo-600 underline">Contact Us</Link>
+            <span>•</span>
+            <Link href="/pricing" className="hover:text-indigo-600 underline">Pricing</Link>
+          </div>
+        </div>
       </div>
     </div>
   );
