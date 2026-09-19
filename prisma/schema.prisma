@@ -98,6 +98,7 @@ model Tenant {
   subscriptionPayments SubscriptionPayment[]
   warehouses           Warehouse[]
   stockTransfers       StockTransfer[]
+  journalEntries       JournalEntry[]
 
   @@map("tenants")
 }
@@ -405,11 +406,56 @@ model Account {
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  journalLineItems JournalLineItem[]
 
   @@unique([tenantId, code])
   @@index([tenantId, classification])
   @@map("accounts")
+}
+
+enum VoucherType {
+  PAYMENT
+  RECEIPT
+  CONTRA
+  JOURNAL
+}
+
+model JournalEntry {
+  id            String            @id @default(uuid())
+  tenantId      String
+  voucherNumber String            // e.g. "PV-2026-0001", "RV-2026-0001", "CV-2026-0001", "JV-2026-0001"
+  voucherType   VoucherType       // PAYMENT, RECEIPT, CONTRA, JOURNAL
+  date          DateTime          @default(now())
+  narration     String
+  referenceNo   String?           // Cheque No, UTR No, Bank Ref, Voucher Ref
+  totalAmount   Decimal           @db.Decimal(12, 2)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines         JournalLineItem[]
+
+  @@unique([tenantId, voucherNumber])
+  @@index([tenantId, voucherType])
+  @@index([tenantId, date])
+  @@map("journal_entries")
+}
+
+model JournalLineItem {
+  id             String       @id @default(uuid())
+  journalEntryId String
+  accountId      String
+  debit          Decimal      @default(0.0) @db.Decimal(12, 2)
+  credit         Decimal      @default(0.0) @db.Decimal(12, 2)
+  narration      String?
+
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account        Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("journal_line_items")
 }
 
 // ----------------------------------------------------
@@ -624,6 +670,8 @@ enum AuditAction {
   STOCK_TRANSFER_RECEIVED
   STOCK_TRANSFER_CANCELLED
   PAYMENT_RECEIVED
+  ACCOUNTING_VOUCHER_CREATED
+  ACCOUNTING_VOUCHER_CANCELLED
 }
 
 model AuditLog {

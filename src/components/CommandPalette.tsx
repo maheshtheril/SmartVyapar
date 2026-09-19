@@ -29,6 +29,7 @@ import {
   Landmark,
   Layers,
   HelpCircle,
+  FileCheck,
 } from 'lucide-react';
 
 interface PaletteItem {
@@ -55,6 +56,17 @@ const PALETTE_ITEMS: PaletteItem[] = [
     keywords: ['new', 'create', 'bill', 'pos', 'invoice', 'sale', 'counter', 'quick'],
     badge: 'Fast Bill',
     badgeColor: 'emerald',
+  },
+  {
+    id: 'act-new-voucher',
+    title: 'Record Accounting Voucher (PV / RV / CV / JV)',
+    subtitle: 'Payment, receipt, contra transfer, or journal entry with double-entry math',
+    category: 'ACTIONS',
+    href: '/accounting/vouchers',
+    icon: FileCheck,
+    keywords: ['voucher', 'payment', 'receipt', 'contra', 'journal', 'pv', 'rv', 'cv', 'jv', 'expense', 'debit', 'credit'],
+    badge: 'Double-Entry',
+    badgeColor: 'indigo',
   },
   {
     id: 'act-upgrade-pro',
@@ -135,6 +147,17 @@ const PALETTE_ITEMS: PaletteItem[] = [
     href: '/accounting/chart-of-accounts',
     icon: Landmark,
     keywords: ['accounting', 'chart of accounts', 'coa', 'ledger', 'assets', 'liabilities'],
+  },
+  {
+    id: 'mod-vouchers',
+    title: 'Accounting Vouchers & Journals',
+    subtitle: 'Payment, Receipt, Contra, and Journal entries with automatic ledger posting',
+    category: 'MODULES',
+    href: '/accounting/vouchers',
+    icon: FileCheck,
+    keywords: ['vouchers', 'payment', 'receipt', 'contra', 'journal', 'pv', 'rv', 'cv', 'jv', 'debit', 'credit', 'ledger'],
+    badge: 'Double-Entry',
+    badgeColor: 'indigo',
   },
 
   // 📦 INVENTORY & LOGISTICS

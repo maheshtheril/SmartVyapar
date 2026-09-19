@@ -225,6 +225,14 @@ export async function GET(req: NextRequest) {
             href: "/accounting/chart-of-accounts", 
             icon: "Landmark" 
           },
+          {
+            id: "vouchers",
+            name: "Accounting Vouchers (PV/RV/CV/JV)",
+            href: "/accounting/vouchers",
+            icon: "FileCheck",
+            badge: "Double-Entry",
+            badgeColor: "indigo"
+          },
         ],
       });
     }
