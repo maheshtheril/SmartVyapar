@@ -24,7 +24,11 @@ import {
   Sparkles,
   Layers,
   X,
-  Check
+  Check,
+  Upload,
+  Camera,
+  Tag,
+  Receipt
 } from 'lucide-react';
 import BarcodeSvg from '@/components/BarcodeSvg';
 
@@ -78,6 +82,12 @@ export default function PurchaseInwardPage() {
   const [supplierDropdownOpen, setSupplierDropdownOpen] = useState(false);
   const supplierInputRef = useRef<HTMLInputElement>(null);
 
+  // AI Invoice Scanner State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isScanningInvoice, setIsScanningInvoice] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanSuccessInfo, setScanSuccessInfo] = useState<{ count: number; billNumber: string; confidence: number } | null>(null);
+
   // Inward Register & History
   const [bills, setBills] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({});
@@ -85,9 +95,12 @@ export default function PurchaseInwardPage() {
 
   // Selected Bill for GRN Print or Barcode Print Modal
   const [selectedBillForGrn, setSelectedBillForGrn] = useState<any>(null);
-  const [selectedItemForBarcode, setSelectedItemForBarcode] = useState<any>(null);
-  const [barcodeLabelCount, setBarcodeLabelCount] = useState<number>(10);
+  const [selectedBillForBarcodeBatch, setSelectedBillForBarcodeBatch] = useState<any>(null);
+  const [batchBarcodeQuantities, setBatchBarcodeQuantities] = useState<Record<string, number>>({});
   const [barcodeLayout, setBarcodeLayout] = useState<'50x25' | '38x25' | 'a4'>('50x25');
+
+  // Post-Inward Success Confirmation Modal
+  const [postInwardModal, setPostInwardModal] = useState<{ open: boolean; bill: any } | null>(null);
 
   // New Purchase Bill Form State
   const [supplierName, setSupplierName] = useState('');
@@ -196,6 +209,93 @@ export default function PurchaseInwardPage() {
       loadBills();
     }
   }, [activeTab, searchFilter]);
+
+  // AI Invoice Scanner handler
+  const handleScanInvoice = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const selectedFile = e.target.files[0];
+
+    setIsScanningInvoice(true);
+    setScanError(null);
+    setScanSuccessInfo(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const res = await fetch('/api/scan-purchase', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'AI invoice scan failed');
+      }
+
+      const data = json.data;
+      if (data.supplierName) setSupplierName(data.supplierName);
+      if (data.supplierGstin) setSupplierGstin(data.supplierGstin);
+      if (data.billNumber) setBillNumber(data.billNumber);
+      if (data.billDate && data.billDate.length >= 10) setBillDate(data.billDate.substring(0, 10));
+
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        const mappedRows: PurchaseItemRow[] = data.items.map((it: any) => {
+          // Attempt catalog match by name or SKU
+          const match = products.find(
+            (p) =>
+              p.name.toLowerCase().includes(it.productName.toLowerCase()) ||
+              it.productName.toLowerCase().includes(p.name.toLowerCase()) ||
+              (p.sku && it.productName.toLowerCase().includes(p.sku.toLowerCase()))
+          );
+
+          const cost = Number(it.purchasePrice || 0);
+          let sp = 0;
+          let margin = 30;
+
+          if (match && Number(match.sellingPrice || 0) > 0) {
+            sp = Number(match.sellingPrice);
+            if (cost > 0) {
+              margin = Math.round(((sp - cost) / cost) * 1000) / 10;
+            }
+          } else {
+            sp = Math.round(cost * 1.30 * 100) / 100;
+          }
+
+          return {
+            productId: match?.id || undefined,
+            productName: it.productName || 'Unnamed Item',
+            hsnCode: it.hsnCode || match?.hsnCode || '8708',
+            unit: it.unit || match?.baseUnit || 'PCS',
+            quantity: Number(it.quantity || 1),
+            packageSize: Number(it.packageSize || 1),
+            purchasePrice: cost,
+            discountPercent: 0,
+            marginPercent: margin,
+            sellingPrice: sp,
+            mrp: Number(it.mrp || sp),
+            gstRate: Number(it.gstRate || 18),
+            batchNumber: it.batchNumber || '',
+            mfgDate: it.mfgDate || '',
+            expiryDate: it.expiryDate || '',
+          };
+        });
+
+        setItems(mappedRows);
+        setScanSuccessInfo({
+          count: mappedRows.length,
+          billNumber: data.billNumber || 'Auto-detected',
+          confidence: Math.round((data.confidenceScore || 0.95) * 100),
+        });
+      }
+    } catch (err: any) {
+      console.error('Invoice scan error:', err);
+      setScanError(err.message || 'Failed to extract invoice data via AI');
+    } finally {
+      setIsScanningInvoice(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   // Filtered suppliers for live combobox
   const filteredSuppliers = useMemo(() => {
@@ -334,6 +434,18 @@ export default function PurchaseInwardPage() {
 
   grandTotal = totalTaxable + totalCgst + totalSgst + totalIgst;
 
+  // Open Multi-Item Consignment Barcode Modal
+  const openBatchBarcodeModal = (bill: any) => {
+    setSelectedBillForBarcodeBatch(bill);
+    const qtys: Record<string, number> = {};
+    if (bill.items) {
+      bill.items.forEach((item: any) => {
+        qtys[item.id] = Math.max(1, Math.floor(Number(item.quantity || 1)));
+      });
+    }
+    setBatchBarcodeQuantities(qtys);
+  };
+
   // Submit Purchase Bill & GRN
   const handleSubmitBill = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -392,12 +504,15 @@ export default function PurchaseInwardPage() {
         throw new Error(data.error || 'Failed to post purchase bill');
       }
 
-      alert(`Success! Purchase Bill & ${data.bill?.grnNumber || 'GRN'} recorded into books.`);
+      // Open Post-Inward Success Modal
+      setPostInwardModal({ open: true, bill: data.bill });
+
       // Reset form
       setBillNumber('');
       setSupplierName('');
       setSupplierGstin('');
       setNotes('');
+      setScanSuccessInfo(null);
       setItems([
         {
           productName: '',
@@ -416,7 +531,6 @@ export default function PurchaseInwardPage() {
           expiryDate: '',
         },
       ]);
-      setActiveTab('REGISTER');
     } catch (err: any) {
       alert(`Error: ${err.message}`);
     } finally {
@@ -424,8 +538,30 @@ export default function PurchaseInwardPage() {
     }
   };
 
+  // Flattened stickers list for multi-item barcode modal
+  const multiItemStickersToPrint = useMemo(() => {
+    if (!selectedBillForBarcodeBatch || !selectedBillForBarcodeBatch.items) return [];
+    const stickers: any[] = [];
+    selectedBillForBarcodeBatch.items.forEach((item: any) => {
+      const count = batchBarcodeQuantities[item.id] || 0;
+      for (let i = 0; i < count; i++) {
+        stickers.push(item);
+      }
+    });
+    return stickers;
+  }, [selectedBillForBarcodeBatch, batchBarcodeQuantities]);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8">
+      {/* Hidden File Input for AI Bill Scanner */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        onChange={handleScanInvoice}
+        className="hidden"
+      />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
@@ -434,18 +570,32 @@ export default function PurchaseInwardPage() {
               <PackagePlus className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
                 Purchase Bills & GRN Inward
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">
+                  AI Auto-Fill Enabled
+                </span>
               </h1>
               <p className="text-sm text-slate-500">
-                Batchwise Goods Receipt Note (GRN), dynamic sales margin engine, and barcode label printing
+                Unified manual & AI scan inward, batch FIFO tracking, bidirectional margin engine, and barcode printing
               </p>
             </div>
           </div>
         </div>
 
-        {/* Tab Switcher Buttons */}
+        {/* Action Controls & Tab Switcher */}
         <div className="flex items-center gap-2 print:hidden">
+          {/* Prominent AI Scan Button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isScanningInvoice}
+            className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 transition disabled:opacity-50"
+          >
+            <Sparkles className={`w-4 h-4 ${isScanningInvoice ? 'animate-spin' : 'animate-pulse text-amber-300'}`} />
+            {isScanningInvoice ? 'AI Vision Extracting...' : '⚡ AI Scan Bill'}
+          </button>
+
           <button
             onClick={() => setActiveTab('NEW_BILL')}
             className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 ${
@@ -455,7 +605,7 @@ export default function PurchaseInwardPage() {
             }`}
           >
             <Plus className="w-4 h-4" />
-            New Purchase / GRN
+            New Bill / GRN
           </button>
           <button
             onClick={() => setActiveTab('REGISTER')}
@@ -470,6 +620,43 @@ export default function PurchaseInwardPage() {
           </button>
         </div>
       </div>
+
+      {/* Scanning Feedback Banners */}
+      {isScanningInvoice && (
+        <div className="mb-6 p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 flex items-center gap-3 animate-pulse">
+          <Sparkles className="w-5 h-5 text-purple-600 animate-spin" />
+          <div className="text-xs">
+            <span className="font-bold block text-sm">Gemini AI Vision Extracting Invoice...</span>
+            Reading vendor metadata, line items, packaging quantities, GST slabs, and costs.
+          </div>
+        </div>
+      )}
+
+      {scanError && (
+        <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span><strong>Scan Warning:</strong> {scanError}</span>
+          </div>
+          <button onClick={() => setScanError(null)} className="text-rose-500 hover:text-rose-700">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {scanSuccessInfo && (
+        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              <strong>✨ AI Extracted Successfully:</strong> Loaded <strong>{scanSuccessInfo.count} items</strong> from bill <strong>{scanSuccessInfo.billNumber}</strong> with {scanSuccessInfo.confidence}% confidence. Please review batches, expiry dates, and margins below before confirming.
+            </span>
+          </div>
+          <button onClick={() => setScanSuccessInfo(null)} className="text-emerald-600 hover:text-emerald-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:hidden">
@@ -519,9 +706,17 @@ export default function PurchaseInwardPage() {
                 <p className="text-xs text-slate-500">Search and select registered supplier or enter vendor details</p>
               </div>
 
-              {/* Quick Supplier Presets */}
-              <div className="flex items-center gap-1.5 text-xs font-mono">
-                <span className="text-slate-400 text-[11px] mr-1">Quick Select:</span>
+              {/* Quick Supplier Presets & AI Trigger */}
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-2.5 py-1 rounded bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-[11px] flex items-center gap-1 border border-purple-200"
+                >
+                  <Sparkles className="w-3 h-3 text-purple-600" /> Upload Bill Photo / PDF
+                </button>
+                <span className="text-slate-300">|</span>
+                <span className="text-slate-400 text-[11px]">Presets:</span>
                 {DEFAULT_SUPPLIERS.slice(0, 3).map((sup) => (
                   <button
                     key={sup.name}
@@ -728,13 +923,22 @@ export default function PurchaseInwardPage() {
                   Search catalog products or type custom items. Each control is horizontally aligned across columns.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={addItemRow}
-                className="px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 flex items-center gap-1.5 transition"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Part / Item
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1.5 text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 flex items-center gap-1.5 transition"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600" /> AI Auto-Fill Rows
+                </button>
+                <button
+                  type="button"
+                  onClick={addItemRow}
+                  className="px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 flex items-center gap-1.5 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Part / Item
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -1102,13 +1306,10 @@ export default function PurchaseInwardPage() {
                               </button>
                               {bill.items && bill.items.length > 0 && (
                                 <button
-                                  onClick={() => {
-                                    setSelectedItemForBarcode(bill.items[0]);
-                                    setBarcodeLabelCount(Math.max(1, Math.floor(Number(bill.items[0].quantity || 10))));
-                                  }}
+                                  onClick={() => openBatchBarcodeModal(bill)}
                                   className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-[11px] font-semibold flex items-center gap-1"
                                 >
-                                  <Barcode className="w-3 h-3" /> Barcodes
+                                  <Barcode className="w-3 h-3" /> Barcodes ({bill.items.length})
                                 </button>
                               )}
                             </div>
@@ -1125,6 +1326,91 @@ export default function PurchaseInwardPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POST-INWARD CONFIRMATION SUCCESS MODAL */}
+      {postInwardModal?.open && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+
+            <h2 className="text-xl font-bold text-slate-900">
+              Consignment Inwarded Successfully!
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Inventory stocked, batch records registered, and double-entry books updated.
+            </p>
+
+            <div className="my-4 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-mono text-left space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-500">GRN Document #:</span>
+                <strong className="text-blue-600">{postInwardModal.bill?.grnNumber || 'GRN-2026-XXXX'}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Supplier Bill #:</span>
+                <strong className="text-slate-800">{postInwardModal.bill?.billNumber}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Supplier:</span>
+                <span className="font-medium text-slate-700 truncate max-w-[240px]">{postInwardModal.bill?.supplierName}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200 pt-1 mt-1">
+                <span className="text-slate-500 font-semibold">Total Inward Value:</span>
+                <strong className="text-slate-900">₹{Number(postInwardModal.bill?.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const bill = postInwardModal.bill;
+                    setPostInwardModal(null);
+                    setSelectedBillForGrn(bill);
+                  }}
+                  className="py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5"
+                >
+                  <Printer className="w-4 h-4" /> Print GRN Slip
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const bill = postInwardModal.bill;
+                    setPostInwardModal(null);
+                    openBatchBarcodeModal(bill);
+                  }}
+                  className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5"
+                >
+                  <Barcode className="w-4 h-4" /> Print Barcodes
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPostInwardModal(null)}
+                  className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition"
+                >
+                  ➕ Inward Another Bill
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPostInwardModal(null);
+                    setActiveTab('REGISTER');
+                  }}
+                  className="py-2 px-3 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-xs rounded-xl transition"
+                >
+                  View Inward Register
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1217,39 +1503,30 @@ export default function PurchaseInwardPage() {
         </div>
       )}
 
-      {/* MODAL 2: THERMAL BARCODE LABEL PRINTER */}
-      {selectedItemForBarcode && (
+      {/* MODAL 2: MULTI-ITEM CONSIGNMENT BARCODE LABEL PRINTER */}
+      {selectedBillForBarcodeBatch && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full p-6">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b border-slate-200 pb-3 mb-4">
               <div>
-                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block">Instant Shelf Labels</span>
+                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block">Consignment Barcode Printing</span>
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Barcode className="w-5 h-5 text-blue-600" /> Print Thermal Barcode Labels
+                  <Barcode className="w-5 h-5 text-blue-600" /> Print Inwarded Barcode Labels
                 </h2>
-                <p className="text-xs text-slate-500">Generate labels for newly inwarded stock</p>
+                <p className="text-xs text-slate-500">
+                  Bill #{selectedBillForBarcodeBatch.billNumber} &bull; {multiItemStickersToPrint.length} Total Labels Selected
+                </p>
               </div>
               <button
-                onClick={() => setSelectedItemForBarcode(null)}
+                onClick={() => setSelectedBillForBarcodeBatch(null)}
                 className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded text-xs font-semibold hover:bg-slate-200"
               >
                 Close
               </button>
             </div>
 
-            {/* Sticker Configuration Controls */}
+            {/* Sticker Geometry Selector */}
             <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Number of Stickers</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={barcodeLabelCount}
-                  onChange={(e) => setBarcodeLabelCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full border border-slate-300 rounded px-2.5 py-1.5 font-mono font-bold"
-                />
-              </div>
               <div>
                 <label className="block text-slate-600 font-semibold mb-1">Label Geometry</label>
                 <select
@@ -1257,47 +1534,93 @@ export default function PurchaseInwardPage() {
                   onChange={(e: any) => setBarcodeLayout(e.target.value)}
                   className="w-full border border-slate-300 rounded px-2.5 py-1.5 font-medium"
                 >
-                  <option value="50x25">50mm x 25mm (Standard 1-Up Roll)</option>
-                  <option value="38x25">38mm x 25mm (2-Up Roll)</option>
+                  <option value="50x25">50mm x 25mm (Standard 1-Up Thermal Roll)</option>
+                  <option value="38x25">38mm x 25mm (2-Up Thermal Roll)</option>
                   <option value="a4">A4 Sheet (24 Stickers / Page)</option>
                 </select>
               </div>
-            </div>
-
-            {/* Live Sticker Preview Card */}
-            <div className="p-4 bg-slate-100 rounded-xl border border-slate-200 flex justify-center mb-4">
-              <div className="w-[50mm] h-[25mm] bg-white border border-slate-300 rounded shadow-xs p-1.5 flex flex-col justify-between items-center text-center font-sans">
-                <span className="text-[8px] font-bold text-slate-800 uppercase truncate max-w-full">
-                  {tenant?.businessName || 'APEX MOTORS & SPARES'}
-                </span>
-                <span className="text-[7.5px] font-semibold text-slate-900 truncate max-w-full">
-                  {selectedItemForBarcode.productName}
-                </span>
-
-                {/* Scannable Code-128 Barcode */}
-                <div className="my-0.5">
-                  <BarcodeSvg
-                    value={selectedItemForBarcode.batchNumber || selectedItemForBarcode.product?.sku || '8901030012345'}
-                    height={16}
-                    width={1.0}
-                    fontSize={7}
-                  />
-                </div>
-
-                <div className="w-full flex justify-between text-[7px] font-mono px-1">
-                  <span>Batch: {selectedItemForBarcode.batchNumber || 'STD'}</span>
-                  <span>Sale: <strong>₹{Number(selectedItemForBarcode.sellingPrice || selectedItemForBarcode.purchasePrice * 1.3).toFixed(0)}</strong></span>
+              <div className="flex items-end">
+                <div className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-xs font-mono text-slate-700 flex justify-between items-center">
+                  <span>Total Labels to Print:</span>
+                  <strong className="text-blue-700 font-bold text-sm">{multiItemStickersToPrint.length}</strong>
                 </div>
               </div>
             </div>
+
+            {/* Items Sticker Quantities Adjustment Table */}
+            <div className="mb-4 border border-slate-200 rounded-lg overflow-hidden">
+              <div className="bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 border-b border-slate-200 flex justify-between items-center">
+                <span>Inwarded Parts in Consignment</span>
+                <span className="text-[11px] text-slate-500 font-normal">Adjust sticker count per part</span>
+              </div>
+              <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                {selectedBillForBarcodeBatch.items?.map((item: any) => (
+                  <div key={item.id} className="p-2.5 flex items-center justify-between text-xs hover:bg-slate-50/70">
+                    <div className="max-w-[340px]">
+                      <span className="font-semibold text-slate-800 block truncate">{item.productName}</span>
+                      <div className="text-[10px] text-slate-500 font-mono">
+                        Batch: <strong>{item.batchNumber || 'STD'}</strong> | MRP: ₹{Number(item.mrp || item.sellingPrice || 0).toFixed(0)} | Sale: ₹{Number(item.sellingPrice || item.purchasePrice * 1.3).toFixed(0)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400">Labels:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="200"
+                        value={batchBarcodeQuantities[item.id] ?? Math.floor(Number(item.quantity || 1))}
+                        onChange={(e) => {
+                          const val = Math.max(0, parseInt(e.target.value) || 0);
+                          setBatchBarcodeQuantities((prev) => ({
+                            ...prev,
+                            [item.id]: val,
+                          }));
+                        }}
+                        className="w-16 border border-slate-300 rounded px-2 py-1 text-xs font-mono font-bold text-center"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sticker Preview (First Item) */}
+            {multiItemStickersToPrint.length > 0 && (
+              <div className="p-3 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center mb-4">
+                <span className="text-[10px] text-slate-500 font-semibold mb-1">Thermal Label Preview</span>
+                <div className="w-[50mm] h-[25mm] bg-white border border-slate-300 rounded shadow-xs p-1.5 flex flex-col justify-between items-center text-center font-sans">
+                  <span className="text-[8px] font-bold text-slate-800 uppercase truncate max-w-full">
+                    {tenant?.businessName || 'APEX MOTORS & SPARES'}
+                  </span>
+                  <span className="text-[7.5px] font-semibold text-slate-900 truncate max-w-full">
+                    {multiItemStickersToPrint[0].productName}
+                  </span>
+
+                  <div className="my-0.5">
+                    <BarcodeSvg
+                      value={multiItemStickersToPrint[0].batchNumber || multiItemStickersToPrint[0].product?.sku || '8901030012345'}
+                      height={16}
+                      width={1.0}
+                      fontSize={7}
+                    />
+                  </div>
+
+                  <div className="w-full flex justify-between text-[7px] font-mono px-1">
+                    <span>Batch: {multiItemStickersToPrint[0].batchNumber || 'STD'}</span>
+                    <span>Sale: <strong>₹{Number(multiItemStickersToPrint[0].sellingPrice || multiItemStickersToPrint[0].purchasePrice * 1.3).toFixed(0)}</strong></span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Print Action */}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => window.print()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1.5"
+                disabled={multiItemStickersToPrint.length === 0}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1.5 disabled:opacity-50"
               >
-                <Printer className="w-4 h-4" /> Print {barcodeLabelCount} Stickers
+                <Printer className="w-4 h-4" /> Print {multiItemStickersToPrint.length} Barcode Labels
               </button>
             </div>
           </div>

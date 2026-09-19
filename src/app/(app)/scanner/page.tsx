@@ -13,7 +13,8 @@ import {
   X,
   Sparkles,
   ExternalLink,
-  Layers
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 import BarcodeSvg from '@/components/BarcodeSvg';
@@ -214,6 +215,27 @@ export default function ScannerPage() {
         <p className="text-xs text-slate-500">
           Upload supplier paper bills or PDFs to automatically extract items, HSN, packaging UOM (Box vs Pcs), batch numbers, and stock-in
         </p>
+      </div>
+
+      {/* Unified Inward Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-900 to-indigo-900 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 print:hidden">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/30 flex items-center justify-center text-amber-300">
+            <Sparkles className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm">✨ Unified Inward & Barcode Console Available</h3>
+            <p className="text-xs text-purple-200">
+              AI Bill Scanning is now unified directly into the Purchase Bills & GRN Inward form with batch FIFO tracking, sales margins, and thermal barcode printing.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/inventory/purchase"
+          className="px-4 py-2 rounded-xl bg-white text-purple-900 hover:bg-purple-50 font-bold text-xs shrink-0 shadow flex items-center gap-1.5 transition"
+        >
+          Open Unified Purchase Console <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:hidden">
