@@ -14,14 +14,31 @@ export async function GET(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
 
-    const products = await prisma.product.findMany({
-      where: { tenantId, isActive: true },
-      orderBy: { name: "asc" },
-    });
+    const [products, tenant] = await Promise.all([
+      prisma.product.findMany({
+        where: { tenantId, isActive: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          id: true,
+          businessName: true,
+          legalName: true,
+          logoUrl: true,
+          gstin: true,
+          stateCode: true,
+          phone: true,
+          address: true,
+          upiId: true,
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
       products,
+      tenant,
     });
   } catch (error: any) {
     if (error.name === "AuthError") {

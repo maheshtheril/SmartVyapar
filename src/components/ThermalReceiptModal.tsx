@@ -52,6 +52,7 @@ export interface ThermalReceiptData {
 
 interface BusinessProfile {
   name: string;
+  logoUrl?: string;
   gstin?: string;
   stateCode?: string;
   phone?: string;
@@ -293,6 +294,16 @@ export default function ThermalReceiptModal({
             >
               {/* Receipt Header */}
               <div className="text-center space-y-1 pb-2">
+                {business.logoUrl && (
+                  <div className="flex justify-center pb-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={business.logoUrl}
+                      alt={business.name}
+                      className="max-h-12 max-w-[140px] object-contain mx-auto"
+                    />
+                  </div>
+                )}
                 <h2 className="text-base font-black tracking-wider uppercase">
                   {business.name}
                 </h2>

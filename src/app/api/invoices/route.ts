@@ -79,6 +79,7 @@ export async function GET(req: NextRequest) {
       select: {
         businessName: true,
         legalName: true,
+        logoUrl: true,
         gstin: true,
         stateCode: true,
         phone: true,

@@ -87,6 +87,7 @@ export default function RestaurantPosPage() {
         if (prodsRes.tenant) {
           setBusinessProfile({
             name: prodsRes.tenant.businessName,
+            logoUrl: prodsRes.tenant.logoUrl || "",
             gstin: prodsRes.tenant.gstin,
             phone: prodsRes.tenant.phone,
             address: prodsRes.tenant.address,

@@ -233,6 +233,29 @@ export async function GET(req: NextRequest) {
       ],
     });
 
+    // Settings & Team Management (OWNER and MANAGER)
+    if (userRole === "OWNER" || userRole === "MANAGER") {
+      menuTree.push({
+        id: "settings",
+        name: "Settings & Team",
+        icon: "Settings",
+        children: [
+          {
+            id: "profile-logo",
+            name: "Company Profile & Logo",
+            href: "/settings",
+            icon: "Building2",
+          },
+          {
+            id: "team-rbac",
+            name: "Staff & Permissions",
+            href: "/settings?tab=users",
+            icon: "ShieldCheck",
+          },
+        ],
+      });
+    }
+
     return NextResponse.json({
       success: true,
       tenant: {
@@ -240,9 +263,15 @@ export async function GET(req: NextRequest) {
         slug: tenant.slug,
         businessName: tenant.businessName,
         legalName: tenant.legalName,
+        logoUrl: tenant.logoUrl,
         gstin: tenant.gstin,
         stateCode: tenant.stateCode,
         stateName: tenant.stateName,
+        phone: tenant.phone,
+        email: tenant.email,
+        address: tenant.address,
+        pincode: tenant.pincode,
+        upiId: tenant.upiId,
         subscriptionTier: tenant.subscriptionTier,
         currency: tenant.currency,
       },
@@ -261,7 +290,80 @@ export async function GET(req: NextRequest) {
       menuTree,
     });
   } catch (error: any) {
-    console.error("Error in /api/tenant:", error);
+    console.error("Error in GET /api/tenant:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// PATCH /api/tenant - Update Business Profile, Logo, GSTIN, and Bank Details
+export async function PATCH(req: NextRequest) {
+  try {
+    const { requireRole, ForbiddenError, AuthError } = await import("@/lib/auth");
+    const { recordAuditLog } = await import("@/lib/audit");
+    const { AuditAction } = await import("@prisma/client");
+
+    const session = await requireRole(req, ["OWNER", "MANAGER"]);
+    const tenantId = session.tenantId;
+
+    const body = await req.json();
+    const {
+      businessName,
+      legalName,
+      logoUrl,
+      phone,
+      email,
+      address,
+      pincode,
+      upiId,
+      gstin,
+      isComposition,
+    } = body;
+
+    const updated = await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        ...(businessName !== undefined ? { businessName: businessName.trim() } : {}),
+        ...(legalName !== undefined ? { legalName: legalName ? legalName.trim() : null } : {}),
+        ...(logoUrl !== undefined ? { logoUrl: logoUrl ? logoUrl.trim() : null } : {}),
+        ...(phone !== undefined ? { phone: phone.trim() } : {}),
+        ...(email !== undefined ? { email: email ? email.trim() : null } : {}),
+        ...(address !== undefined ? { address: address ? address.trim() : null } : {}),
+        ...(pincode !== undefined ? { pincode: pincode ? pincode.trim() : null } : {}),
+        ...(upiId !== undefined ? { upiId: upiId.trim() } : {}),
+        ...(gstin !== undefined ? { gstin: gstin ? gstin.trim().toUpperCase() : null } : {}),
+        ...(isComposition !== undefined ? { isComposition: !!isComposition } : {}),
+      },
+    });
+
+    // Record statutory audit log for profile / tax setting changes
+    await recordAuditLog({
+      tenantId,
+      userId: session.userId,
+      userName: session.name,
+      action: AuditAction.UPDATE,
+      entityType: "TENANT_PROFILE",
+      entityId: tenantId,
+      details: {
+        businessName: updated.businessName,
+        logoUpdated: logoUrl !== undefined,
+        gstin: updated.gstin,
+        upiId: updated.upiId,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      tenant: updated,
+      message: "Company profile updated successfully",
+    });
+  } catch (error: any) {
+    if (error.name === "ForbiddenError") {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    if (error.name === "AuthError") {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    console.error("Error updating tenant:", error);
+    return NextResponse.json({ error: error.message || "Failed to update profile" }, { status: 500 });
   }
 }

@@ -57,10 +57,21 @@ export default function NewInvoicePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Business config
-  const [business, setBusiness] = useState({
+  const [business, setBusiness] = useState<{
+    name: string;
+    logoUrl?: string;
+    gstin?: string;
+    stateCode?: string;
+    phone?: string;
+    address?: string;
+    upiId?: string;
+  }>({
     name: "Ziona Tech & Electricals",
+    logoUrl: "",
     gstin: "32AAAAA0000A1Z5",
     stateCode: "32",
+    phone: "",
+    address: "",
     upiId: "zionabusiness@icici",
   });
 
@@ -124,8 +135,11 @@ export default function NewInvoicePage() {
         if (data.tenant) {
           setBusiness({
             name: data.tenant.businessName,
+            logoUrl: data.tenant.logoUrl || "",
             gstin: data.tenant.gstin || "",
             stateCode: data.tenant.stateCode || "32",
+            address: data.tenant.address || "",
+            phone: data.tenant.phone || "",
             upiId: data.tenant.upiId || "",
           });
         }
@@ -181,7 +195,7 @@ export default function NewInvoicePage() {
   });
 
   const grandTotal = totalTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst);
-  const currentUpiUri = `upi://pay?pa=${encodeURIComponent(business.upiId)}&pn=${encodeURIComponent(business.name)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=Invoice%20for%20${encodeURIComponent(customerName || "Customer")}`;
+  const currentUpiUri = `upi://pay?pa=${encodeURIComponent(business.upiId || "")}&pn=${encodeURIComponent(business.name)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=Invoice%20for%20${encodeURIComponent(customerName || "Customer")}`;
 
   // Cash Change Return Calculations
   const numericCashReceived = Number(cashReceived) || 0;

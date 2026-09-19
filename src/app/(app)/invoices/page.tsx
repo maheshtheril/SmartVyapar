@@ -67,6 +67,7 @@ export default function InvoicesPage() {
         if (data.tenant) {
           setBusiness({
             name: data.tenant.businessName,
+            logoUrl: data.tenant.logoUrl || "",
             gstin: data.tenant.gstin || "",
             stateCode: data.tenant.stateCode || "32",
             phone: data.tenant.phone || "",
