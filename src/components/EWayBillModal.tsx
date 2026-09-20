@@ -27,26 +27,26 @@ export default function EWayBillModal({
   invoice,
   onSuccess,
 }: EWayBillModalProps) {
-  if (!isOpen || !invoice) return null;
-
-  const isStatutoryMandatory = Number(invoice.totalAmount || 0) >= 50000;
-
-  const [transDistance, setTransDistance] = useState<number>(invoice.transDistance || 50);
-  const [transMode, setTransMode] = useState<string>(invoice.transportMode || "1");
-  const [vehicleNo, setVehicleNo] = useState<string>(invoice.vehicleNo || "");
-  const [vehicleType, setVehicleType] = useState<string>(invoice.vehicleType || "R");
-  const [transporterId, setTransporterId] = useState<string>(invoice.transporterId || "");
-  const [transporterName, setTransporterName] = useState<string>(invoice.transporterName || "");
-  const [transDocNo, setTransDocNo] = useState<string>(invoice.transDocNo || "");
+  const [transDistance, setTransDistance] = useState<number>(invoice?.transDistance || 50);
+  const [transMode, setTransMode] = useState<string>(invoice?.transportMode || "1");
+  const [vehicleNo, setVehicleNo] = useState<string>(invoice?.vehicleNo || "");
+  const [vehicleType, setVehicleType] = useState<string>(invoice?.vehicleType || "R");
+  const [transporterId, setTransporterId] = useState<string>(invoice?.transporterId || "");
+  const [transporterName, setTransporterName] = useState<string>(invoice?.transporterName || "");
+  const [transDocNo, setTransDocNo] = useState<string>(invoice?.transDocNo || "");
   const [transDocDate, setTransDocDate] = useState<string>(
-    invoice.transDocDate ? new Date(invoice.transDocDate).toISOString().split("T")[0] : ""
+    invoice?.transDocDate ? new Date(invoice.transDocDate).toISOString().split("T")[0] : ""
   );
 
-  const [ewayBillNoInput, setEwayBillNoInput] = useState<string>(invoice.ewayBillNo || "");
+  const [ewayBillNoInput, setEwayBillNoInput] = useState<string>(invoice?.ewayBillNo || "");
   const [submitting, setSubmitting] = useState(false);
   const [savingEwbNo, setSavingEwbNo] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  if (!isOpen || !invoice) return null;
+
+  const isStatutoryMandatory = Number(invoice.totalAmount || 0) >= 50000;
 
   const handleDownloadNicJson = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -16,8 +16,6 @@ export default function CreditNoteModal({
   invoice,
   onSuccess,
 }: CreditNoteModalProps) {
-  if (!isOpen || !invoice) return null;
-
   const [reason, setReason] = useState<string>("SALES_RETURN");
   const [refundMode, setRefundMode] = useState<string>("CASH");
   const [remarks, setRemarks] = useState<string>("");
@@ -33,7 +31,7 @@ export default function CreditNoteModal({
     };
   }>(() => {
     const initial: any = {};
-    (invoice.items || []).forEach((item: any) => {
+    (invoice?.items || []).forEach((item: any) => {
       initial[item.id] = {
         selected: false,
         quantity: Math.min(Number(item.quantity) || 1, 1),
@@ -42,6 +40,8 @@ export default function CreditNoteModal({
     });
     return initial;
   });
+
+  if (!isOpen || !invoice) return null;
 
   const handleToggleItem = (itemId: string) => {
     setReturnItems((prev) => ({

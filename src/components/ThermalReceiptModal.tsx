@@ -83,6 +83,9 @@ export default function ThermalReceiptModal({
 }: ThermalReceiptModalProps) {
   const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>('80mm');
   const [autoPrintTriggered, setAutoPrintTriggered] = useState(false);
+  const [printingDirect, setPrintingDirect] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [cloudFeedback, setCloudFeedback] = useState<string>('');
 
   // Keyboard shortcut: Enter to print, Esc to close
   useEffect(() => {
@@ -101,8 +104,6 @@ export default function ThermalReceiptModal({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
-
-  const [printingDirect, setPrintingDirect] = useState(false);
 
   if (!isOpen || !data) return null;
 
@@ -175,8 +176,6 @@ export default function ThermalReceiptModal({
         )}&cu=INR&tn=Bill-${data.invoiceNumber}`
       : '');
 
-  const [cloudStatus, setCloudStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [cloudFeedback, setCloudFeedback] = useState<string>('');
 
   const handleCloudDispatch = async (channel: 'WHATSAPP' | 'SMS') => {
     if (!data?.customerPhone) return;
