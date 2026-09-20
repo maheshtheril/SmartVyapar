@@ -921,6 +921,7 @@ export default function NewInvoicePage() {
               onSelectCustomer={handleSelectCustomer}
               onNameChange={setCustomerName}
               onPhoneChange={setCustomerPhone}
+              isDark={true}
             />
           </div>
 
@@ -1087,26 +1088,26 @@ export default function NewInvoicePage() {
         </section>
 
         {/* RIGHT PANEL: WORLD'S MOST ADVANCED TENDER & PAYMENT CONSOLE (48% on Desktop) */}
-        <main className="w-full lg:w-[48%] flex flex-col bg-slate-950 p-4 sm:p-5 justify-between overflow-y-auto">
+        <main className="w-full lg:w-[48%] flex flex-col bg-slate-950 p-3 sm:p-4 justify-between overflow-y-auto min-h-0">
           
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             
             {/* GIANT LIVE PAYABLE BANNER */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 border border-indigo-700/50 shadow-xl flex items-center justify-between">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/40 shadow-xl flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300 block">
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400 block">
                   Net Amount Payable
                 </span>
                 <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-white mt-0.5">
                   ₹{grandTotal.toFixed(2)}
                 </div>
-                <div className="text-[11px] text-indigo-300 mt-1">
+                <div className="text-[10px] text-slate-400 mt-0.5">
                   Taxable: ₹{totalTaxable.toFixed(2)} • GST: ₹{(isIntraState ? totalCgst + totalSgst : totalIgst).toFixed(2)}
                 </div>
               </div>
 
               <div className="text-right">
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="inline-block px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   {billItems.filter(i => i.productId && i.price > 0).length} Items
                 </span>
               </div>
@@ -1114,9 +1115,6 @@ export default function NewInvoicePage() {
 
             {/* PAYMENT MODE SELECTOR TABS */}
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
-                Settlement Tender Mode
-              </label>
               <div className="grid grid-cols-5 gap-1.5">
                 {[
                   { id: 'CASH', label: 'Cash', hotkey: 'F1', icon: Banknote },
@@ -1139,15 +1137,15 @@ export default function NewInvoicePage() {
                           setPaymentStatus('PAID');
                         }
                       }}
-                      className={`py-2 px-1 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center space-y-1 ${
+                      className={`py-1.5 px-1 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center space-y-0.5 ${
                         isActive
                           ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                           : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-3.5 w-3.5" />
                       <span className="text-[11px] font-black">{tab.label}</span>
-                      <span className="text-[9px] font-mono opacity-50">{tab.hotkey}</span>
+                      <span className="text-[8px] font-mono opacity-60">{tab.hotkey}</span>
                     </button>
                   );
                 })}
@@ -1156,151 +1154,159 @@ export default function NewInvoicePage() {
 
             {/* 1. CASH TENDER CONSOLE */}
             {paymentMode === 'CASH' && (
-              <div className="space-y-3.5 animate-in fade-in duration-150">
-                {/* Cash Input */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-slate-300">
-                      Cash Received from Customer (₹)
-                    </label>
-                    {numericCashReceived > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setCashReceived('')}
-                        className="text-[11px] font-bold text-rose-400 hover:underline"
-                      >
-                        Clear
-                      </button>
-                    )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-start animate-in fade-in duration-150">
+                {/* Left Column: Cash Input, Quick Chips & Change Return Engine */}
+                <div className="space-y-2">
+                  {/* Cash Input */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-300">
+                        Cash Received from Customer (₹)
+                      </label>
+                      {numericCashReceived > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setCashReceived('')}
+                          className="text-[10px] font-bold text-rose-400 hover:underline"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-lg font-black text-slate-500 font-mono">
+                        ₹
+                      </span>
+                      <input
+                        type="text"
+                        value={cashReceived}
+                        onChange={(e) => setCashReceived(e.target.value.replace(/[^0-9.]/g, ''))}
+                        placeholder="0.00"
+                        className="w-full pl-7 pr-3 py-1.5 rounded-xl bg-slate-900 border-2 border-indigo-500 text-white font-mono font-black text-xl tracking-wide focus:outline-none focus:ring-2 focus:ring-indigo-500/30 shadow-inner"
+                      />
+                    </div>
                   </div>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xl font-black text-slate-500 font-mono">
-                      ₹
+
+                  {/* Interactive Currency Denomination Chips */}
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Quick Denominations
                     </span>
-                    <input
-                      type="text"
-                      value={cashReceived}
-                      onChange={(e) => setCashReceived(e.target.value.replace(/[^0-9.]/g, ''))}
-                      placeholder="0.00"
-                      className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-slate-900 border-2 border-indigo-500 text-white font-mono font-black text-2xl tracking-wide focus:outline-none focus:ring-4 focus:ring-indigo-500/20 shadow-inner"
-                    />
+                    <div className="flex flex-wrap gap-1">
+                      {denominations.map((denom) => (
+                        <button
+                          key={denom.label}
+                          type="button"
+                          onClick={() => setCashReceived(String(denom.value))}
+                          className={`px-2 py-1 rounded-lg text-xs font-bold transition font-mono ${
+                            numericCashReceived === denom.value
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : 'bg-slate-900 border border-slate-800 text-slate-200 hover:border-indigo-400 hover:bg-slate-800'
+                          }`}
+                        >
+                          {denom.label}
+                        </button>
+                      ))}
+                      {[50, 100, 500].map((step) => (
+                        <button
+                          key={step}
+                          type="button"
+                          onClick={() => setCashReceived(String(numericCashReceived + step))}
+                          className="px-1.5 py-1 rounded-lg text-[11px] font-bold font-mono bg-slate-800 text-indigo-300 border border-slate-700 hover:bg-slate-700"
+                        >
+                          +{step}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+
+                  {/* REAL-TIME CHANGE RETURN ENGINE */}
+                  {numericCashReceived > 0 && (
+                    <div className="pt-0.5">
+                      {changeDue > 0 ? (
+                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-black uppercase tracking-wider opacity-90">
+                              Cashier Return to Customer:
+                            </span>
+                            <span className="text-[9px] font-bold bg-white/20 px-1.5 py-0.2 rounded-full">
+                              Change
+                            </span>
+                          </div>
+                          <div className="text-2xl font-black font-mono tracking-tight">
+                            ₹{changeDue.toFixed(2)}
+                          </div>
+
+                          {/* Smart Indian Notes Recommendation */}
+                          {returnNotes.length > 0 && (
+                            <div className="pt-1 border-t border-white/20 flex flex-wrap items-center gap-1 text-[10px]">
+                              <span className="opacity-90 font-bold">Give Notes:</span>
+                              {returnNotes.map((note, nIdx) => (
+                                <span key={nIdx} className="px-1.5 py-0.2 rounded bg-white/20 font-mono font-black text-[10px]">
+                                  {note.count}×{note.label}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : remainingDue > 0 ? (
+                        <div className="p-2 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-center text-xs font-bold">
+                          Due from Customer: ₹{remainingDue.toFixed(2)}
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-center text-xs font-bold">
+                          ✓ Exact Cash Received
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Interactive Currency Denomination Chips */}
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                    Quick Currency Denominations
+                {/* Right Column: Tactile On-Screen NumPad */}
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Touch NumPad
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {denominations.map((denom) => (
+                  <div className="grid grid-cols-4 gap-1">
+                    {['7', '8', '9', 'C', '4', '5', '6', 'BACK', '1', '2', '3', '.', '0', '00'].map((btn) => (
                       <button
-                        key={denom.label}
+                        key={btn}
                         type="button"
-                        onClick={() => setCashReceived(String(denom.value))}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition font-mono ${
-                          numericCashReceived === denom.value
-                            ? 'bg-indigo-600 text-white shadow-sm'
-                            : 'bg-slate-900 border border-slate-800 text-slate-200 hover:border-indigo-400 hover:bg-slate-800'
+                        onClick={() => handleNumpadPress(btn)}
+                        className={`h-8 rounded-lg text-sm font-black font-mono transition flex items-center justify-center shadow-xs active:scale-95 ${
+                          btn === 'C'
+                            ? 'bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-900'
+                            : btn === 'BACK'
+                            ? 'bg-amber-950/60 border border-amber-800 text-amber-300 hover:bg-amber-900 text-xs'
+                            : 'bg-slate-900 border border-slate-800 text-white hover:bg-slate-800'
                         }`}
                       >
-                        {denom.label}
-                      </button>
-                    ))}
-                    {[50, 100, 500].map((step) => (
-                      <button
-                        key={step}
-                        type="button"
-                        onClick={() => setCashReceived(String(numericCashReceived + step))}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold font-mono bg-slate-800 text-indigo-300 border border-slate-700 hover:bg-slate-700"
-                      >
-                        +{step}
+                        {btn === 'BACK' ? '⌫' : btn}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                {/* Tactile On-Screen NumPad */}
-                <div className="grid grid-cols-4 gap-1.5 max-w-sm">
-                  {['7', '8', '9', 'C', '4', '5', '6', 'BACK', '1', '2', '3', '.', '0', '00'].map((btn) => (
-                    <button
-                      key={btn}
-                      type="button"
-                      onClick={() => handleNumpadPress(btn)}
-                      className={`h-10 rounded-xl text-base font-black font-mono transition flex items-center justify-center shadow-xs active:scale-95 ${
-                        btn === 'C'
-                          ? 'bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-900'
-                          : btn === 'BACK'
-                          ? 'bg-amber-950/60 border border-amber-800 text-amber-300 hover:bg-amber-900 text-xs'
-                          : 'bg-slate-900 border border-slate-800 text-white hover:bg-slate-800'
-                      }`}
-                    >
-                      {btn === 'BACK' ? '⌫' : btn}
-                    </button>
-                  ))}
-                </div>
-
-                {/* GIANT REAL-TIME CHANGE RETURN ENGINE */}
-                {numericCashReceived > 0 && (
-                  <div className="pt-2">
-                    {changeDue > 0 ? (
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-lg space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black uppercase tracking-widest opacity-90">
-                            Cashier Return to Customer:
-                          </span>
-                          <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full">
-                            Cash Change
-                          </span>
-                        </div>
-                        <div className="text-3xl font-black font-mono tracking-tight">
-                          ₹{changeDue.toFixed(2)}
-                        </div>
-
-                        {/* Smart Indian Notes Recommendation */}
-                        {returnNotes.length > 0 && (
-                          <div className="pt-2 border-t border-white/20 flex flex-wrap items-center gap-1.5 text-xs">
-                            <span className="text-[10px] opacity-90 font-bold">Give Notes:</span>
-                            {returnNotes.map((note, nIdx) => (
-                              <span key={nIdx} className="px-2 py-0.5 rounded-md bg-white/20 font-mono font-black text-[11px]">
-                                {note.count} × {note.label}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : remainingDue > 0 ? (
-                      <div className="p-3 rounded-2xl bg-rose-950/80 border border-rose-800 text-rose-300 text-center text-xs font-bold">
-                        Shortage / Due from Customer: ₹{remainingDue.toFixed(2)}
-                      </div>
-                    ) : (
-                      <div className="p-3 rounded-2xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-center text-xs font-bold">
-                        ✓ Exact Cash Received
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 
             {/* 2. DYNAMIC NPCI UPI QR CONSOLE */}
             {paymentMode === 'UPI' && (
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-3 animate-in fade-in duration-150">
-                <div className="inline-block p-3 rounded-2xl bg-white shadow-md">
-                  <QrCodeCanvas value={currentUpiUri} size={150} />
+              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-2.5 animate-in fade-in duration-150">
+                <div className="inline-block p-2 rounded-xl bg-white shadow-md">
+                  <QrCodeCanvas value={currentUpiUri} size={130} />
                 </div>
                 <div>
                   <div className="text-xs font-black text-white">Dynamic NPCI UPI QR</div>
                   <div className="text-[10px] text-slate-400 mt-0.5">PhonePe • GPay • Paytm • BHIM • Cred</div>
-                  <div className="mt-2 text-xs font-mono text-indigo-400 bg-slate-950 p-2 rounded-xl border border-slate-800 break-all">
+                  <div className="mt-1 text-xs font-mono text-indigo-400 bg-slate-950 p-1.5 rounded-xl border border-slate-800 break-all">
                     {business.upiId}
                   </div>
                 </div>
-                <div className="flex items-center justify-center gap-2 pt-1">
+                <div className="flex items-center justify-center gap-2 pt-0.5">
                   <button
                     type="button"
                     onClick={handleTriggerSoundbox}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
                       soundboxPlayed
                         ? 'bg-emerald-600 text-white'
                         : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
@@ -1312,7 +1318,7 @@ export default function NewInvoicePage() {
                   <button
                     type="button"
                     onClick={handleCopyUpi}
-                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition flex items-center space-x-1.5"
+                    className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition flex items-center space-x-1.5"
                   >
                     <Copy className="h-3.5 w-3.5" />
                     <span>{copiedLink ? "Copied!" : "Copy Link"}</span>
@@ -1323,7 +1329,7 @@ export default function NewInvoicePage() {
 
             {/* 3. CARD / EDC CONSOLE */}
             {paymentMode === 'CARD' && (
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 animate-in fade-in duration-150 text-xs">
+              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 animate-in fade-in duration-150 text-xs">
                 <div className="font-bold text-slate-300">Swipe or Dip Card on EDC POS Machine</div>
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">
@@ -1334,7 +1340,7 @@ export default function NewInvoicePage() {
                     value={cardRef}
                     onChange={(e) => setCardRef(e.target.value)}
                     placeholder="e.g. AUTH-84920"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
                   />
                 </div>
                 <div>
@@ -1347,7 +1353,7 @@ export default function NewInvoicePage() {
                     value={cardLast4}
                     onChange={(e) => setCardLast4(e.target.value)}
                     placeholder="4242"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
                   />
                 </div>
               </div>
@@ -1355,7 +1361,7 @@ export default function NewInvoicePage() {
 
             {/* 4. SPLIT TENDER CONSOLE */}
             {paymentMode === 'SPLIT' && (
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 animate-in fade-in duration-150 text-xs">
+              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 animate-in fade-in duration-150 text-xs">
                 <div className="font-bold text-slate-300">Split Payment (Cash + Online UPI/Card)</div>
                 <div>
                   <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">
@@ -1366,10 +1372,10 @@ export default function NewInvoicePage() {
                     value={splitCashInput}
                     onChange={(e) => setSplitCashInput(e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono font-bold"
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono font-bold"
                   />
                 </div>
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between font-mono font-bold">
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between font-mono font-bold">
                   <span className="text-slate-400">Remaining to Pay Online:</span>
                   <span className="text-indigo-400">₹{splitOnlineRemaining.toFixed(2)}</span>
                 </div>
@@ -1378,12 +1384,12 @@ export default function NewInvoicePage() {
 
             {/* 5. KHATA / CREDIT CONSOLE */}
             {paymentMode === 'CREDIT' && (
-              <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-800 text-amber-200 text-xs space-y-2 animate-in fade-in duration-150">
+              <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-800 text-amber-200 text-xs space-y-2 animate-in fade-in duration-150">
                 <div className="font-black text-sm text-amber-300">Customer Khata / Credit (Udhar)</div>
                 <p>
                   This bill will be marked as <strong>UNPAID</strong> and added to {customerName || "Customer"}&apos;s credit ledger.
                 </p>
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-amber-700/50 font-mono font-bold text-white flex justify-between">
+                <div className="p-2 rounded-xl bg-slate-900 border border-amber-700/50 font-mono font-bold text-white flex justify-between">
                   <span>Balance Due:</span>
                   <span>₹{grandTotal.toFixed(2)}</span>
                 </div>
@@ -1393,12 +1399,12 @@ export default function NewInvoicePage() {
           </div>
 
           {/* BOTTOM ACTIONS: COMPLETE SALE & WHATSAPP */}
-          <div className="pt-4 border-t border-slate-800 space-y-2 shrink-0">
+          <div className="pt-2.5 border-t border-slate-800 space-y-1.5 shrink-0">
             <button
               type="button"
               onClick={handleCreateBill}
               disabled={isSubmitting || totalTaxable === 0}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-base font-black shadow-xl shadow-emerald-900/30 transition flex items-center justify-center space-x-2 disabled:bg-slate-800 disabled:from-slate-800 disabled:to-slate-800 disabled:cursor-not-allowed cursor-pointer active:scale-98"
+              className="w-full py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm sm:text-base font-black shadow-lg shadow-emerald-900/30 transition flex items-center justify-center space-x-2 disabled:bg-slate-800 disabled:from-slate-800 disabled:to-slate-800 disabled:cursor-not-allowed cursor-pointer active:scale-98"
             >
               {isSubmitting ? (
                 <RefreshCw className="h-5 w-5 animate-spin" />
@@ -1406,7 +1412,7 @@ export default function NewInvoicePage() {
                 <CheckCircle2 className="h-5 w-5 text-white" />
               )}
               <span>
-                {isSubmitting ? "Recording Transaction..." : `⚡ Complete Sale & Print (Enter) • ₹${grandTotal.toFixed(2)}`}
+                {isSubmitting ? "Recording Transaction..." : `⚡ COMPLETE SALE & PRINT (Enter) • ₹${grandTotal.toFixed(2)}`}
               </span>
             </button>
 
@@ -1417,7 +1423,7 @@ export default function NewInvoicePage() {
                 )}`}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold text-center flex items-center justify-center space-x-1.5 transition"
+                className="w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[11px] font-bold text-center flex items-center justify-center space-x-1.5 transition"
               >
                 <Share2 className="h-3.5 w-3.5 text-emerald-400" />
                 <span>Send WhatsApp Receipt to {customerPhone}</span>
