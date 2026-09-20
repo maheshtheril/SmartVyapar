@@ -10,10 +10,12 @@ import {
   Receipt,
   FileText,
   Sliders,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import BarcodeSvg from './BarcodeSvg';
 import QrCodeCanvas from './QrCodeCanvas';
+import { buildEscposReceipt, printDirectWebSerial } from '@/lib/escpos';
 
 export interface ThermalReceiptItem {
   name: string;
@@ -101,8 +103,49 @@ export default function ThermalReceiptModal({
 
   if (!isOpen || !data) return null;
 
+  const [printingDirect, setPrintingDirect] = useState(false);
+
   const handlePrint = () => {
     window.print();
+  };
+
+  // Direct Hardware Silent ESC/POS Print (WebSerial)
+  const handleDirectEscposPrint = async () => {
+    setPrintingDirect(true);
+    try {
+      const bytes = buildEscposReceipt({
+        businessName: business.name,
+        businessGstin: business.gstin,
+        businessAddress: business.address,
+        businessPhone: business.phone,
+        invoiceNumber: data.invoiceNumber,
+        invoiceDate: new Date(data.invoiceDate).toLocaleDateString('en-IN'),
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        items: data.items.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.price,
+          total: i.total,
+        })),
+        subtotal: data.subTotal,
+        taxAmount: (data.cgstAmount || 0) + (data.sgstAmount || 0) + (data.igstAmount || 0),
+        totalAmount: data.totalAmount,
+        paymentMethod: data.paymentMode,
+        paperWidth,
+      });
+
+      const res = await printDirectWebSerial(bytes);
+      if (!res.success) {
+        alert(res.error || "Silent print failed. Falling back to standard print dialog.");
+        window.print();
+      }
+    } catch (err: any) {
+      console.warn("Direct ESC/POS failed, falling back to window.print:", err);
+      window.print();
+    } finally {
+      setPrintingDirect(false);
+    }
   };
 
   // WhatsApp Share URL
@@ -236,6 +279,18 @@ export default function ThermalReceiptModal({
               >
                 <Printer className="h-5 w-5" />
                 <span>Print Thermal Receipt (Enter)</span>
+              </button>
+
+              {/* Direct ESC/POS Hardware Print */}
+              <button
+                type="button"
+                onClick={handleDirectEscposPrint}
+                disabled={printingDirect}
+                className="w-full flex items-center justify-center space-x-2 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-black active:scale-[0.99] transition disabled:opacity-50"
+                title="Bypass browser print dialog and send raw ESC/POS commands directly to USB/Serial Thermal Printer"
+              >
+                <Zap className="h-4 w-4 text-amber-400 fill-amber-400" />
+                <span>{printingDirect ? "Printing..." : "⚡ Silent Print (Direct USB/Serial)"}</span>
               </button>
 
               {/* WhatsApp Share Button (Client) */}

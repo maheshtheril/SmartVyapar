@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   FileText,
   Scale,
@@ -110,6 +111,13 @@ export default function FinancialReportsPage() {
         </div>
 
         <div className="flex items-center gap-3 print:hidden">
+          <Link
+            href="/accounting/reconciliation"
+            className="px-3.5 py-2 text-sm font-medium bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors shadow-sm flex items-center gap-2"
+          >
+            <Landmark className="w-4 h-4 text-blue-600" />
+            Bank Reconciliation (BRS)
+          </Link>
           <button
             onClick={fetchReportData}
             disabled={loading}

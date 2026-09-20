@@ -16,7 +16,9 @@ import {
   Layers,
   Truck,
   FileCode,
-  FileCheck2
+  FileCheck2,
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
 import CreditNoteModal from '@/components/CreditNoteModal';
@@ -250,6 +252,33 @@ export default function InvoicesPage() {
   };
 
   const [downloadingGstr1, setDownloadingGstr1] = useState(false);
+  const [filingGsp, setFilingGsp] = useState(false);
+  const [gspResult, setGspResult] = useState<any | null>(null);
+
+  // 1-Click Direct File GSTR-1 via GSP / NIC Gateway
+  const directFileGsp = async () => {
+    setFilingGsp(true);
+    try {
+      const now = new Date();
+      const period = `${String(now.getMonth() + 1).padStart(2, "0")}${now.getFullYear()}`;
+      const res = await fetch(`/api/gst/direct-file`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || "Failed to submit GSTR-1 via GSP");
+        return;
+      }
+      setGspResult(data);
+    } catch (err: any) {
+      console.error("GSP filing error:", err);
+      alert("Error connecting to GSP Gateway");
+    } finally {
+      setFilingGsp(false);
+    }
+  };
 
   // Export Official GSTN GSTR-1 Portal Upload JSON
   const exportGstr1Json = async () => {
@@ -376,6 +405,15 @@ export default function InvoicesPage() {
         <div className="flex items-center space-x-3">
           {activeTab === 'INVOICES' ? (
             <div className="flex items-center space-x-2">
+              <button
+                onClick={directFileGsp}
+                disabled={filingGsp}
+                className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 shadow-sm hover:bg-emerald-100 flex items-center space-x-1.5 transition disabled:opacity-50"
+                title="Direct Statutory Filing to GSTN via GSP / NIC Gateway"
+              >
+                <Zap className="h-4 w-4 text-emerald-600 fill-emerald-600" />
+                <span>{filingGsp ? "Filing..." : "⚡ 1-Click Direct File (GSP)"}</span>
+              </button>
               <button
                 onClick={exportGstr1Json}
                 disabled={downloadingGstr1}
@@ -806,6 +844,55 @@ export default function InvoicesPage() {
           invoice={selectedInvoiceForEinvoice}
           onSuccess={loadInvoices}
         />
+      )}
+
+      {/* GSP Live Filing Confirmation Modal */}
+      {gspResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-emerald-100 p-6">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-7 h-7" />
+            </div>
+            <h2 className="text-lg font-black text-center text-slate-900">
+              GSTR-1 Return Submitted!
+            </h2>
+            <p className="text-xs text-center text-slate-500 mt-1">
+              Government GSTN Portal via GSP Gateway
+            </p>
+
+            <div className="mt-5 space-y-3 bg-slate-50 rounded-2xl p-4 border border-slate-200/80 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Statutory ARN:</span>
+                <span className="font-mono font-bold text-emerald-800">{gspResult.arn}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Filing Period:</span>
+                <span className="font-bold text-slate-800">{gspResult.period}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Status:</span>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                  {gspResult.status}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Gateway Ref:</span>
+                <span className="font-mono text-[11px] text-slate-600">{gspResult.referenceId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Timestamp:</span>
+                <span className="text-slate-700">{gspResult.filingDate}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setGspResult(null)}
+              className="mt-5 w-full py-3 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-md transition"
+            >
+              Close & Continue
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
