@@ -28,7 +28,9 @@ import {
   HelpCircle,
   Building2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Wallet,
 } from 'lucide-react';
 import { 
   PrintDocType, 
@@ -43,6 +45,17 @@ import {
 } from '@/lib/print/template-presets';
 import QrCodeCanvas from '@/components/QrCodeCanvas';
 import BarcodeSvg from '@/components/BarcodeSvg';
+import {
+  getHardwarePrinterConfig,
+  saveHardwarePrinterConfig,
+  clearHardwarePrinterConfig,
+  printHardwareTestSlip,
+  kickCashDrawer,
+  printDirectWebUSB,
+  printDirectWebSerial,
+  isWebSerialSupported,
+  isWebUsbSupported,
+} from '@/lib/escpos';
 
 function PrintStudioContent() {
   const router = useRouter();
@@ -102,6 +115,70 @@ function PrintStudioContent() {
 
   // Active Studio Tab
   const [studioTab, setStudioTab] = useState<'design' | 'sections' | 'automation'>('design');
+
+  // Direct Hardware Thermal Printer State
+  const [hwConfig, setHwConfig] = useState(() => getHardwarePrinterConfig());
+  const [hwTesting, setHwTesting] = useState(false);
+  const [hwDrawerTesting, setHwDrawerTesting] = useState(false);
+  const [hwStatusMsg, setHwStatusMsg] = useState<string | null>(null);
+
+  const handlePairUsb = async () => {
+    setHwTesting(true);
+    setHwStatusMsg(null);
+    try {
+      const res = await printHardwareTestSlip(business.businessName);
+      if (res.success) {
+        setHwConfig(getHardwarePrinterConfig());
+        setHwStatusMsg("USB Thermal Printer paired and test slip printed successfully!");
+      } else {
+        setHwStatusMsg(res.error || "Failed to pair USB printer");
+      }
+    } catch (err: any) {
+      setHwStatusMsg(err.message || "USB pairing failed");
+    } finally {
+      setHwTesting(false);
+    }
+  };
+
+  const handlePairSerial = async () => {
+    setHwTesting(true);
+    setHwStatusMsg(null);
+    try {
+      const res = await printHardwareTestSlip(business.businessName);
+      if (res.success) {
+        setHwConfig(getHardwarePrinterConfig());
+        setHwStatusMsg("Serial/COM Thermal Printer paired and test slip printed successfully!");
+      } else {
+        setHwStatusMsg(res.error || "Failed to pair Serial printer");
+      }
+    } catch (err: any) {
+      setHwStatusMsg(err.message || "Serial pairing failed");
+    } finally {
+      setHwTesting(false);
+    }
+  };
+
+  const handleKickDrawerTest = async () => {
+    setHwDrawerTesting(true);
+    try {
+      const res = await kickCashDrawer();
+      if (res.success) {
+        setHwStatusMsg("Cash drawer solenoid kick pulse sent successfully!");
+      } else {
+        setHwStatusMsg(res.error || "Failed to kick cash drawer");
+      }
+    } catch (err: any) {
+      setHwStatusMsg(err.message || "Drawer kick failed");
+    } finally {
+      setHwDrawerTesting(false);
+    }
+  };
+
+  const handleDisconnectHardware = () => {
+    clearHardwarePrinterConfig();
+    setHwConfig(getHardwarePrinterConfig());
+    setHwStatusMsg("Hardware printer disconnected. System will use browser print dialog.");
+  };
 
   // Business Profile
   const [business, setBusiness] = useState({
@@ -816,6 +893,109 @@ function PrintStudioContent() {
                   <option value="new_bill">Immediately Reset for Next Customer (F9)</option>
                   <option value="print">Trigger Print Dialog Only</option>
                 </select>
+              </div>
+
+              {/* Direct Hardware Thermal Printer Section (WebUSB / WebSerial) */}
+              <div className="border-t border-slate-200 pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+                      <Zap className="h-4 w-4 fill-amber-500" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">Direct Thermal Printer (Silent ESC/POS)</div>
+                      <div className="text-[10px] text-slate-500">1-click printing via USB/Serial without browser popups</div>
+                    </div>
+                  </div>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      hwConfig.type !== 'NONE'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    {hwConfig.type === 'USB' ? 'USB Paired' : hwConfig.type === 'SERIAL' ? 'Serial Paired' : 'Unpaired'}
+                  </span>
+                </div>
+
+                {hwStatusMsg && (
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-[11px] text-slate-700 font-medium">
+                    {hwStatusMsg}
+                  </div>
+                )}
+
+                {/* Pairing Buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePairUsb}
+                    disabled={hwTesting}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-indigo-400 transition shadow-xs disabled:opacity-50"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-indigo-600" />
+                    <span>{hwTesting ? 'Testing...' : 'Pair USB Thermal'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePairSerial}
+                    disabled={hwTesting}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-indigo-400 transition shadow-xs disabled:opacity-50"
+                  >
+                    <Zap className="h-3.5 w-3.5 text-amber-500" />
+                    <span>{hwTesting ? 'Testing...' : 'Pair Serial / COM'}</span>
+                  </button>
+                </div>
+
+                {/* Hardware Action & Option Toggles */}
+                {hwConfig.type !== 'NONE' && (
+                  <div className="space-y-2 pt-1">
+                    <label className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-pointer">
+                      <span>Silent 1-Click Print on POS Save</span>
+                      <input
+                        type="checkbox"
+                        checked={hwConfig.autoPrintOnSave || false}
+                        onChange={(e) => {
+                          const updated = saveHardwarePrinterConfig({ autoPrintOnSave: e.target.checked });
+                          setHwConfig(updated);
+                        }}
+                        className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-pointer">
+                      <span>Kick Cash Drawer on Bill Print</span>
+                      <input
+                        type="checkbox"
+                        checked={hwConfig.kickDrawerOnPrint || false}
+                        onChange={(e) => {
+                          const updated = saveHardwarePrinterConfig({ kickDrawerOnPrint: e.target.checked });
+                          setHwConfig(updated);
+                        }}
+                        className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </label>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleKickDrawerTest}
+                        disabled={hwDrawerTesting}
+                        className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-amber-300 bg-amber-50/70 py-1.5 text-[11px] font-bold text-amber-900 hover:bg-amber-100 transition disabled:opacity-50"
+                      >
+                        <Wallet className="h-3 w-3 text-amber-600" />
+                        <span>{hwDrawerTesting ? 'Kicking...' : 'Test Drawer Kick'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleDisconnectHardware}
+                        className="rounded-lg border border-rose-200 bg-rose-50/70 px-3 py-1.5 text-[11px] font-bold text-rose-700 hover:bg-rose-100 transition"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>

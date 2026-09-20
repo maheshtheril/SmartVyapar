@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useRef } from "react";
-import { Printer, X, CheckCircle, AlertTriangle, ArrowDownRight, Wallet, Store } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Printer, X, CheckCircle, AlertTriangle, ArrowDownRight, Wallet, Store, Zap } from "lucide-react";
+import { buildEscposZReport, printDirectHardware, isWebSerialSupported, isWebUsbSupported } from "@/lib/escpos";
 
 export interface ZReportData {
   tenant?: {
@@ -71,10 +72,12 @@ interface ThermalZReportModalProps {
 
 export default function ThermalZReportModal({ isOpen, onClose, data }: ThermalZReportModalProps) {
   const printAreaRef = useRef<HTMLDivElement>(null);
+  const [printingDirect, setPrintingDirect] = useState(false);
 
   if (!isOpen || !data) return null;
 
   const { shift, tenant, payouts, reconciliation, denominations } = data;
+  const isHardwareSupported = isWebSerialSupported() || isWebUsbSupported();
 
   const handlePrint = () => {
     const printContent = printAreaRef.current;
@@ -144,6 +147,51 @@ export default function ThermalZReportModal({ isOpen, onClose, data }: ThermalZR
   const creditSales = Number(data.sales?.credit ?? shift.creditSales ?? 0);
   const totalPayouts = Number(payouts?.total ?? shift.cashPayouts ?? 0);
   const openFloat = Number(data.openingFloat ?? shift.openingFloat ?? 0);
+
+  const handleDirectZReportPrint = async () => {
+    setPrintingDirect(true);
+    try {
+      const bytes = buildEscposZReport({
+        businessName: tenant?.businessName || "SMARTVYAPAR STORE",
+        businessGstin: tenant?.gstin,
+        businessAddress: tenant?.address,
+        businessPhone: tenant?.phone,
+        shiftNumber: shift.shiftNumber,
+        openedAt: new Date(shift.openedAt).toLocaleString("en-IN"),
+        closedAt: shift.closedAt ? new Date(shift.closedAt).toLocaleString("en-IN") : new Date().toLocaleString("en-IN"),
+        openedByName: shift.openedByName,
+        closedByName: shift.closedByName || undefined,
+        billCount: data.billCount ?? 0,
+        openingFloat: openFloat,
+        sales: {
+          cash: cashSales,
+          upi: upiSales,
+          card: cardSales,
+          credit: creditSales,
+          gross: gross,
+        },
+        payouts: {
+          total: totalPayouts,
+          items: payouts?.items ? payouts.items.map((p) => ({ reason: p.reason, amount: Number(p.amount) })) : [],
+        },
+        expectedCash: expCash,
+        actualCash: actCash,
+        variance: diff,
+        paperWidth: "80mm",
+      });
+
+      const res = await printDirectHardware(bytes);
+      if (!res.success) {
+        alert(res.error || "Direct silent print failed. Falling back to browser print dialog.");
+        handlePrint();
+      }
+    } catch (err: any) {
+      alert("Direct print error: " + err.message);
+      handlePrint();
+    } finally {
+      setPrintingDirect(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
@@ -394,12 +442,23 @@ export default function ThermalZReportModal({ isOpen, onClose, data }: ThermalZR
             >
               Close
             </button>
+            {isHardwareSupported && (
+              <button
+                onClick={handleDirectZReportPrint}
+                disabled={printingDirect}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-black transition disabled:opacity-50"
+                title="Send raw ESC/POS commands directly to USB/Serial Thermal Printer"
+              >
+                <Zap className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+                {printingDirect ? "Printing..." : "⚡ Silent Print (1-Click)"}
+              </button>
+            )}
             <button
               onClick={handlePrint}
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
             >
               <Printer className="h-4 w-4" />
-              Print Thermal Z-Report
+              Standard Print Dialog
             </button>
           </div>
         </div>

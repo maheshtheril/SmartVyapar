@@ -11,11 +11,19 @@ import {
   FileText,
   Sliders,
   Sparkles,
-  Zap
+  Zap,
+  Wallet
 } from 'lucide-react';
 import BarcodeSvg from './BarcodeSvg';
 import QrCodeCanvas from './QrCodeCanvas';
-import { buildEscposReceipt, printDirectWebSerial } from '@/lib/escpos';
+import { 
+  buildEscposReceipt, 
+  printDirectHardware, 
+  kickCashDrawer, 
+  getHardwarePrinterConfig, 
+  isWebSerialSupported, 
+  isWebUsbSupported 
+} from '@/lib/escpos';
 
 export interface ThermalReceiptItem {
   name: string;
@@ -88,8 +96,28 @@ export default function ThermalReceiptModal({
   const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>('80mm');
   const [autoPrintTriggered, setAutoPrintTriggered] = useState(false);
   const [printingDirect, setPrintingDirect] = useState(false);
+  const [kickingDrawer, setKickingDrawer] = useState(false);
+  const [hwConfig, setHwConfig] = useState(() => getHardwarePrinterConfig());
   const [cloudStatus, setCloudStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [cloudFeedback, setCloudFeedback] = useState<string>('');
+
+  const isHardwareSupported = isWebSerialSupported() || isWebUsbSupported();
+
+  useEffect(() => {
+    if (isOpen) {
+      const cfg = getHardwarePrinterConfig();
+      setHwConfig(cfg);
+      if (cfg.paperWidth) setPaperWidth(cfg.paperWidth);
+
+      // Auto-print directly if enabled
+      if (cfg.autoPrintOnSave && !autoPrintTriggered) {
+        setAutoPrintTriggered(true);
+        handleDirectEscposPrint();
+      }
+    } else {
+      setAutoPrintTriggered(false);
+    }
+  }, [isOpen]);
 
   // Keyboard shortcut: Enter to print, Esc to close
   useEffect(() => {
@@ -98,7 +126,11 @@ export default function ThermalReceiptModal({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
         e.preventDefault();
-        handlePrint();
+        if (hwConfig.type !== "NONE") {
+          handleDirectEscposPrint();
+        } else {
+          handlePrint();
+        }
       } else if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
@@ -107,7 +139,7 @@ export default function ThermalReceiptModal({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, hwConfig.type]);
 
   if (!isOpen || !data) return null;
 
@@ -115,7 +147,7 @@ export default function ThermalReceiptModal({
     window.print();
   };
 
-  // Direct Hardware Silent ESC/POS Print (WebSerial)
+  // Direct Hardware Silent ESC/POS Print (WebUSB / WebSerial)
   const handleDirectEscposPrint = async () => {
     setPrintingDirect(true);
     try {
@@ -139,11 +171,15 @@ export default function ThermalReceiptModal({
         totalAmount: data.totalAmount,
         paymentMethod: data.paymentMode,
         paperWidth,
+        includeBarcode: true,
+        kickDrawer: hwConfig.kickDrawerOnPrint,
+        loyaltyRedeemed: data.loyaltyDiscountAmount,
+        loyaltyEarned: data.loyaltyPointsEarned,
       });
 
-      const res = await printDirectWebSerial(bytes);
+      const res = await printDirectHardware(bytes);
       if (!res.success) {
-        alert(res.error || "Silent print failed. Falling back to standard print dialog.");
+        alert(res.error || "Direct silent print failed. Falling back to standard print dialog.");
         window.print();
       }
     } catch (err: any) {
@@ -151,6 +187,21 @@ export default function ThermalReceiptModal({
       window.print();
     } finally {
       setPrintingDirect(false);
+    }
+  };
+
+  // Direct Cash Drawer Kick
+  const handleKickDrawer = async () => {
+    setKickingDrawer(true);
+    try {
+      const res = await kickCashDrawer();
+      if (!res.success) {
+        alert(res.error || "Failed to trigger cash drawer kick.");
+      }
+    } catch (err: any) {
+      alert("Cash drawer kick failed: " + err.message);
+    } finally {
+      setKickingDrawer(false);
     }
   };
 
@@ -274,28 +325,48 @@ export default function ThermalReceiptModal({
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-6 overflow-y-auto">
           {/* Action Panel on Right (or top on mobile) */}
           <div className="md:col-span-5 order-2 md:order-1 flex flex-col justify-between space-y-4">
-            <div className="space-y-4">
-              {/* Primary Print Button */}
+            <div className="space-y-3">
+              {/* Direct ESC/POS Hardware Silent Print (Primary when hardware supported) */}
+              {isHardwareSupported && (
+                <button
+                  type="button"
+                  onClick={handleDirectEscposPrint}
+                  disabled={printingDirect}
+                  className="w-full flex items-center justify-center space-x-2 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-900/20 hover:from-black hover:to-indigo-900 active:scale-[0.99] transition disabled:opacity-50"
+                  title="Bypass browser print dialog and send raw ESC/POS commands directly to USB/Serial Thermal Printer"
+                >
+                  <Zap className="h-4 w-4 text-amber-400 fill-amber-400" />
+                  <span>{printingDirect ? "Printing to Thermal..." : "⚡ Silent Thermal Print (1-Click)"}</span>
+                </button>
+              )}
+
+              {/* Standard Print Dialog Button */}
               <button
                 type="button"
                 onClick={handlePrint}
-                className="w-full flex items-center justify-center space-x-2 rounded-2xl bg-indigo-600 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:scale-[0.99] transition"
+                className={`w-full flex items-center justify-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold transition shadow-sm ${
+                  isHardwareSupported
+                    ? "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                    : "bg-indigo-600 text-white shadow-md hover:bg-indigo-700"
+                }`}
               >
-                <Printer className="h-5 w-5" />
-                <span>Print Thermal Receipt (Enter)</span>
+                <Printer className="h-4 w-4 text-slate-600" />
+                <span>Standard Print Dialog (Enter)</span>
               </button>
 
-              {/* Direct ESC/POS Hardware Print */}
-              <button
-                type="button"
-                onClick={handleDirectEscposPrint}
-                disabled={printingDirect}
-                className="w-full flex items-center justify-center space-x-2 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-black active:scale-[0.99] transition disabled:opacity-50"
-                title="Bypass browser print dialog and send raw ESC/POS commands directly to USB/Serial Thermal Printer"
-              >
-                <Zap className="h-4 w-4 text-amber-400 fill-amber-400" />
-                <span>{printingDirect ? "Printing..." : "⚡ Silent Print (Direct USB/Serial)"}</span>
-              </button>
+              {/* Cash Drawer Kick Button */}
+              {isHardwareSupported && (
+                <button
+                  type="button"
+                  onClick={handleKickDrawer}
+                  disabled={kickingDrawer}
+                  className="w-full flex items-center justify-center space-x-2 rounded-2xl border border-amber-300 bg-amber-50/80 px-4 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100 transition disabled:opacity-50"
+                  title="Pulse RJ11/RJ12 cash drawer solenoid to open register"
+                >
+                  <Wallet className="h-3.5 w-3.5 text-amber-600" />
+                  <span>{kickingDrawer ? "Popping Till..." : "Open Cash Drawer (Kick Till)"}</span>
+                </button>
+              )}
 
               {/* WhatsApp Share Button (Client) */}
               <a
