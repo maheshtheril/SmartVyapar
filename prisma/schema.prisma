@@ -104,6 +104,9 @@ model Tenant {
   cashDrawerShifts     CashDrawerShift[]
   cashDrawerPayouts    CashDrawerPayout[]
   gstr2bReconciliations Gstr2bReconciliation[]
+  deliveryChallans      DeliveryChallan[]
+  gstr3bReturns         Gstr3bReturn[]
+  ewayBills             EWayBillRecord[]
 
   @@map("tenants")
 }
@@ -171,6 +174,7 @@ model Product {
   warehouseStocks   WarehouseStock[]
   transferItems     StockTransferItem[]
   purchaseOrderItems PurchaseOrderItem[]
+  deliveryChallanItems DeliveryChallanItem[]
   
   // Recipes: When this product is a finished dish (e.g. Chicken Biryani):
   recipeIngredients RecipeItem[]       @relation("MenuToIngredients")
@@ -1038,4 +1042,155 @@ model Gstr2bReconciliation {
   @@index([tenantId, uploadedAt])
   @@map("gstr2b_reconciliations")
 }
+
+// ----------------------------------------------------
+// 22. DELIVERY CHALLAN (GST RULE 55)
+// ----------------------------------------------------
+enum ChallanPurpose {
+  SUPPLY_ON_APPROVAL
+  JOB_WORK
+  REMOVAL_FOR_SALE
+  EXHIBITION_OR_DEMO
+  OTHER
+}
+
+model DeliveryChallan {
+  id                   String          @id @default(uuid())
+  tenantId             String
+  challanNumber        String          // e.g. "DC-2026-0001"
+  challanDate          DateTime        @default(now())
+  purpose              ChallanPurpose  @default(SUPPLY_ON_APPROVAL)
+  recipientName        String
+  recipientPhone       String?
+  recipientAddress     String?
+  recipientGstin       String?
+  recipientStateCode   String          @default("32")
+  isInterState         Boolean         @default(false)
+  
+  // Transport Details
+  placeOfSupply        String?
+  transporterName      String?
+  vehicleNo            String?
+  notes                String?
+
+  subtotal             Decimal         @db.Decimal(10, 2)
+  cgstAmount           Decimal         @default(0.0) @db.Decimal(10, 2)
+  sgstAmount           Decimal         @default(0.0) @db.Decimal(10, 2)
+  igstAmount           Decimal         @default(0.0) @db.Decimal(10, 2)
+  totalTax             Decimal         @default(0.0) @db.Decimal(10, 2)
+  totalAmount          Decimal         @db.Decimal(10, 2)
+
+  // Status & Conversion
+  status               String          @default("DISPATCHED") // DISPATCHED, CONVERTED_TO_INVOICE, RETURNED, CANCELLED
+  convertedInvoiceId   String?
+  convertedAt          DateTime?
+
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  tenant               Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items                DeliveryChallanItem[]
+
+  @@unique([tenantId, challanNumber])
+  @@index([tenantId, challanDate])
+  @@map("delivery_challans")
+}
+
+model DeliveryChallanItem {
+  id               String          @id @default(uuid())
+  challanId        String
+  productId        String?
+  productName      String
+  hsnCode          String          @default("9983")
+  unit             String          @default("PCS")
+  quantity         Decimal         @db.Decimal(12, 3)
+  unitPrice        Decimal         @db.Decimal(10, 2)
+  gstRate          Decimal         @default(18.0) @db.Decimal(5, 2)
+  cgstAmount       Decimal         @default(0.0) @db.Decimal(10, 2)
+  sgstAmount       Decimal         @default(0.0) @db.Decimal(10, 2)
+  igstAmount       Decimal         @default(0.0) @db.Decimal(10, 2)
+  lineTotal        Decimal         @db.Decimal(10, 2)
+
+  challan          DeliveryChallan @relation(fields: [challanId], references: [id], onDelete: Cascade)
+  product          Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([challanId])
+  @@map("delivery_challan_items")
+}
+
+// ----------------------------------------------------
+// 23. GSTR-3B RETURN PREPARATION & COMPUTATION
+// ----------------------------------------------------
+model Gstr3bReturn {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  returnPeriod        String   // e.g. "082026" (MMYYYY)
+  financialYear       String   @default("2026-2027")
+  filingStatus        String   @default("DRAFT") // DRAFT, READY_TO_FILE, FILED
+
+  // Table 3.1: Outward Supplies & Inward Liable to Reverse Charge
+  table31Taxable      Decimal  @default(0.0) @db.Decimal(12, 2)
+  table31Igst         Decimal  @default(0.0) @db.Decimal(12, 2)
+  table31Cgst         Decimal  @default(0.0) @db.Decimal(12, 2)
+  table31Sgst         Decimal  @default(0.0) @db.Decimal(12, 2)
+  table31Cess         Decimal  @default(0.0) @db.Decimal(12, 2)
+
+  // Table 4: Eligible ITC (Reconciled from Books & 2B)
+  table4ItcIgst       Decimal  @default(0.0) @db.Decimal(12, 2)
+  table4ItcCgst       Decimal  @default(0.0) @db.Decimal(12, 2)
+  table4ItcSgst       Decimal  @default(0.0) @db.Decimal(12, 2)
+  table4ItcCess       Decimal  @default(0.0) @db.Decimal(12, 2)
+
+  // Table 6.1: Net Tax Payable via Cash (after ITC Rule 88A setoff)
+  netCashIgst         Decimal  @default(0.0) @db.Decimal(12, 2)
+  netCashCgst         Decimal  @default(0.0) @db.Decimal(12, 2)
+  netCashSgst         Decimal  @default(0.0) @db.Decimal(12, 2)
+  totalCashPayable    Decimal  @default(0.0) @db.Decimal(12, 2)
+
+  payloadJson         String   @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, returnPeriod])
+  @@index([tenantId, createdAt])
+  @@map("gstr3b_returns")
+}
+
+// ----------------------------------------------------
+// 24. E-WAY BILL RECORD & AUDIT REGISTER
+// ----------------------------------------------------
+model EWayBillRecord {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  invoiceId           String?
+  ewayBillNo          String   // 12-digit number
+  ewayBillDate        DateTime @default(now())
+  validUpto           DateTime
+  docNumber           String   // Invoice or Challan Number
+  docDate             DateTime
+  fromGstin           String
+  toGstin             String?
+  toTradeName         String
+  totalValue          Decimal  @db.Decimal(12, 2)
+  hsnCode             String?
+  distanceKm          Int
+  vehicleNo           String?
+  vehicleType         String   @default("R")
+  transMode           String   @default("ROAD")
+  status              String   @default("ACTIVE") // ACTIVE, CANCELLED, EXPIRED
+  cancelReason        String?
+  payloadJson         String?  @db.Text
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, ewayBillNo])
+  @@index([tenantId, ewayBillDate])
+  @@map("eway_bill_records")
+}
+
 

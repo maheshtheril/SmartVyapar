@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
           { 
             id: "credit-notes", 
             name: "Credit Notes & Returns", 
-            href: "/invoices", 
+            href: "/invoices/credit-notes", 
             icon: "RotateCcw",
             badge: creditNotesCount > 0 ? `${creditNotesCount}` : undefined,
             badgeColor: "indigo"
@@ -108,14 +108,18 @@ export async function GET(req: NextRequest) {
           { 
             id: "eway-bills", 
             name: "E-Way Bills (Rule 138)", 
-            href: "/invoices", 
-            icon: "Truck" 
+            href: "/invoices/eway-bills", 
+            icon: "Truck",
+            badge: "Dispatch",
+            badgeColor: "emerald"
           },
           { 
             id: "gstr1-export", 
-            name: "GSTR-1 Portal JSON", 
-            href: "/invoices", 
-            icon: "FileCode" 
+            name: "GSTR-1 Portal Return", 
+            href: "/gst/gstr-1", 
+            icon: "FileCode",
+            badge: "Filing",
+            badgeColor: "indigo"
           },
           { 
             id: "cash-drawer", 
@@ -141,6 +145,14 @@ export async function GET(req: NextRequest) {
             badgeColor: "rose"
           },
           { 
+            id: "delivery-challans", 
+            name: "Delivery Challans (Rule 55)", 
+            href: "/inventory/challans", 
+            icon: "Truck",
+            badge: "Rule 55",
+            badgeColor: "indigo"
+          },
+          { 
             id: "purchase-orders", 
             name: "Purchase Orders (PO)", 
             href: "/inventory/purchase/orders", 
@@ -156,6 +168,14 @@ export async function GET(req: NextRequest) {
             badge: "Inward",
             badgeColor: "indigo",
             aiTag: "AI Vision"
+          },
+          { 
+            id: "vendor-payables", 
+            name: "Vendor Payables & Aging", 
+            href: "/inventory/payables", 
+            icon: "CreditCard",
+            badge: "Creditors",
+            badgeColor: "amber"
           },
           { 
             id: "barcode", 
@@ -203,6 +223,14 @@ export async function GET(req: NextRequest) {
             name: "Customer Directory & Balance", 
             href: "/customers", 
             icon: "Users" 
+          },
+          { 
+            id: "customer-aging", 
+            name: "Customer Aging & Dunning", 
+            href: "/customers/aging", 
+            icon: "Clock",
+            badge: "Debtors",
+            badgeColor: "amber"
           },
         ],
       },
@@ -265,12 +293,28 @@ export async function GET(req: NextRequest) {
             badgeColor: "emerald"
           },
           {
+            id: "bank-reconciliation",
+            name: "Bank Reconciliation (BRS)",
+            href: "/accounting/reconciliation",
+            icon: "Landmark",
+            badge: "Audit",
+            badgeColor: "emerald"
+          },
+          {
             id: "gstr2b-itc-matcher",
             name: "GSTR-2B ITC Matcher (Rule 36(4))",
             href: "/accounting/reconciliation/gstr2b",
             icon: "ShieldCheck",
             badge: "ITC",
             badgeColor: "indigo",
+          },
+          {
+            id: "gstr3b-assistant",
+            name: "GSTR-3B Return Assistant",
+            href: "/gst/gstr-3b",
+            icon: "Calculator",
+            badge: "Monthly",
+            badgeColor: "emerald",
           },
         ],
       });
