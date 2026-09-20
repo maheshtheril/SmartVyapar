@@ -7,7 +7,7 @@ export const indianPhoneSchema = z
   .transform((val) => val.replace(/\D/g, "")) // strip spaces, hyphens, +91 prefix
   .transform((val) => (val.startsWith("91") && val.length === 12 ? val.slice(2) : val))
   .refine((val) => /^[6-9]\d{9}$/.test(val), {
-    message: "Must be a valid 10-digit Indian mobile number",
+    message: "Must be a valid 10-digit Indian mobile number (starts with 6, 7, 8, or 9)",
   });
 
 // Indian 15-character GSTIN format: e.g. "32AAAAA0000A1Z5"

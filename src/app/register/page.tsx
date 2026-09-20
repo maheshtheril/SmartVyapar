@@ -96,6 +96,12 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
+        if (data.details && Array.isArray(data.details)) {
+          throw new Error(data.details.map((i: any) => `${i.field}: ${i.message}`).join(" | "));
+        }
+        if (data.message) {
+          throw new Error(data.message);
+        }
         if (data.issues && Array.isArray(data.issues)) {
           throw new Error(data.issues.map((i: any) => i.message).join(", "));
         }
