@@ -41,6 +41,16 @@ export function cleanHumanReadableAiError(error: any): string {
   }
   const msg = typeof error === "string" ? error : error.message || String(error);
 
+  // If already sanitized, preserve directly
+  if (
+    msg.includes("Google Gemini API key") ||
+    msg.includes("Google Cloud access denied") ||
+    msg.includes("requested Google AI model is currently unavailable") ||
+    msg.includes("Google AI rate limit")
+  ) {
+    return msg;
+  }
+
   if (/API_KEY_INVALID|API key not valid/i.test(msg)) {
     return "Google Gemini API key is invalid. Please verify your key in Settings or paste an active key below.";
   }
@@ -56,7 +66,7 @@ export function cleanHumanReadableAiError(error: any): string {
   if (/timed out|timeout/i.test(msg)) {
     return "AI invoice processing timed out. Please check your network connection or upload a clearer, smaller image.";
   }
-  if (/Gemini AI OCR is not configured/i.test(msg)) {
+  if (/not configured|missing|empty/i.test(msg)) {
     return "Google Gemini API key is not configured. Please paste your Gemini API key below or enter invoice items manually.";
   }
 
@@ -69,9 +79,9 @@ export async function scanPurchaseInvoiceWithGemini(
   apiKey?: string
 ): Promise<ScannedInvoiceResult> {
   const finalApiKey = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!finalApiKey) {
+  if (!finalApiKey || finalApiKey.trim() === "") {
     throw new Error(
-      "Gemini AI OCR is not configured. Please configure your Google Gemini API key in Settings or enter the purchase invoice items manually."
+      "Google Gemini API key is not configured. Please paste your Gemini API key below to scan invoices, or enter the bill items manually."
     );
   }
 

@@ -88,7 +88,7 @@ describe("AI Invoice Scanner & Pharmaceutical/Medical Verification", () => {
           await scanPurchaseInvoiceWithGemini(dummyBase64, "image/jpeg", "");
         },
         (err: Error) => {
-          assert.match(err.message, /Gemini AI OCR is not configured/i);
+          assert.match(err.message, /Google Gemini API key is not configured/i);
           return true;
         }
       );
