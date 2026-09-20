@@ -502,23 +502,12 @@ export default function NewInvoicePage() {
 
       if (e.key === 'F1') {
         e.preventDefault();
-        setPaymentMode('CASH');
-        setPaymentStatus('PAID');
+        const searchInput = document.querySelector('input[placeholder*="Search product"]') as HTMLInputElement;
+        if (searchInput) searchInput.focus();
       } else if (e.key === 'F2') {
         e.preventDefault();
         handleAddItem();
-      } else if (e.key === 'F3') {
-        e.preventDefault();
-        setPaymentMode('CARD');
-        setPaymentStatus('PAID');
-      } else if (e.key === 'F4') {
-        e.preventDefault();
-        setPaymentMode('UPI');
-        setPaymentStatus('PAID');
-      } else if (e.key === 'F5') {
-        e.preventDefault();
-        setIsPaymentModalOpen(true);
-      } else if (e.key === 'F6') {
+      } else if (e.key === 'F3' || e.key === 'F4' || e.key === 'F5' || e.key === 'F6') {
         e.preventDefault();
         setIsPaymentModalOpen(true);
       } else if (e.key === 'F7') {
@@ -1075,14 +1064,12 @@ export default function NewInvoicePage() {
         {/* Middle: Keyboard Hotkeys Guide */}
         <div className="hidden xl:flex items-center space-x-2 text-[11px] text-slate-300 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 font-mono">
           <span className="text-slate-400 font-sans font-bold">Hotkeys:</span>
-          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F1</kbd> Cash</span>
+          <span><kbd className="bg-emerald-700 text-white px-1.5 rounded font-bold">F5 / Enter</kbd> Settle</span>
           <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F2</kbd> +Line</span>
-          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F3</kbd> Card</span>
-          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F4</kbd> UPI</span>
           <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F7</kbd> Hold</span>
           <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F8</kbd> Carts</span>
           <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F9</kbd> New</span>
-          <span><kbd className="bg-emerald-700 text-white px-1.5 rounded font-bold">Enter</kbd> Print</span>
+          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">Esc</kbd> Exit</span>
         </div>
 
         {/* Right: Actions, Fullscreen Toggle, and Exit POS */}
@@ -1457,496 +1444,120 @@ export default function NewInvoicePage() {
               </div>
             </div>
 
-            {/* PAYMENT MODE SELECTOR TABS */}
-            <div>
-              <div className="grid grid-cols-5 gap-1.5">
-                {[
-                  { id: 'CASH', label: 'Cash', hotkey: 'F1', icon: Banknote },
-                  { id: 'UPI', label: 'UPI QR', hotkey: 'F4', icon: QrCode },
-                  { id: 'CARD', label: 'Card', hotkey: 'F3', icon: CreditCard },
-                  { id: 'SPLIT', label: 'Split', hotkey: 'F6', icon: Layers },
-                  { id: 'CREDIT', label: 'Khata', hotkey: 'F5', icon: BookOpen },
-                ].map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = paymentMode === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => {
-                        setPaymentMode(tab.id as any);
-                        if (tab.id === 'CREDIT') {
-                          setPaymentStatus('UNPAID');
-                        } else {
-                          setPaymentStatus('PAID');
-                        }
-                      }}
-                      className={`py-1.5 px-1 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center space-y-0.5 ${
-                        isActive
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                          : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      <span className="text-[11px] font-black">{tab.label}</span>
-                      <span className="text-[8px] font-mono opacity-60">{tab.hotkey}</span>
-                    </button>
-                  );
-                })}
+            {/* COMPLETE ORDER FINANCIAL & TAX LEDGER BREAKDOWN */}
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  Tax & Financial Audit Breakdown
+                </span>
+                <span className="text-[10px] font-mono font-bold text-indigo-400">
+                  {isIntraState ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)'}
+                </span>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center text-slate-400">
+                  <span>Gross Items Subtotal:</span>
+                  <span className="font-mono text-slate-200">₹{grossSubtotal.toFixed(2)}</span>
+                </div>
+
+                {totalLineDiscount > 0 && (
+                  <div className="flex justify-between items-center text-rose-400">
+                    <span>Line Items Discount:</span>
+                    <span className="font-mono font-bold">-₹{totalLineDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {billDiscountAmount > 0 && (
+                  <div className="flex justify-between items-center text-rose-400">
+                    <span>
+                      Cart Bill Discount ({billDiscountValue}{billDiscountType === 'PERCENT' ? '%' : '₹'}):
+                    </span>
+                    <span className="font-mono font-bold">-₹{billDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-1.5 border-t border-slate-800/80 font-bold text-slate-300">
+                  <span>Net Taxable Amount:</span>
+                  <span className="font-mono text-white">₹{totalTaxable.toFixed(2)}</span>
+                </div>
+
+                {isIntraState ? (
+                  <>
+                    <div className="flex justify-between items-center text-slate-400">
+                      <span>Central GST (CGST):</span>
+                      <span className="font-mono text-slate-200">₹{totalCgst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-400">
+                      <span>State GST (SGST):</span>
+                      <span className="font-mono text-slate-200">₹{totalSgst.toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Integrated GST (IGST):</span>
+                    <span className="font-mono text-slate-200">₹{totalIgst.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {Math.abs(grandTotal - (totalTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst))) > 0.001 && (
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Round-off Adjustment:</span>
+                    <span className="font-mono text-slate-200">
+                      ₹{(grandTotal - (totalTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst))).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-sm font-black text-emerald-400">
+                  <span>Grand Total Net Payable:</span>
+                  <span className="font-mono text-xl text-white">₹{grandTotal.toFixed(2)}</span>
+                </div>
               </div>
             </div>
 
-            {/* 1. CASH TENDER CONSOLE */}
-            {paymentMode === 'CASH' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-start animate-in fade-in duration-150">
-                {/* Left Column: Cash Input, Quick Chips & Change Return Engine */}
-                <div className="space-y-2">
-                  {/* Cash Input */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-[11px] font-bold text-slate-300">
-                        Cash Received from Customer (₹)
-                      </label>
-                      {numericCashReceived > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setCashReceived('')}
-                          className="text-[10px] font-bold text-rose-400 hover:underline"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-lg font-black text-slate-500 font-mono">
-                        ₹
-                      </span>
-                      <input
-                        type="text"
-                        value={cashReceived}
-                        onChange={(e) => setCashReceived(e.target.value.replace(/[^0-9.]/g, ''))}
-                        placeholder="0.00"
-                        className="w-full pl-7 pr-3 py-1.5 rounded-xl bg-slate-900 border-2 border-indigo-500 text-white font-mono font-black text-xl tracking-wide focus:outline-none focus:ring-2 focus:ring-indigo-500/30 shadow-inner"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Interactive Currency Denomination Chips */}
-                  <div className="space-y-1">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Quick Denominations
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {denominations.map((denom) => (
-                        <button
-                          key={denom.label}
-                          type="button"
-                          onClick={() => setCashReceived(String(denom.value))}
-                          className={`px-2 py-1 rounded-lg text-xs font-bold transition font-mono ${
-                            numericCashReceived === denom.value
-                              ? 'bg-indigo-600 text-white shadow-sm'
-                              : 'bg-slate-900 border border-slate-800 text-slate-200 hover:border-indigo-400 hover:bg-slate-800'
-                          }`}
-                        >
-                          {denom.label}
-                        </button>
-                      ))}
-                      {[50, 100, 500].map((step) => (
-                        <button
-                          key={step}
-                          type="button"
-                          onClick={() => setCashReceived(String(numericCashReceived + step))}
-                          className="px-1.5 py-1 rounded-lg text-[11px] font-bold font-mono bg-slate-800 text-indigo-300 border border-slate-700 hover:bg-slate-700"
-                        >
-                          +{step}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* REAL-TIME CHANGE RETURN ENGINE */}
-                  {numericCashReceived > 0 && (
-                    <div className="pt-0.5">
-                      {changeDue > 0 ? (
-                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-black uppercase tracking-wider opacity-90">
-                              Cashier Return to Customer:
-                            </span>
-                            <span className="text-[9px] font-bold bg-white/20 px-1.5 py-0.2 rounded-full">
-                              Change
-                            </span>
-                          </div>
-                          <div className="text-2xl font-black font-mono tracking-tight">
-                            ₹{changeDue.toFixed(2)}
-                          </div>
-
-                          {/* Smart Indian Notes Recommendation */}
-                          {returnNotes.length > 0 && (
-                            <div className="pt-1 border-t border-white/20 flex flex-wrap items-center gap-1 text-[10px]">
-                              <span className="opacity-90 font-bold">Give Notes:</span>
-                              {returnNotes.map((note, nIdx) => (
-                                <span key={nIdx} className="px-1.5 py-0.2 rounded bg-white/20 font-mono font-black text-[10px]">
-                                  {note.count}×{note.label}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ) : remainingDue > 0 ? (
-                        <div className="p-2 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-center text-xs font-bold">
-                          Due from Customer: ₹{remainingDue.toFixed(2)}
-                        </div>
-                      ) : (
-                        <div className="p-2 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-center text-xs font-bold">
-                          ✓ Exact Cash Received
-                        </div>
-                      )}
-                    </div>
+            {/* CUSTOMER & ACCOUNT DETAILS CARD */}
+            <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
+                  Customer Profile & Place of Supply
+                </span>
+                <div className="text-xs font-bold text-white flex items-center space-x-2">
+                  <span>{customerName || "Walk-in Cash Customer"}</span>
+                  {customerPhone && (
+                    <span className="font-mono text-emerald-400 text-[11px]">📱 {customerPhone}</span>
                   )}
                 </div>
-
-                {/* Right Column: Tactile On-Screen NumPad */}
-                <div className="space-y-1">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
-                    Touch NumPad
-                  </span>
-                  <div className="grid grid-cols-4 gap-1">
-                    {['7', '8', '9', 'C', '4', '5', '6', 'BACK', '1', '2', '3', '.', '0', '00'].map((btn) => (
-                      <button
-                        key={btn}
-                        type="button"
-                        onClick={() => handleNumpadPress(btn)}
-                        className={`h-8 rounded-lg text-sm font-black font-mono transition flex items-center justify-center shadow-xs active:scale-95 ${
-                          btn === 'C'
-                            ? 'bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-900'
-                            : btn === 'BACK'
-                            ? 'bg-amber-950/60 border border-amber-800 text-amber-300 hover:bg-amber-900 text-xs'
-                            : 'bg-slate-900 border border-slate-800 text-white hover:bg-slate-800'
-                        }`}
-                      >
-                        {btn === 'BACK' ? '⌫' : btn}
-                      </button>
-                    ))}
-                  </div>
+                <div className="text-[10px] text-slate-500 font-mono">
+                  State Code: {customerState} • {business.gstin ? `GSTIN: ${business.gstin}` : 'Unregistered Dealer'}
                 </div>
               </div>
-            )}
 
-            {/* 2. DYNAMIC NPCI UPI QR CONSOLE */}
-            {paymentMode === 'UPI' && (
-              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-2.5 animate-in fade-in duration-150">
-                <div className="inline-block p-2 rounded-xl bg-white shadow-md">
-                  <QrCodeCanvas value={currentUpiUri} size={130} />
-                </div>
-                <div>
-                  <div className="text-xs font-black text-white">Dynamic NPCI UPI QR</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">PhonePe • GPay • Paytm • BHIM • Cred</div>
-                  <div className="mt-1 text-xs font-mono text-indigo-400 bg-slate-950 p-1.5 rounded-xl border border-slate-800 break-all">
-                    {business.upiId}
-                  </div>
-                </div>
-                <div className="flex items-center justify-center gap-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={handleTriggerSoundbox}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
-                      soundboxPlayed
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                    }`}
-                  >
-                    <Volume2 className="h-3.5 w-3.5 text-amber-400" />
-                    <span>{soundboxPlayed ? "Announced!" : "Test Voice Chime"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCopyUpi}
-                    className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition flex items-center space-x-1.5"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span>{copiedLink ? "Copied!" : "Copy Link"}</span>
-                  </button>
-                </div>
+              <div className="text-right">
+                <span className="text-[10px] font-mono px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold block">
+                  Counter 1
+                </span>
               </div>
-            )}
+            </div>
 
-            {/* 3. CARD / EDC CONSOLE */}
-            {paymentMode === 'CARD' && (
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 animate-in fade-in duration-150 text-xs">
-                <div className="font-bold text-slate-300">Swipe or Dip Card on EDC POS Machine</div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">
-                    Terminal Auth / Approval Code
-                  </label>
-                  <input
-                    type="text"
-                    value={cardRef}
-                    onChange={(e) => setCardRef(e.target.value)}
-                    placeholder="e.g. AUTH-84920"
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">
-                    Card Last 4 Digits
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={4}
-                    value={cardLast4}
-                    onChange={(e) => setCardLast4(e.target.value)}
-                    placeholder="4242"
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
-                  />
-                </div>
+            {/* SETTLEMENT TERMINAL NOTICE */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border border-indigo-500/30 space-y-2">
+              <div className="flex items-center space-x-2 text-indigo-400">
+                <CreditCard className="h-4 w-4" />
+                <span className="text-xs font-black uppercase tracking-wider text-indigo-300">
+                  Financial Settlement Terminal
+                </span>
               </div>
-            )}
-
-            {/* 4. SPLIT TENDER CONSOLE: 4-WAY MULTI-TENDER MATRIX */}
-            {paymentMode === 'SPLIT' && (
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 animate-in fade-in duration-150 text-xs">
-                {/* Header & Live Balance Indicator */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-slate-200 block text-xs">Multi-Tender Settlement Matrix</span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      Allocated: ₹{totalSplitAllocated.toFixed(2)} of ₹{grandTotal.toFixed(2)}
-                    </span>
-                  </div>
-                  <div>
-                    {isSplitBalanced ? (
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-black flex items-center space-x-1">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                        <span>100% Balanced</span>
-                      </span>
-                    ) : splitRemainingUnallocated > 0 ? (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
-                        Remaining: ₹{splitRemainingUnallocated.toFixed(2)}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold">
-                        Overpaid: ₹{(totalSplitAllocated - grandTotal).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Quick 1-Click Preset Allocations */}
-                <div className="flex items-center justify-between pt-0.5">
-                  <div className="flex items-center space-x-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const half = Math.floor(grandTotal / 2);
-                        setSplitCash(String(half));
-                        setSplitUpi(String(Number((grandTotal - half).toFixed(2))));
-                        setSplitCard("");
-                        setSplitCredit("");
-                      }}
-                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] font-bold transition"
-                    >
-                      ⚡ 50% Cash + 50% UPI
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSplitCash("");
-                        setSplitUpi("");
-                        setSplitCard("");
-                        setSplitCredit("");
-                        setShowSplitUpiQr(false);
-                      }}
-                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 text-[10px] font-bold transition"
-                    >
-                      Clear
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowSplitUpiQr((prev) => !prev)}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center space-x-1 border transition ${
-                      showSplitUpiQr
-                        ? 'bg-indigo-600 text-white border-indigo-500'
-                        : 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
-                    }`}
-                  >
-                    <QrCode className="h-3 w-3" />
-                    <span>{showSplitUpiQr ? "Hide QR" : "Show UPI QR"}</span>
-                  </button>
-                </div>
-
-                {/* 4-Way Multi-Tender Grid */}
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Tender 1: Cash */}
-                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-slate-300 flex items-center space-x-1">
-                        <Banknote className="h-3 w-3 text-emerald-400" />
-                        <span>Cash</span>
-                      </span>
-                      {splitRemainingUnallocated > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSplitCash(String(Number((numSplitCash + splitRemainingUnallocated).toFixed(2))))}
-                          className="text-[9px] font-bold text-emerald-400 hover:underline"
-                        >
-                          +Fill Rest
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 font-mono">₹</span>
-                      <input
-                        type="text"
-                        value={splitCash}
-                        onChange={(e) => setSplitCash(e.target.value.replace(/[^0-9.]/g, ''))}
-                        placeholder="0.00"
-                        className="w-full pl-5 pr-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono font-bold text-xs focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Tender 2: UPI */}
-                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-slate-300 flex items-center space-x-1">
-                        <QrCode className="h-3 w-3 text-indigo-400" />
-                        <span>UPI</span>
-                      </span>
-                      {splitRemainingUnallocated > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSplitUpi(String(Number((numSplitUpi + splitRemainingUnallocated).toFixed(2))));
-                            setShowSplitUpiQr(true);
-                          }}
-                          className="text-[9px] font-bold text-indigo-400 hover:underline"
-                        >
-                          +Fill Rest
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 font-mono">₹</span>
-                      <input
-                        type="text"
-                        value={splitUpi}
-                        onChange={(e) => {
-                          setSplitUpi(e.target.value.replace(/[^0-9.]/g, ''));
-                          if (!showSplitUpiQr && e.target.value) setShowSplitUpiQr(true);
-                        }}
-                        placeholder="0.00"
-                        className="w-full pl-5 pr-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono font-bold text-xs focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Tender 3: Card / POS */}
-                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-slate-300 flex items-center space-x-1">
-                        <CreditCard className="h-3 w-3 text-cyan-400" />
-                        <span>Card / EDC</span>
-                      </span>
-                      {splitRemainingUnallocated > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSplitCard(String(Number((numSplitCard + splitRemainingUnallocated).toFixed(2))))}
-                          className="text-[9px] font-bold text-cyan-400 hover:underline"
-                        >
-                          +Fill Rest
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 font-mono">₹</span>
-                      <input
-                        type="text"
-                        value={splitCard}
-                        onChange={(e) => setSplitCard(e.target.value.replace(/[^0-9.]/g, ''))}
-                        placeholder="0.00"
-                        className="w-full pl-5 pr-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono font-bold text-xs focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Tender 4: Khata / Due */}
-                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-slate-300 flex items-center space-x-1">
-                        <BookOpen className="h-3 w-3 text-amber-400" />
-                        <span>Khata / Udhar</span>
-                      </span>
-                      {splitRemainingUnallocated > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSplitCredit(String(Number((numSplitCredit + splitRemainingUnallocated).toFixed(2))))}
-                          className="text-[9px] font-bold text-amber-400 hover:underline"
-                        >
-                          +Fill Rest
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 font-mono">₹</span>
-                      <input
-                        type="text"
-                        value={splitCredit}
-                        onChange={(e) => setSplitCredit(e.target.value.replace(/[^0-9.]/g, ''))}
-                        placeholder="0.00"
-                        className="w-full pl-5 pr-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono font-bold text-xs focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Expanded Split UPI QR Box */}
-                {showSplitUpiQr && (
-                  <div className="p-2.5 rounded-xl bg-slate-950 border border-indigo-500/30 flex items-center space-x-3 animate-in fade-in duration-150">
-                    <div className="bg-white p-1 rounded-lg shadow-sm shrink-0">
-                      <QrCodeCanvas value={splitUpiUri} size={68} />
-                    </div>
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="text-[11px] font-bold text-indigo-300 flex items-center justify-between">
-                        <span>Scan to Pay UPI Portion</span>
-                        <span className="font-mono text-white font-black">₹{splitUpiAmount.toFixed(2)}</span>
-                      </div>
-                      <div className="text-[9px] text-slate-400 font-mono truncate">
-                        {business.upiId || "zionabusiness@icici"}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard?.writeText(splitUpiUri);
-                          setCopiedLink(true);
-                          setTimeout(() => setCopiedLink(false), 2000);
-                        }}
-                        className="text-[9px] font-bold text-indigo-400 hover:underline flex items-center space-x-1"
-                      >
-                        <Copy className="h-2.5 w-2.5" />
-                        <span>{copiedLink ? "Copied UPI Intent Link!" : "Copy Payment Link"}</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Click <strong className="text-white">Collect Payment & Settle</strong> below or press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-white font-mono text-[10px] border border-slate-700">F5</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-white font-mono text-[10px] border border-slate-700">Enter</kbd> to open the payment settlement terminal with multi-tender split (Cash, UPI QR, Card EDC, Khata) and automatic change return.
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-mono text-slate-300">
+                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">💵 Cash Tenders</span>
+                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">📱 UPI QR Code</span>
+                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">💳 Card / EDC Swipe</span>
+                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">📖 Khata Ledger</span>
               </div>
-            )}
-
-            {/* 5. KHATA / CREDIT CONSOLE */}
-            {paymentMode === 'CREDIT' && (
-              <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-800 text-amber-200 text-xs space-y-2 animate-in fade-in duration-150">
-                <div className="font-black text-sm text-amber-300">Customer Khata / Credit (Udhar)</div>
-                <p>
-                  This bill will be marked as <strong>UNPAID</strong> and added to {customerName || "Customer"}&apos;s credit ledger.
-                </p>
-                <div className="p-2 rounded-xl bg-slate-900 border border-amber-700/50 font-mono font-bold text-white flex justify-between">
-                  <span>Balance Due:</span>
-                  <span>₹{grandTotal.toFixed(2)}</span>
-                </div>
-              </div>
-            )}
+            </div>
 
           </div>
 
@@ -1956,11 +1567,11 @@ export default function NewInvoicePage() {
               type="button"
               onClick={() => setIsPaymentModalOpen(true)}
               disabled={isSubmitting || totalTaxable === 0}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white text-sm sm:text-base font-black shadow-lg shadow-emerald-900/30 transition flex items-center justify-center space-x-2 disabled:bg-slate-800 disabled:from-slate-800 disabled:to-slate-800 disabled:cursor-not-allowed cursor-pointer active:scale-98"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white text-sm sm:text-base font-black shadow-xl shadow-emerald-900/40 transition flex items-center justify-center space-x-2.5 disabled:bg-slate-800 disabled:from-slate-800 disabled:to-slate-800 disabled:cursor-not-allowed cursor-pointer active:scale-98 ring-2 ring-emerald-400/20"
             >
               <CreditCard className="h-5 w-5 text-white" />
               <span>
-                {isSubmitting ? "Processing..." : `⚡ COLLECT PAYMENT & SETTLE [F5] • ₹${grandTotal.toFixed(2)}`}
+                {isSubmitting ? "Processing..." : `⚡ COLLECT PAYMENT & SETTLE [F5 / Enter] • ₹${grandTotal.toFixed(2)}`}
               </span>
             </button>
 
