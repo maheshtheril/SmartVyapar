@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Receipt, 
@@ -21,13 +21,20 @@ import {
   User,
   Maximize2,
   Minimize2,
-  Sparkles
+  Sparkles,
+  CreditCard,
+  Layers,
+  BookOpen,
+  Volume2,
+  Copy,
+  AlertTriangle,
+  Coins
 } from 'lucide-react';
 import Link from 'next/link';
 import ProductSearchCombobox, { ProductOption } from '@/components/ProductSearchCombobox';
 import CustomerSearch, { CustomerOption } from '@/components/CustomerSearch';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
-import PosPaymentModal, { PosPaymentDetails } from '@/components/PosPaymentModal';
+import QrCodeCanvas from '@/components/QrCodeCanvas';
 import { cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
 import OfflineStatusPill from '@/components/OfflineStatusPill';
 
@@ -54,6 +61,66 @@ interface HeldBill {
   customerState: string;
   items: BillItem[];
   total: number;
+}
+
+// Indian Denomination Breakdown Helper
+function getIndianDenominations(amount: number): Array<{ label: string; count: number }> {
+  if (amount <= 0) return [];
+  const notes = [500, 200, 100, 50, 20, 10, 5, 2, 1];
+  let remaining = Math.floor(amount);
+  const result: Array<{ label: string; count: number }> = [];
+
+  for (const n of notes) {
+    if (remaining >= n) {
+      const count = Math.floor(remaining / n);
+      result.push({ label: `₹${n}`, count });
+      remaining = remaining % n;
+    }
+  }
+
+  const paise = Math.round((amount - Math.floor(amount)) * 100);
+  if (paise > 0) {
+    result.push({ label: `${paise}p`, count: 1 });
+  }
+
+  return result;
+}
+
+// Audio synthesizer for Paytm/PhonePe style soundbox chime
+function playSoundboxChime(amountText: string) {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    
+    // Play pleasant dual ascending chime
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.12);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + idx * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.12 + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + idx * 0.12);
+      osc.stop(ctx.currentTime + idx * 0.12 + 0.4);
+    });
+
+    // Voice announcement simulation via Web Speech API
+    if ('speechSynthesis' in window) {
+      setTimeout(() => {
+        const text = `Received payment of rupees ${Math.round(Number(amountText) || 0)} on SmartVyapar.`;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.05;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }, 500);
+    }
+  } catch (err) {
+    console.warn('Audio chime warning:', err);
+  }
 }
 
 export default function NewInvoicePage() {
@@ -86,12 +153,17 @@ export default function NewInvoicePage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerState, setCustomerState] = useState("32");
   const [paymentStatus, setPaymentStatus] = useState<"PAID" | "UNPAID">("PAID");
-  const [paymentMode, setPaymentMode] = useState<"UPI" | "CASH" | "SPLIT" | "CREDIT">("UPI");
+  const [paymentMode, setPaymentMode] = useState<"UPI" | "CASH" | "CARD" | "SPLIT" | "CREDIT">("CASH");
 
   // Cash Tender States
   const [cashReceived, setCashReceived] = useState<string>("");
+  const [splitCashInput, setSplitCashInput] = useState<string>("");
+  const [cardRef, setCardRef] = useState<string>("");
+  const [cardLast4, setCardLast4] = useState<string>("");
+  const [soundboxPlayed, setSoundboxPlayed] = useState<boolean>(false);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
-  // Multi-item rows
+  // Multi-item rows (default with 1 empty row for quick scanning)
   const [billItems, setBillItems] = useState<BillItem[]>([
     {
       id: "row-1",
@@ -104,8 +176,7 @@ export default function NewInvoicePage() {
     },
   ]);
 
-  // POS Full-Screen Payment Terminal Modal State
-  const [showPosPaymentModal, setShowPosPaymentModal] = useState(false);
+  // Fullscreen counter state
   const [isFullScreenPOS, setIsFullScreenPOS] = useState(false);
 
   // Toggle Full-Screen POS for counter touchscreens
@@ -233,88 +304,108 @@ export default function NewInvoicePage() {
   });
 
   const grandTotal = totalTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst);
-  const currentUpiUri = `upi://pay?pa=${encodeURIComponent(business.upiId || "")}&pn=${encodeURIComponent(business.name)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=Invoice%20for%20${encodeURIComponent(customerName || "Customer")}`;
+  const currentUpiUri = `upi://pay?pa=${encodeURIComponent(business.upiId || "zionabusiness@icici")}&pn=${encodeURIComponent(business.name)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=Invoice%20for%20${encodeURIComponent(customerName || "Customer")}`;
 
   // Cash Change Return Calculations
   const numericCashReceived = Number(cashReceived) || 0;
   const changeDue = Math.max(0, numericCashReceived - grandTotal);
   const remainingDue = Math.max(0, grandTotal - numericCashReceived);
+  const returnNotes = getIndianDenominations(changeDue);
 
-  // Ensure cart has an active item and open the world-class full-screen POS terminal
-  const ensureCartAndOpenPos = () => {
-    const hasActiveItems = billItems.some((i) => i.productId && i.price > 0);
-    if (!hasActiveItems) {
-      if (catalog.length > 0) {
-        const sample = catalog[0];
-        setBillItems([
-          {
-            id: `row-${Date.now()}`,
-            productId: sample.id,
-            name: sample.name,
-            hsn: sample.hsnCode || "8504",
-            quantity: 1,
-            price: Number(sample.sellingPrice) || 350,
-            gst: Number(sample.gstRate) || 18,
-          },
-        ]);
-      } else {
-        setBillItems([
-          {
-            id: `row-${Date.now()}`,
-            productId: "quick-pos-item",
-            name: "Quick Counter Product",
-            hsn: "8504",
-            quantity: 1,
-            price: 350,
-            gst: 18,
-          },
-        ]);
-      }
+  // Split calculations
+  const numericSplitCash = parseFloat(splitCashInput) || 0;
+  const splitOnlineRemaining = Math.max(0, grandTotal - numericSplitCash);
+
+  // Quick denomination suggestions for India
+  const denominations = [
+    { label: `Exact (₹${grandTotal.toFixed(2)})`, value: grandTotal },
+    { label: `₹${Math.ceil((grandTotal || 100) / 10) * 10}`, value: Math.ceil((grandTotal || 100) / 10) * 10 },
+    { label: `₹${Math.ceil((grandTotal || 100) / 50) * 50}`, value: Math.ceil((grandTotal || 100) / 50) * 50 },
+    { label: `₹${Math.ceil((grandTotal || 100) / 100) * 100}`, value: Math.ceil((grandTotal || 100) / 100) * 100 },
+    { label: '₹500', value: 500 },
+    { label: '₹1,000', value: 1000 },
+    { label: '₹2,000', value: 2000 },
+  ].filter((d, idx, arr) => d.value >= grandTotal && arr.findIndex(x => x.value === d.value) === idx);
+
+  // Auto-fill exact cash when switching to Cash
+  useEffect(() => {
+    if (paymentMode === 'CASH' && grandTotal > 0 && !cashReceived) {
+      setCashReceived(String(Math.ceil(grandTotal)));
     }
-    setShowPosPaymentModal(true);
+    if (paymentMode === 'SPLIT' && grandTotal > 0 && !splitCashInput) {
+      setSplitCashInput(String(Math.round(grandTotal / 2)));
+    }
+  }, [paymentMode, grandTotal]);
+
+  // NumPad button click handler
+  const handleNumpadPress = (char: string) => {
+    if (char === 'C') {
+      setCashReceived('');
+    } else if (char === 'BACK') {
+      setCashReceived((prev) => prev.slice(0, -1));
+    } else if (char === '.') {
+      if (!cashReceived.includes('.')) {
+        setCashReceived((prev) => (prev ? prev + '.' : '0.'));
+      }
+    } else {
+      setCashReceived((prev) => (prev === '0' ? char : prev + char));
+    }
   };
 
-  // Keyboard Shortcuts (F2, F4, F7, F8, F9, F11, Ctrl+Enter)
+  // Keyboard Shortcuts (F1-F5 Modes, F2 Line, F7 Hold, F8 Carts, F9 Reset, F11 Fullscreen, Enter Save)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // If modal is open, let modal manage keyboard events
-      if (showPosPaymentModal) return;
+      // Do not intercept hotkeys if typing in text inputs (except hotkeys F1-F12)
+      const target = e.target as HTMLElement;
+      const isInputFocused = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
 
-      // F4 or Ctrl+Enter: Open Fullscreen POS Payment Terminal
-      if (e.key === 'F4' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
+      if (e.key === 'F1') {
         e.preventDefault();
-        ensureCartAndOpenPos();
-      }
-      // F11: Fullscreen POS Mode Toggle
-      else if (e.key === 'F11') {
-        e.preventDefault();
-        toggleFullScreenPOS();
-      }
-      // F7: Hold Bill
-      else if (e.key === 'F7') {
-        e.preventDefault();
-        handleHoldBill();
-      }
-      // F8: Recall Held Bills
-      else if (e.key === 'F8') {
-        e.preventDefault();
-        setShowHeldModal((prev) => !prev);
-      }
-      // F2: Add new line item
-      else if (e.key === 'F2') {
+        setPaymentMode('CASH');
+        setPaymentStatus('PAID');
+      } else if (e.key === 'F2') {
         e.preventDefault();
         handleAddItem();
-      }
-      // F9: Reset / New Sale
-      else if (e.key === 'F9') {
+      } else if (e.key === 'F3') {
+        e.preventDefault();
+        setPaymentMode('CARD');
+        setPaymentStatus('PAID');
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        setPaymentMode('UPI');
+        setPaymentStatus('PAID');
+      } else if (e.key === 'F5') {
+        e.preventDefault();
+        setPaymentMode('CREDIT');
+        setPaymentStatus('UNPAID');
+      } else if (e.key === 'F7') {
+        e.preventDefault();
+        handleHoldBill();
+      } else if (e.key === 'F8') {
+        e.preventDefault();
+        setShowHeldModal((prev) => !prev);
+      } else if (e.key === 'F9') {
         e.preventDefault();
         handleResetNewSale();
+      } else if (e.key === 'F11') {
+        e.preventDefault();
+        toggleFullScreenPOS();
+      } else if (e.key === 'Enter' && !isInputFocused) {
+        e.preventDefault();
+        if (totalTaxable > 0 && !isSubmitting) {
+          handleCreateBill();
+        }
+      } else if (e.key === 'Escape') {
+        // Exit to dashboard
+        if (!showHeldModal && !showBatchModal && !showReceiptModal) {
+          router.push('/');
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [billItems, customerName, customerPhone, customerState, grandTotal, totalTaxable, isSubmitting, heldBills, showPosPaymentModal]);
+  }, [billItems, customerName, customerPhone, customerState, grandTotal, totalTaxable, isSubmitting, heldBills, paymentMode, cashReceived, showHeldModal, showBatchModal, showReceiptModal]);
 
   // Multi-Item Handlers
   const handleAddItem = () => {
@@ -348,45 +439,53 @@ export default function NewInvoicePage() {
         batchMrp: undefined,
       };
       setBillItems(updated);
-    } else {
-      updated[index] = {
-        ...updated[index],
-        productId: product.id,
-        name: product.name,
-        hsn: product.hsnCode,
-        price: Number(product.sellingPrice),
-        gst: Number(product.gstRate),
-        batchId: undefined,
-        batchNumber: undefined,
-        batchExpiry: undefined,
-        batchMrp: undefined,
-      };
-      setBillItems(updated);
+      return;
+    }
 
-      // Check if product has active batches (Multiple MRPs / FEFO)
-      fetch(`/api/batches?productId=${product.id}`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.success && Array.isArray(data.batches) && data.batches.length > 0) {
-            setAvailableBatches(data.batches);
-            setBatchPickerItemIndex(index);
-            setShowBatchModal(true);
-          }
-        })
-        .catch((err) => console.error("Error loading batches for product:", err));
+    updated[index] = {
+      ...updated[index],
+      productId: product.id,
+      name: product.name,
+      hsn: product.hsnCode || "8504",
+      price: Number(product.sellingPrice) || 0,
+      gst: Number(product.gstRate) || 18,
+    };
+    setBillItems(updated);
+
+    // Auto-fetch batches for FEFO selection if available
+    fetchBatchesForProduct(product.id, index);
+  };
+
+  const fetchBatchesForProduct = async (productId: string, itemIndex: number) => {
+    try {
+      const res = await fetch(`/api/batches?productId=${productId}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.batches) && data.batches.length > 0) {
+        setAvailableBatches(data.batches);
+        setBatchPickerItemIndex(itemIndex);
+        if (data.batches.length === 1) {
+          handlePickBatch(data.batches[0], itemIndex);
+        } else {
+          setShowBatchModal(true);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch batches:", e);
     }
   };
 
-  const handlePickBatch = (batch: any) => {
-    if (batchPickerItemIndex === null) return;
+  const handlePickBatch = (batch: any, overrideIndex?: number) => {
+    const targetIdx = overrideIndex !== undefined ? overrideIndex : batchPickerItemIndex;
+    if (targetIdx === null || targetIdx === undefined || !billItems[targetIdx]) return;
+
     const updated = [...billItems];
-    updated[batchPickerItemIndex] = {
-      ...updated[batchPickerItemIndex],
-      price: Number(batch.sellingPrice),
+    updated[targetIdx] = {
+      ...updated[targetIdx],
       batchId: batch.id,
       batchNumber: batch.batchNumber,
       batchExpiry: batch.expiryDate,
       batchMrp: Number(batch.mrp),
+      price: Number(batch.sellingPrice) || updated[targetIdx].price,
     };
     setBillItems(updated);
     setShowBatchModal(false);
@@ -499,9 +598,12 @@ export default function NewInvoicePage() {
   const handleResetNewSale = () => {
     setCustomerName("");
     setCustomerPhone("");
-    setPaymentMode("UPI");
+    setPaymentMode("CASH");
     setPaymentStatus("PAID");
     setCashReceived("");
+    setSplitCashInput("");
+    setCardRef("");
+    setCardLast4("");
     setBillItems([
       {
         id: `row-${Date.now()}`,
@@ -518,38 +620,27 @@ export default function NewInvoicePage() {
   };
 
   // Submit Invoice to Neon DB (or Offline Storage)
-  const handleCreateBill = async (customPaymentDetails?: PosPaymentDetails) => {
+  const handleCreateBill = async () => {
     const validItems = billItems.filter((i) => i.productId && i.price > 0);
     if (validItems.length === 0) {
-      alert("Please add at least one valid product item");
+      alert("Please add at least one product item to bill!");
       return;
     }
 
     setIsSubmitting(true);
 
-    // Resolve tender & payment details
-    const activeMode = customPaymentDetails?.paymentMode === "SPLIT"
-      ? "CASH"
-      : (customPaymentDetails?.paymentMode || paymentMode);
-    const activeStatus = customPaymentDetails?.paymentStatus || paymentStatus;
-    const activeCashReceived = customPaymentDetails?.cashReceived !== undefined
-      ? customPaymentDetails.cashReceived
-      : numericCashReceived;
-    const activeChangeDue = customPaymentDetails?.changeReturned !== undefined
-      ? customPaymentDetails.changeReturned
-      : changeDue;
-
-    const computedPaid = activeStatus === "PAID"
-      ? grandTotal
-      : (activeMode === "CASH" && activeCashReceived > 0 ? Math.min(grandTotal, activeCashReceived) : 0);
+    const activeMode = paymentMode === "SPLIT" ? "CASH" : paymentMode;
+    const computedPaid = paymentStatus === "PAID" 
+      ? grandTotal 
+      : (activeMode === "CASH" && numericCashReceived > 0 ? Math.min(grandTotal, numericCashReceived) : 0);
     const computedDue = Math.max(0, grandTotal - computedPaid);
 
     let paymentNotes: string | undefined = undefined;
-    if (customPaymentDetails?.paymentMode === "SPLIT") {
-      paymentNotes = `Split Tender: Cash ₹${Number(customPaymentDetails.splitCash || 0).toFixed(2)}, Online ₹${Number(customPaymentDetails.splitOnline || 0).toFixed(2)}`;
+    if (paymentMode === "SPLIT") {
+      paymentNotes = `Split Tender: Cash ₹${numericSplitCash.toFixed(2)}, Online ₹${splitOnlineRemaining.toFixed(2)}`;
     }
-    if (customPaymentDetails?.cardRef || customPaymentDetails?.cardLast4) {
-      const cardInfo = `Card Ref: ${customPaymentDetails.cardRef || 'N/A'}${customPaymentDetails.cardLast4 ? ` (Last 4: ${customPaymentDetails.cardLast4})` : ''}`;
+    if (cardRef || cardLast4) {
+      const cardInfo = `Card Ref: ${cardRef || 'N/A'}${cardLast4 ? ` (Last 4: ${cardLast4})` : ''}`;
       paymentNotes = paymentNotes ? `${paymentNotes} | ${cardInfo}` : cardInfo;
     }
 
@@ -557,7 +648,7 @@ export default function NewInvoicePage() {
       customerName: customerName || "Walk-in Cash Customer",
       customerPhone: customerPhone || "9999999999",
       customerStateCode: customerState,
-      paymentStatus: activeStatus,
+      paymentStatus,
       paymentMode: activeMode,
       paidAmount: computedPaid,
       notes: paymentNotes,
@@ -590,8 +681,6 @@ export default function NewInvoicePage() {
       };
     });
 
-    const displayPaymentMode = customPaymentDetails?.paymentMode || paymentMode;
-
     // Check if offline
     if (typeof window !== "undefined" && !navigator.onLine) {
       const offlineRecord = await enqueueOfflineInvoice(invoicePayload);
@@ -623,9 +712,9 @@ export default function NewInvoicePage() {
         totalAmount: Number(grandTotal),
         paidAmount: Number(computedPaid),
         dueAmount: Number(computedDue),
-        paymentMode: displayPaymentMode,
-        cashReceived: activeCashReceived > 0 ? activeCashReceived : undefined,
-        changeReturned: activeChangeDue > 0 ? activeChangeDue : undefined,
+        paymentMode,
+        cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
+        changeReturned: changeDue > 0 ? changeDue : undefined,
         totalSavings: totalSavings > 0 ? totalSavings : undefined,
         upiUri: currentUpiUri,
       });
@@ -663,9 +752,9 @@ export default function NewInvoicePage() {
         totalAmount: Number(data.invoice.totalAmount || grandTotal),
         paidAmount: Number(data.invoice.paidAmount),
         dueAmount: Number(data.invoice.dueAmount),
-        paymentMode: displayPaymentMode,
-        cashReceived: activeCashReceived > 0 ? activeCashReceived : undefined,
-        changeReturned: activeChangeDue > 0 ? activeChangeDue : undefined,
+        paymentMode,
+        cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
+        changeReturned: changeDue > 0 ? changeDue : undefined,
         totalSavings: totalSavings > 0 ? totalSavings : undefined,
         upiUri: data.invoice.upiUri || currentUpiUri,
       });
@@ -691,9 +780,9 @@ export default function NewInvoicePage() {
             totalAmount: Number(grandTotal),
             paidAmount: Number(computedPaid),
             dueAmount: Number(computedDue),
-            paymentMode: displayPaymentMode,
-            cashReceived: activeCashReceived > 0 ? activeCashReceived : undefined,
-            changeReturned: activeChangeDue > 0 ? activeChangeDue : undefined,
+            paymentMode,
+            cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
+            changeReturned: changeDue > 0 ? changeDue : undefined,
             totalSavings: totalSavings > 0 ? totalSavings : undefined,
             upiUri: currentUpiUri,
           });
@@ -710,386 +799,482 @@ export default function NewInvoicePage() {
     }
   };
 
-  // Complete Sale Callback from Full-Screen POS Modal
-  const handleCompleteSaleFromModal = async (details: PosPaymentDetails) => {
-    if (details.cashReceived !== undefined) {
-      setCashReceived(String(details.cashReceived));
+  const handleTriggerSoundbox = () => {
+    playSoundboxChime(grandTotal > 0 ? grandTotal.toFixed(2) : "100");
+    setSoundboxPlayed(true);
+    setTimeout(() => setSoundboxPlayed(false), 3000);
+  };
+
+  const handleCopyUpi = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(currentUpiUri);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
     }
-    setPaymentMode(details.paymentMode === "SPLIT" ? "CASH" : (details.paymentMode as any));
-    setPaymentStatus(details.paymentStatus);
-    await handleCreateBill(details);
-    setShowPosPaymentModal(false);
   };
 
   return (
-    <div className="space-y-5">
-      {/* Top Header & Keyboard Hotkeys Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-        <div className="flex items-center space-x-3">
-          <Link href="/" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">New Tax Invoice (POS)</h1>
-            <p className="text-xs text-slate-500">Multi-item billing with dual GST, hold bills, and cash calculator</p>
+    // FULL-SCREEN POS TERMINAL POPUP: Overlays 100vw x 100vh with no sidebar clutter
+    <div className="fixed inset-0 z-[100] w-screen h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden font-sans select-none animate-in fade-in duration-150">
+      
+      {/* 1. TOP POS TERMINAL HEADER */}
+      <header className="h-14 px-4 sm:px-6 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0 shadow-md">
+        {/* Left: Brand, Store Name & Counter */}
+        <div className="flex items-center space-x-3 min-w-0">
+          <div className="h-9 w-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-inner shrink-0">
+            <Sparkles className="w-5 h-5 text-amber-300" />
+          </div>
+          <div className="truncate">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm sm:text-base font-black tracking-tight text-white truncate">
+                {business.name}
+              </span>
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                POS Terminal v2.0
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium">
+              Counter 1 • GSTIN: {business.gstin || "Unregistered"} • Place of Supply: {customerState}
+            </p>
           </div>
         </div>
 
-        {/* Hold, Recall, Fullscreen Actions & Offline Pill */}
-        <div className="flex items-center space-x-2">
+        {/* Middle: Keyboard Hotkeys Guide */}
+        <div className="hidden xl:flex items-center space-x-2 text-[11px] text-slate-300 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 font-mono">
+          <span className="text-slate-400 font-sans font-bold">Hotkeys:</span>
+          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F1</kbd> Cash</span>
+          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F2</kbd> +Line</span>
+          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F3</kbd> Card</span>
+          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F4</kbd> UPI</span>
+          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F7</kbd> Hold</span>
+          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F8</kbd> Carts</span>
+          <span><kbd className="bg-slate-700 text-white px-1 rounded font-bold">F9</kbd> New</span>
+          <span><kbd className="bg-emerald-700 text-white px-1.5 rounded font-bold">Enter</kbd> Print</span>
+        </div>
+
+        {/* Right: Actions, Fullscreen Toggle, and Exit POS */}
+        <div className="flex items-center space-x-2 shrink-0">
           <OfflineStatusPill />
 
-          {/* Instant Open POS Checkout Terminal */}
-          <button
-            type="button"
-            onClick={ensureCartAndOpenPos}
-            className="rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 text-white px-3.5 py-2 text-xs font-black shadow-md hover:from-indigo-500 hover:to-indigo-700 transition flex items-center space-x-1.5"
-            title="Open World-Class POS Payment & Cash Tender Terminal (F4)"
-          >
-            <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
-            <span>⚡ Open POS Checkout</span>
-            <span className="hidden md:inline rounded bg-black/20 px-1 py-0.2 text-[9px] font-mono">F4</span>
-          </button>
-
-          {/* Fullscreen POS Toggle */}
-          <button
-            type="button"
-            onClick={toggleFullScreenPOS}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition flex items-center space-x-1.5 shadow-sm"
-            title="Toggle full screen dedicated POS terminal (F11)"
-          >
-            {isFullScreenPOS ? <Minimize2 className="h-4 w-4 text-indigo-600" /> : <Maximize2 className="h-4 w-4 text-indigo-600" />}
-            <span className="hidden sm:inline">{isFullScreenPOS ? "Exit Fullscreen" : "Fullscreen POS"}</span>
-            <span className="hidden md:inline rounded bg-slate-100 px-1 py-0.2 text-[9px] font-mono text-slate-500">F11</span>
-          </button>
-
-          {/* Hold Current Bill Button */}
+          {/* Hold Current Cart */}
           <button
             type="button"
             onClick={handleHoldBill}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition flex items-center space-x-1.5 shadow-sm"
+            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition flex items-center space-x-1"
             title="Park current cart to serve next customer (F7)"
           >
-            <PauseCircle className="h-4 w-4 text-amber-500" />
-            <span>Hold Bill</span>
-            <span className="hidden md:inline rounded bg-slate-100 px-1 py-0.2 text-[9px] font-mono text-slate-500">F7</span>
+            <PauseCircle className="h-4 w-4 text-amber-400" />
+            <span className="hidden md:inline">Hold</span>
+            <span className="text-[9px] font-mono opacity-60">F7</span>
           </button>
 
-          {/* Recall Held Bills Button */}
+          {/* Recall Held Carts */}
           <button
             type="button"
             onClick={() => setShowHeldModal(true)}
-            className={`rounded-xl px-3 py-2 text-xs font-bold transition flex items-center space-x-1.5 shadow-sm ${
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1 ${
               heldBills.length > 0
-                ? 'bg-amber-500 text-white hover:bg-amber-600'
-                : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-sm'
+                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
             }`}
             title="Recall parked carts (F8)"
           >
             <FolderOpen className="h-4 w-4" />
-            <span>Held Carts ({heldBills.length})</span>
-            <span className="hidden md:inline rounded bg-black/10 px-1 py-0.2 text-[9px] font-mono">F8</span>
+            <span className="hidden md:inline">Carts</span>
+            <span className="rounded-full bg-black/20 px-1 text-[10px] font-mono">{heldBills.length}</span>
           </button>
-        </div>
-      </div>
 
-      {/* Keyboard Shortcuts Helper Ribbon */}
-      <div className="hidden lg:flex items-center justify-between rounded-xl bg-slate-900 text-slate-300 px-4 py-2 text-[11px] font-medium">
-        <div className="flex items-center space-x-3.5">
-          <span className="flex items-center space-x-1 text-slate-400 font-bold">
-            <Keyboard className="h-3.5 w-3.5 text-indigo-400" />
-            <span>Hotkeys:</span>
-          </span>
-          <span><kbd className="bg-indigo-600 text-white px-1.5 py-0.5 rounded font-mono font-bold">F4 / Ctrl+↵</kbd> Pay & Tender</span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F2</kbd> +Line</span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F7</kbd> Hold</span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F8</kbd> Carts</span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F9</kbd> Reset</span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F11</kbd> Fullscreen</span>
-        </div>
-        <div className="text-[10px] text-slate-400 font-mono">
-          Tax Rule: {isIntraState ? "CGST (9%) + SGST (9%)" : "IGST (18%)"}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left 2 Columns: Bill Entry Form */}
-        <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-          {/* Customer Selection & Search */}
-          <CustomerSearch
-            customerName={customerName}
-            customerPhone={customerPhone}
-            onSelectCustomer={handleSelectCustomer}
-            onNameChange={setCustomerName}
-            onPhoneChange={setCustomerPhone}
-          />
-
-          {/* Tax Jurisdiction & Payment Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">State / Place of Supply</label>
-              <select
-                value={customerState}
-                onChange={(e) => setCustomerState(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-              >
-                <option value="32">Kerala (32 - Intra-state CGST + SGST)</option>
-                <option value="33">Tamil Nadu (33 - Inter-state IGST)</option>
-                <option value="29">Karnataka (29 - Inter-state IGST)</option>
-                <option value="27">Maharashtra (27 - Inter-state IGST)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Status</label>
-              <select
-                value={paymentStatus}
-                onChange={(e) => setPaymentStatus(e.target.value as "PAID" | "UNPAID")}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none font-semibold"
-              >
-                <option value="PAID">Paid in Full (Cash / UPI)</option>
-                <option value="UNPAID">Unpaid (Customer Credit / Udhar)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Line Items with Searchable Combobox */}
-          <div className="border-t border-slate-100 pt-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-slate-900">
-                Line Items ({billItems.filter((i) => i.productId).length})
-              </h3>
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="inline-flex items-center space-x-1 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Add Item (F2)</span>
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {billItems.map((item, idx) => {
-                const itemSubtotal = item.price * item.quantity;
-                return (
-                  <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700">
-                      {idx + 1}
-                    </span>
-
-                    {/* Searchable Product Combobox */}
-                    <div className="flex-1 min-w-[220px] w-full">
-                      <label className="block text-[10px] font-semibold text-slate-500 sm:hidden">Product Search</label>
-                      <ProductSearchCombobox
-                        products={catalog}
-                        selectedProductId={item.productId}
-                        onSelect={(prod) => handleProductSelect(idx, prod)}
-                      />
-                      {item.batchNumber && (
-                        <div className="mt-1 flex items-center space-x-1.5 text-[10px]">
-                          <span className="rounded bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 font-mono font-bold text-indigo-700">
-                            Batch: {item.batchNumber}
-                          </span>
-                          {item.batchExpiry && (
-                            <span className="text-slate-500">
-                              Exp: {new Date(item.batchExpiry).toLocaleDateString("en-IN", { month: "short", year: "2-digit" })}
-                            </span>
-                          )}
-                          {item.batchMrp && (
-                            <span className="text-slate-400">
-                              MRP: ₹{item.batchMrp}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Qty */}
-                    <div className="w-20">
-                      <label className="block text-[10px] font-semibold text-slate-500 sm:hidden">Qty</label>
-                      <input
-                        type="number"
-                        min="1"
-                        disabled={!item.productId}
-                        value={item.quantity}
-                        onChange={(e) => handleQuantityChange(idx, Number(e.target.value))}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-center font-bold focus:border-indigo-500 focus:outline-none disabled:bg-slate-100"
-                      />
-                    </div>
-
-                    {/* Price */}
-                    <div className="w-24">
-                      <label className="block text-[10px] font-semibold text-slate-500 sm:hidden">Price (₹)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        disabled={!item.productId}
-                        value={item.price}
-                        onChange={(e) => handlePriceChange(idx, Number(e.target.value))}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-right font-medium focus:border-indigo-500 focus:outline-none disabled:bg-slate-100"
-                      />
-                    </div>
-
-                    {/* Line Total */}
-                    <div className="w-28 text-right shrink-0">
-                      <div className="text-xs font-bold text-slate-900">₹{itemSubtotal.toFixed(2)}</div>
-                      <div className="text-[10px] text-slate-400">
-                        {item.productId ? `+${item.gst}% GST` : "Select item"}
-                      </div>
-                    </div>
-
-                    {/* Remove */}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(idx)}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-600 hover:text-indigo-800"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>+ Add Another Product (F2)</span>
-              </button>
-            </div>
-          </div>
-
+          {/* Fullscreen Hardware POS Mode */}
           <button
             type="button"
-            onClick={ensureCartAndOpenPos}
-            disabled={isSubmitting}
-            className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 py-4 text-sm font-black text-white shadow-xl hover:shadow-indigo-500/30 hover:from-indigo-500 hover:to-indigo-700 transition flex items-center justify-center space-x-2 cursor-pointer"
+            onClick={toggleFullScreenPOS}
+            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition"
+            title="Toggle Fullscreen Browser Mode (F11)"
           >
-            {isSubmitting ? (
-              <RefreshCw className="h-5 w-5 animate-spin" />
-            ) : (
-              <Sparkles className="h-5 w-5 text-amber-300 animate-pulse" />
-            )}
-            <span>
-              {isSubmitting
-                ? "Processing Sale..."
-                : `⚡ Pay & Tender Terminal (F4 / Ctrl+Enter) • ₹${grandTotal > 0 ? grandTotal.toFixed(2) : 'Open Counter'}`}
-            </span>
+            {isFullScreenPOS ? <Minimize2 className="h-4 w-4 text-indigo-400" /> : <Maximize2 className="h-4 w-4 text-indigo-400" />}
+          </button>
+
+          {/* Exit POS / Back to Dashboard */}
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600 border border-rose-500/40 text-rose-300 hover:text-white text-xs font-bold transition flex items-center space-x-1"
+            title="Exit POS Terminal to Dashboard (Esc)"
+          >
+            <X className="h-4 w-4" />
+            <span className="hidden sm:inline">Exit POS</span>
           </button>
         </div>
+      </header>
 
-        {/* Right Column: Live Bill Summary, Payment Tender & Cash Calculator */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between space-y-6">
+      {/* 2. MAIN BODY: 2-COLUMN FULLSCREEN SPLIT TERMINAL */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
+        {/* LEFT PANEL: CART, ITEMS & CUSTOMER SELECTOR (52% on Desktop) */}
+        <section className="w-full lg:w-[52%] border-b lg:border-b-0 lg:border-r border-slate-800 bg-slate-900/60 flex flex-col p-4 sm:p-5 overflow-hidden">
+          
+          {/* Customer Bar */}
+          <div className="mb-3 p-3 rounded-2xl bg-slate-900 border border-slate-800 shadow-inner shrink-0">
+            <CustomerSearch
+              customerName={customerName}
+              customerPhone={customerPhone}
+              onSelectCustomer={handleSelectCustomer}
+              onNameChange={setCustomerName}
+              onPhoneChange={setCustomerPhone}
+            />
+          </div>
+
+          {/* Barcode & Product Quick Search */}
+          <div className="mb-3 shrink-0">
+            <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+              Barcode Scanner / Fast Product Lookup
+            </label>
+            <ProductSearchCombobox
+              products={catalog}
+              selectedProductId=""
+              onSelect={(product) => {
+                if (!product) return;
+                // If the first row is empty, fill it; otherwise append a new row
+                const emptyIdx = billItems.findIndex((i) => !i.productId);
+                if (emptyIdx !== -1) {
+                  handleProductSelect(emptyIdx, product);
+                } else {
+                  setBillItems((prev) => [
+                    ...prev,
+                    {
+                      id: `row-${Date.now()}`,
+                      productId: product.id,
+                      name: product.name,
+                      hsn: product.hsnCode || "8504",
+                      quantity: 1,
+                      price: Number(product.sellingPrice) || 0,
+                      gst: Number(product.gstRate) || 18,
+                    },
+                  ]);
+                }
+              }}
+            />
+          </div>
+
+          {/* Cart Items List Table */}
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 rounded-2xl bg-slate-950/40 p-2 border border-slate-800/80">
+            <div className="flex items-center justify-between px-2 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <span>Cart Items ({billItems.filter(i => i.productId && i.price > 0).length})</span>
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="inline-flex items-center space-x-1 text-indigo-400 hover:text-indigo-300 font-bold"
+              >
+                <Plus className="h-3 w-3" />
+                <span>+ Add Row (F2)</span>
+              </button>
+            </div>
+
+            {billItems.map((item, idx) => {
+              const itemSubtotal = item.price * item.quantity;
+              return (
+                <div 
+                  key={item.id} 
+                  className={`p-3 rounded-xl border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                    item.productId ? 'bg-slate-900 border-slate-800' : 'bg-slate-900/40 border-dashed border-slate-800'
+                  }`}
+                >
+                  {/* Product Picker */}
+                  <div className="flex-1 min-w-[200px] w-full">
+                    <ProductSearchCombobox
+                      products={catalog}
+                      selectedProductId={item.productId}
+                      onSelect={(prod) => handleProductSelect(idx, prod)}
+                    />
+                    {item.batchNumber && (
+                      <div className="mt-1 flex items-center space-x-1.5 text-[10px]">
+                        <span className="rounded bg-indigo-950 border border-indigo-700 px-1.5 py-0.2 font-mono font-bold text-indigo-300">
+                          Batch: {item.batchNumber}
+                        </span>
+                        {item.batchExpiry && (
+                          <span className="text-slate-400">
+                            Exp: {new Date(item.batchExpiry).toLocaleDateString("en-IN", { month: "short", year: "2-digit" })}
+                          </span>
+                        )}
+                        {item.batchMrp && (
+                          <span className="text-slate-400">
+                            MRP: ₹{item.batchMrp}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quantity Stepper */}
+                  <div className="flex items-center space-x-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange(idx, Math.max(1, item.quantity - 1))}
+                      className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-black text-sm flex items-center justify-center"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => handleQuantityChange(idx, Number(e.target.value))}
+                      className="w-12 h-7 rounded-lg bg-slate-950 border border-slate-700 text-white font-black text-xs text-center focus:border-indigo-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange(idx, item.quantity + 1)}
+                      className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-black text-sm flex items-center justify-center"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* Price */}
+                  <div className="w-24 shrink-0">
+                    <input
+                      type="number"
+                      min="0"
+                      value={item.price}
+                      onChange={(e) => handlePriceChange(idx, Number(e.target.value))}
+                      className="w-full h-7 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono font-bold text-xs text-right px-2 focus:border-indigo-500 focus:outline-none"
+                      placeholder="₹ Price"
+                    />
+                    <span className="block text-[9px] text-slate-400 text-right mt-0.5 font-mono">
+                      +{item.gst}% GST
+                    </span>
+                  </div>
+
+                  {/* Line Total */}
+                  <div className="w-20 text-right shrink-0">
+                    <div className="font-mono font-black text-sm text-white">
+                      ₹{itemSubtotal.toFixed(2)}
+                    </div>
+                  </div>
+
+                  {/* Trash */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(idx)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition shrink-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Subtotal Summary Footer */}
+          <div className="mt-3 p-3.5 rounded-2xl bg-slate-900 border border-slate-800 shrink-0 text-xs text-slate-400 space-y-1">
+            <div className="flex justify-between">
+              <span>Taxable Subtotal:</span>
+              <span className="font-mono font-bold text-slate-200">₹{totalTaxable.toFixed(2)}</span>
+            </div>
+            {isIntraState ? (
+              <div className="flex justify-between text-indigo-300">
+                <span>CGST (9%) + SGST (9%):</span>
+                <span className="font-mono font-bold">₹{(totalCgst + totalSgst).toFixed(2)}</span>
+              </div>
+            ) : (
+              <div className="flex justify-between text-indigo-300">
+                <span>Integrated IGST (18%):</span>
+                <span className="font-mono font-bold">₹{totalIgst.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+
+        </section>
+
+        {/* RIGHT PANEL: WORLD'S MOST ADVANCED TENDER & PAYMENT CONSOLE (48% on Desktop) */}
+        <main className="w-full lg:w-[48%] flex flex-col bg-slate-950 p-4 sm:p-5 justify-between overflow-y-auto">
+          
           <div className="space-y-4">
-            {/* Business Header */}
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+            
+            {/* GIANT LIVE PAYABLE BANNER */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 border border-indigo-700/50 shadow-xl flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">{business.name}</h3>
-                <p className="text-xs text-slate-500">GSTIN: {business.gstin}</p>
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300 block">
+                  Net Amount Payable
+                </span>
+                <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-white mt-0.5">
+                  ₹{grandTotal.toFixed(2)}
+                </div>
+                <div className="text-[11px] text-indigo-300 mt-1">
+                  Taxable: ₹{totalTaxable.toFixed(2)} • GST: ₹{(isIntraState ? totalCgst + totalSgst : totalIgst).toFixed(2)}
+                </div>
               </div>
-              <span className="rounded-md bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">POS Terminal</span>
+
+              <div className="text-right">
+                <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {billItems.filter(i => i.productId && i.price > 0).length} Items
+                </span>
+              </div>
             </div>
 
-            {/* Payment Method Selector */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-600">Settlement Mode</label>
-              <div className="grid grid-cols-3 gap-1.5">
+            {/* PAYMENT MODE SELECTOR TABS */}
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                Settlement Tender Mode
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
                 {[
-                  { id: 'UPI', label: 'UPI (QR)' },
-                  { id: 'CASH', label: 'Cash Tender' },
-                  { id: 'CREDIT', label: 'Khata / Credit' },
-                ].map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => {
-                      setPaymentMode(mode.id as any);
-                      if (mode.id === 'CREDIT') {
-                        setPaymentStatus('UNPAID');
-                      } else {
-                        setPaymentStatus('PAID');
-                      }
-                    }}
-                    className={`py-2 rounded-xl text-xs font-bold transition ${
-                      paymentMode === mode.id
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
+                  { id: 'CASH', label: 'Cash', hotkey: 'F1', icon: Banknote },
+                  { id: 'UPI', label: 'UPI QR', hotkey: 'F4', icon: QrCode },
+                  { id: 'CARD', label: 'Card', hotkey: 'F3', icon: CreditCard },
+                  { id: 'SPLIT', label: 'Split', hotkey: 'F4', icon: Layers },
+                  { id: 'CREDIT', label: 'Khata', hotkey: 'F5', icon: BookOpen },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = paymentMode === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setPaymentMode(tab.id as any);
+                        if (tab.id === 'CREDIT') {
+                          setPaymentStatus('UNPAID');
+                        } else {
+                          setPaymentStatus('PAID');
+                        }
+                      }}
+                      className={`py-2 px-1 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center space-y-1 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                          : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="text-[11px] font-black">{tab.label}</span>
+                      <span className="text-[9px] font-mono opacity-50">{tab.hotkey}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* CASH TENDER & CHANGE RETURN CALCULATOR */}
+            {/* 1. CASH TENDER CONSOLE */}
             {paymentMode === 'CASH' && (
-              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-3">
-                <div className="flex items-center space-x-1.5 text-xs font-bold text-amber-900">
-                  <Banknote className="h-4 w-4 text-amber-600" />
-                  <span>Cash Tender & Change Return</span>
-                </div>
-
+              <div className="space-y-3.5 animate-in fade-in duration-150">
+                {/* Cash Input */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-amber-800 mb-1">
-                    Cash Received from Customer (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={cashReceived}
-                    onChange={(e) => setCashReceived(e.target.value)}
-                    placeholder="Enter cash note e.g. 500 or 2000"
-                    className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-base font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-300">
+                      Cash Received from Customer (₹)
+                    </label>
+                    {numericCashReceived > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setCashReceived('')}
+                        className="text-[11px] font-bold text-rose-400 hover:underline"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xl font-black text-slate-500 font-mono">
+                      ₹
+                    </span>
+                    <input
+                      type="text"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value.replace(/[^0-9.]/g, ''))}
+                      placeholder="0.00"
+                      className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-slate-900 border-2 border-indigo-500 text-white font-mono font-black text-2xl tracking-wide focus:outline-none focus:ring-4 focus:ring-indigo-500/20 shadow-inner"
+                    />
+                  </div>
                 </div>
 
-                {/* Quick Cash Chips */}
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setCashReceived(String(Math.ceil(grandTotal)))}
-                    className="rounded-lg bg-white border border-amber-300 px-2 py-1 text-[10px] font-bold text-amber-900 hover:bg-amber-100"
-                  >
-                    Exact (₹{Math.ceil(grandTotal)})
-                  </button>
-                  {[100, 200, 500, 1000, 2000]
-                    .filter((note) => note >= grandTotal)
-                    .slice(0, 3)
-                    .map((note) => (
+                {/* Interactive Currency Denomination Chips */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Quick Currency Denominations
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {denominations.map((denom) => (
                       <button
-                        key={note}
+                        key={denom.label}
                         type="button"
-                        onClick={() => setCashReceived(String(note))}
-                        className="rounded-lg bg-white border border-amber-300 px-2 py-1 text-[10px] font-bold text-amber-900 hover:bg-amber-100"
+                        onClick={() => setCashReceived(String(denom.value))}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition font-mono ${
+                          numericCashReceived === denom.value
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-slate-900 border border-slate-800 text-slate-200 hover:border-indigo-400 hover:bg-slate-800'
+                        }`}
                       >
-                        ₹{note} Note
+                        {denom.label}
                       </button>
                     ))}
+                    {[50, 100, 500].map((step) => (
+                      <button
+                        key={step}
+                        type="button"
+                        onClick={() => setCashReceived(String(numericCashReceived + step))}
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold font-mono bg-slate-800 text-indigo-300 border border-slate-700 hover:bg-slate-700"
+                      >
+                        +{step}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Return Change Banner */}
+                {/* Tactile On-Screen NumPad */}
+                <div className="grid grid-cols-4 gap-1.5 max-w-sm">
+                  {['7', '8', '9', 'C', '4', '5', '6', 'BACK', '1', '2', '3', '.', '0', '00'].map((btn) => (
+                    <button
+                      key={btn}
+                      type="button"
+                      onClick={() => handleNumpadPress(btn)}
+                      className={`h-10 rounded-xl text-base font-black font-mono transition flex items-center justify-center shadow-xs active:scale-95 ${
+                        btn === 'C'
+                          ? 'bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-900'
+                          : btn === 'BACK'
+                          ? 'bg-amber-950/60 border border-amber-800 text-amber-300 hover:bg-amber-900 text-xs'
+                          : 'bg-slate-900 border border-slate-800 text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      {btn === 'BACK' ? '⌫' : btn}
+                    </button>
+                  ))}
+                </div>
+
+                {/* GIANT REAL-TIME CHANGE RETURN ENGINE */}
                 {numericCashReceived > 0 && (
-                  <div className="pt-2 border-t border-amber-200/80">
+                  <div className="pt-2">
                     {changeDue > 0 ? (
-                      <div className="rounded-xl bg-emerald-600 text-white p-3 text-center shadow-sm">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider block opacity-90">
-                          Cashier Return to Customer:
-                        </span>
-                        <span className="text-xl font-black block mt-0.5">
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-widest opacity-90">
+                            Cashier Return to Customer:
+                          </span>
+                          <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                            Cash Change
+                          </span>
+                        </div>
+                        <div className="text-3xl font-black font-mono tracking-tight">
                           ₹{changeDue.toFixed(2)}
-                        </span>
+                        </div>
+
+                        {/* Smart Indian Notes Recommendation */}
+                        {returnNotes.length > 0 && (
+                          <div className="pt-2 border-t border-white/20 flex flex-wrap items-center gap-1.5 text-xs">
+                            <span className="text-[10px] opacity-90 font-bold">Give Notes:</span>
+                            {returnNotes.map((note, nIdx) => (
+                              <span key={nIdx} className="px-2 py-0.5 rounded-md bg-white/20 font-mono font-black text-[11px]">
+                                {note.count} × {note.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ) : remainingDue > 0 ? (
-                      <div className="rounded-xl bg-rose-600 text-white p-2 text-center text-xs font-bold">
-                        Shortage / Due: ₹{remainingDue.toFixed(2)}
+                      <div className="p-3 rounded-2xl bg-rose-950/80 border border-rose-800 text-rose-300 text-center text-xs font-bold">
+                        Shortage / Due from Customer: ₹{remainingDue.toFixed(2)}
                       </div>
                     ) : (
-                      <div className="rounded-xl bg-emerald-100 text-emerald-900 p-2 text-center text-xs font-bold">
+                      <div className="p-3 rounded-2xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-center text-xs font-bold">
                         ✓ Exact Cash Received
                       </div>
                     )}
@@ -1098,158 +1283,195 @@ export default function NewInvoicePage() {
               </div>
             )}
 
-            {/* Bill Summary Breakdown */}
-            <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
-              <div className="flex justify-between">
-                <span>Customer:</span>
-                <span className="font-semibold text-slate-900">{customerName || "Walk-in Cash"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Taxable Subtotal:</span>
-                <span>₹{totalTaxable.toFixed(2)}</span>
-              </div>
-
-              {isIntraState ? (
-                <>
-                  <div className="flex justify-between text-indigo-600">
-                    <span>CGST:</span>
-                    <span>₹{totalCgst.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-indigo-600">
-                    <span>SGST:</span>
-                    <span>₹{totalSgst.toFixed(2)}</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex justify-between text-indigo-600">
-                  <span>IGST:</span>
-                  <span>₹{totalIgst.toFixed(2)}</span>
-                </div>
-              )}
-
-              <div className="border-t border-slate-200 pt-2 flex justify-between font-black text-base text-slate-900">
-                <span>Net Payable:</span>
-                <span className="text-indigo-600">₹{grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* UPI QR Box (when UPI selected) */}
+            {/* 2. DYNAMIC NPCI UPI QR CONSOLE */}
             {paymentMode === 'UPI' && (
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 text-center">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white mb-2 shadow-sm">
-                  <QrCode className="h-5 w-5" />
+              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-3 animate-in fade-in duration-150">
+                <div className="inline-block p-3 rounded-2xl bg-white shadow-md">
+                  <QrCodeCanvas value={currentUpiUri} size={150} />
                 </div>
-                <p className="text-xs font-semibold text-slate-800">Dynamic NPCI UPI QR</p>
-                <p className="text-[10px] text-slate-500 mb-1">GPay • PhonePe • Paytm • BHIM</p>
-                <div className="rounded bg-white p-1.5 text-[10px] font-mono text-slate-600 break-all border border-slate-200">
-                  {business.upiId}
+                <div>
+                  <div className="text-xs font-black text-white">Dynamic NPCI UPI QR</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">PhonePe • GPay • Paytm • BHIM • Cred</div>
+                  <div className="mt-2 text-xs font-mono text-indigo-400 bg-slate-950 p-2 rounded-xl border border-slate-800 break-all">
+                    {business.upiId}
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleTriggerSoundbox}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+                      soundboxPlayed
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                    }`}
+                  >
+                    <Volume2 className="h-3.5 w-3.5 text-amber-400" />
+                    <span>{soundboxPlayed ? "Announced!" : "Test Voice Chime"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyUpi}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition flex items-center space-x-1.5"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>{copiedLink ? "Copied!" : "Copy Link"}</span>
+                  </button>
                 </div>
               </div>
             )}
-          </div>
 
-          <div className="pt-4 border-t border-slate-100 space-y-2">
-            <button
-              type="button"
-              onClick={ensureCartAndOpenPos}
-              disabled={isSubmitting}
-              className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 py-3 text-xs font-black text-white shadow-md transition flex items-center justify-center space-x-2 cursor-pointer"
-            >
-              <Sparkles className="h-4 w-4 text-amber-300" />
-              <span>⚡ Open Tender Terminal (F4)</span>
-            </button>
-
-            <a
-              href={`https://wa.me/91${customerPhone}?text=${encodeURIComponent(
-                `Hello ${customerName}, your invoice total is ₹${grandTotal.toFixed(
-                  2
-                )}. Pay directly via UPI: ${currentUpiUri}`
-              )}`}
-              target="_blank"
-              rel="noreferrer"
-              className={`w-full rounded-xl py-2.5 text-center text-xs font-semibold text-white flex items-center justify-center space-x-1 ${
-                customerPhone && totalTaxable > 0
-                  ? 'bg-emerald-600 hover:bg-emerald-700'
-                  : 'bg-slate-300 pointer-events-none'
-              }`}
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              <span>WhatsApp Invoice</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* 
-        MODAL: HELD BILLS / PARKED CARTS (F8)
-      */}
-      {showHeldModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
-              <div className="flex items-center space-x-2.5">
-                <div className="h-9 w-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                  <FolderOpen className="h-5 w-5" />
+            {/* 3. CARD / EDC CONSOLE */}
+            {paymentMode === 'CARD' && (
+              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 animate-in fade-in duration-150 text-xs">
+                <div className="font-bold text-slate-300">Swipe or Dip Card on EDC POS Machine</div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">
+                    Terminal Auth / Approval Code
+                  </label>
+                  <input
+                    type="text"
+                    value={cardRef}
+                    onChange={(e) => setCardRef(e.target.value)}
+                    placeholder="e.g. AUTH-84920"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
+                  />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Parked / Held Bills ({heldBills.length})
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Click any cart to resume billing for that customer
-                  </p>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">
+                    Card Last 4 Digits
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={cardLast4}
+                    onChange={(e) => setCardLast4(e.target.value)}
+                    placeholder="4242"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
+                  />
                 </div>
               </div>
-              <button
-                onClick={() => setShowHeldModal(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 transition"
+            )}
+
+            {/* 4. SPLIT TENDER CONSOLE */}
+            {paymentMode === 'SPLIT' && (
+              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 animate-in fade-in duration-150 text-xs">
+                <div className="font-bold text-slate-300">Split Payment (Cash + Online UPI/Card)</div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">
+                    Cash Tender Portion (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={splitCashInput}
+                    onChange={(e) => setSplitCashInput(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono font-bold"
+                  />
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between font-mono font-bold">
+                  <span className="text-slate-400">Remaining to Pay Online:</span>
+                  <span className="text-indigo-400">₹{splitOnlineRemaining.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* 5. KHATA / CREDIT CONSOLE */}
+            {paymentMode === 'CREDIT' && (
+              <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-800 text-amber-200 text-xs space-y-2 animate-in fade-in duration-150">
+                <div className="font-black text-sm text-amber-300">Customer Khata / Credit (Udhar)</div>
+                <p>
+                  This bill will be marked as <strong>UNPAID</strong> and added to {customerName || "Customer"}&apos;s credit ledger.
+                </p>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-amber-700/50 font-mono font-bold text-white flex justify-between">
+                  <span>Balance Due:</span>
+                  <span>₹{grandTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* BOTTOM ACTIONS: COMPLETE SALE & WHATSAPP */}
+          <div className="pt-4 border-t border-slate-800 space-y-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleCreateBill}
+              disabled={isSubmitting || totalTaxable === 0}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-base font-black shadow-xl shadow-emerald-900/30 transition flex items-center justify-center space-x-2 disabled:bg-slate-800 disabled:from-slate-800 disabled:to-slate-800 disabled:cursor-not-allowed cursor-pointer active:scale-98"
+            >
+              {isSubmitting ? (
+                <RefreshCw className="h-5 w-5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-5 w-5 text-white" />
+              )}
+              <span>
+                {isSubmitting ? "Recording Transaction..." : `⚡ Complete Sale & Print (Enter) • ₹${grandTotal.toFixed(2)}`}
+              </span>
+            </button>
+
+            {customerPhone && (
+              <a
+                href={`https://wa.me/91${customerPhone}?text=${encodeURIComponent(
+                  `Hello ${customerName}, your invoice total is ₹${grandTotal.toFixed(2)}. Pay directly via UPI: ${currentUpiUri}`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold text-center flex items-center justify-center space-x-1.5 transition"
               >
+                <Share2 className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Send WhatsApp Receipt to {customerPhone}</span>
+              </a>
+            )}
+          </div>
+
+        </main>
+      </div>
+
+      {/* 3. MODALS (Parked Carts, Batches, Thermal Roll Receipt) */}
+
+      {/* Held Bills / Parked Carts Modal (F8) */}
+      {showHeldModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 text-white shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950">
+              <div className="flex items-center space-x-2.5">
+                <div className="h-8 w-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <FolderOpen className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Parked / Held Carts ({heldBills.length})</h3>
+                  <p className="text-[11px] text-slate-400">Click any cart to resume billing for that customer</p>
+                </div>
+              </div>
+              <button onClick={() => setShowHeldModal(false)} className="text-slate-400 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Modal List */}
             <div className="p-6 overflow-y-auto space-y-3">
               {heldBills.length === 0 ? (
-                <div className="text-center py-12 text-slate-400">
+                <div className="text-center py-10 text-slate-400">
                   <PauseCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-xs">No bills are currently on hold.</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Press F7 anytime to park a customer cart.</p>
+                  <p className="text-xs">No carts are currently on hold.</p>
                 </div>
               ) : (
                 heldBills.map((bill) => (
                   <div
                     key={bill.id}
                     onClick={() => handleRecallBill(bill)}
-                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-amber-50 hover:border-amber-300 transition cursor-pointer flex items-center justify-between gap-3 group"
+                    className="p-3.5 rounded-xl border border-slate-800 bg-slate-950 hover:border-amber-400 transition cursor-pointer flex items-center justify-between"
                   >
                     <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-bold text-slate-900 text-xs">{bill.customerName}</span>
-                        <span className="flex items-center space-x-1 text-[10px] text-slate-400 font-medium">
-                          <Clock className="h-3 w-3" />
-                          <span>{bill.heldAt}</span>
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-1">
-                        {bill.items.length} Product{bill.items.length > 1 ? 's' : ''} ({bill.items.map((i) => i.name).slice(0, 2).join(', ')}{bill.items.length > 2 ? '...' : ''})
-                      </div>
+                      <div className="font-bold text-xs text-white">{bill.customerName} ({bill.heldAt})</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">{bill.items.length} Products</div>
                     </div>
-
-                    <div className="flex items-center space-x-3 shrink-0">
-                      <div className="text-right">
-                        <div className="font-black text-sm text-slate-900">₹{bill.total.toFixed(2)}</div>
-                        <span className="text-[10px] font-bold text-amber-600 group-hover:underline">
-                          Resume Cart →
-                        </span>
-                      </div>
-
+                    <div className="flex items-center space-x-3">
+                      <div className="font-mono font-black text-sm text-white">₹{bill.total.toFixed(2)}</div>
                       <button
                         type="button"
                         onClick={(e) => handleDeleteHeldBill(bill.id, e)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                        title="Discard cart"
+                        className="p-1 text-slate-400 hover:text-rose-400"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -1259,12 +1481,11 @@ export default function NewInvoicePage() {
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end px-6 py-3 border-t border-slate-100 bg-slate-50">
+            <div className="flex items-center justify-end px-6 py-3 border-t border-slate-800 bg-slate-950">
               <button
                 type="button"
                 onClick={() => setShowHeldModal(false)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold"
               >
                 Close (Esc)
               </button>
@@ -1273,121 +1494,37 @@ export default function NewInvoicePage() {
         </div>
       )}
 
-      {/* Multi-Batch & Expiry Selection Modal (FEFO) */}
+      {/* FEFO Batch Picker Modal */}
       {showBatchModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm md:text-base flex items-center space-x-2">
-                  <span>Select Active Batch</span>
-                  <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
-                    FEFO Recommended
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Multiple MRPs & Expiries detected for this product
-                </p>
-              </div>
-              <button
-                onClick={() => setShowBatchModal(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
-              >
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 text-white shadow-2xl border border-slate-800 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950">
+              <h3 className="font-bold text-sm">Select Active Batch (FEFO Recommended)</h3>
+              <button onClick={() => setShowBatchModal(false)} className="text-slate-400 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
-
             <div className="p-6 space-y-3 max-h-80 overflow-y-auto">
-              {availableBatches.map((b, bIdx) => {
-                const isExpSoon = b.expiryStatus === "EXPIRING_SOON";
-                const isExp = b.expiryStatus === "EXPIRED";
-                return (
-                  <div
-                    key={b.id}
-                    onClick={() => handlePickBatch(b)}
-                    className={`p-3.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                      isExp
-                        ? 'border-rose-200 bg-rose-50/50 opacity-60'
-                        : isExpSoon
-                        ? 'border-amber-300 bg-amber-50/50 hover:bg-amber-100/60'
-                        : 'border-slate-200 bg-white hover:border-indigo-400 hover:bg-indigo-50/30'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono font-bold text-xs text-indigo-700">
-                          Batch: {b.batchNumber}
-                        </span>
-                        {bIdx === 0 && (
-                          <span className="rounded bg-emerald-100 px-1.5 py-0.2 text-[9px] font-bold text-emerald-800">
-                            Oldest Expiry (Sell First)
-                          </span>
-                        )}
-                        {isExpSoon && (
-                          <span className="rounded bg-amber-100 px-1.5 py-0.2 text-[9px] font-bold text-amber-800">
-                            Expiring in {b.daysRemaining}d
-                          </span>
-                        )}
-                        {isExp && (
-                          <span className="rounded bg-rose-100 px-1.5 py-0.2 text-[9px] font-bold text-rose-800">
-                            Expired
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-1 flex items-center space-x-3">
-                        <span>Stock: <strong>{Number(b.currentStock)} PCS</strong></span>
-                        {b.expiryDate && (
-                          <span>Exp: <strong>{new Date(b.expiryDate).toLocaleDateString("en-IN")}</strong></span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="font-black text-sm text-emerald-700">₹{Number(b.sellingPrice).toFixed(2)}</div>
-                      <div className="text-[10px] text-slate-400">MRP: ₹{Number(b.mrp).toFixed(2)}</div>
-                    </div>
+              {availableBatches.map((b, bIdx) => (
+                <div
+                  key={b.id}
+                  onClick={() => handlePickBatch(b)}
+                  className="p-3 rounded-xl border border-slate-800 bg-slate-950 hover:border-indigo-500 transition cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <span className="font-mono font-bold text-xs text-indigo-400">Batch: {b.batchNumber}</span>
+                    <div className="text-[11px] text-slate-400 mt-1">Stock: {Number(b.currentStock)} PCS</div>
                   </div>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between px-6 py-3 border-t border-slate-100 bg-slate-50 text-xs">
-              <span className="text-slate-500 text-[11px]">Tip: Always sell earlier expiries first</span>
-              <button
-                type="button"
-                onClick={() => setShowBatchModal(false)}
-                className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-              >
-                Skip Batch
-              </button>
+                  <div className="text-right">
+                    <div className="font-mono font-black text-sm text-emerald-400">₹{Number(b.sellingPrice).toFixed(2)}</div>
+                    <div className="text-[10px] text-slate-500">MRP: ₹{Number(b.mrp).toFixed(2)}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       )}
-
-      {/* World-Class Full-Screen POS Payment & Tender Terminal Modal */}
-      <PosPaymentModal
-        isOpen={showPosPaymentModal}
-        onClose={() => setShowPosPaymentModal(false)}
-        grandTotal={grandTotal}
-        totalTaxable={totalTaxable}
-        totalTax={isIntraState ? totalCgst + totalSgst : totalIgst}
-        items={billItems
-          .filter((i) => i.productId && i.price > 0)
-          .map((i) => ({
-            name: i.name,
-            quantity: i.quantity,
-            price: i.price,
-            gst: i.gst,
-            batchNumber: i.batchNumber,
-          }))}
-        customerName={customerName}
-        customerPhone={customerPhone}
-        upiId={business.upiId || ""}
-        businessName={business.name}
-        onCompleteSale={handleCompleteSaleFromModal}
-        isSubmitting={isSubmitting}
-      />
 
       {/* ESC/POS Thermal Roll Receipt Modal (80mm / 58mm) */}
       <ThermalReceiptModal
