@@ -107,5 +107,24 @@ describe("AI Invoice Scanner & Pharmaceutical/Medical Verification", () => {
         assert.doesNotMatch(err.message, /Fully Synthetic Engine Oil/);
       }
     });
+
+    test("should format error messages into clean, user-friendly plain English without URLs or SDK traces", () => {
+      const { cleanHumanReadableAiError } = require("../src/lib/ai-invoice-scanner");
+      
+      const rawGoogle404 = "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent: [404 Not Found] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels";
+      const friendly404 = cleanHumanReadableAiError(rawGoogle404);
+      assert.doesNotMatch(friendly404, /https:\/\/generativelanguage/);
+      assert.doesNotMatch(friendly404, /v1beta/);
+      assert.doesNotMatch(friendly404, /ModelService/);
+      assert.match(friendly404, /Google AI model is currently unavailable/i);
+
+      const rawGoogle403 = "Your project has been denied access. Please contact support. [403 PERMISSION_DENIED]";
+      const friendly403 = cleanHumanReadableAiError(rawGoogle403);
+      assert.match(friendly403, /Google Cloud access denied/i);
+
+      const rawGoogleInvalidKey = "API key not valid. Please pass a valid API key. [400 API_KEY_INVALID]";
+      const friendlyInvalid = cleanHumanReadableAiError(rawGoogleInvalidKey);
+      assert.match(friendlyInvalid, /Google Gemini API key is invalid/i);
+    });
   });
 });

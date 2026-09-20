@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limiter";
-import { scanPurchaseInvoiceWithGemini } from "@/lib/ai-invoice-scanner";
+import { scanPurchaseInvoiceWithGemini, cleanHumanReadableAiError } from "@/lib/ai-invoice-scanner";
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_MIME_TYPES = new Set([
@@ -91,10 +91,11 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: any) {
     console.error("Error in /api/scan-purchase:", error);
+    const friendlyError = cleanHumanReadableAiError(error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to scan invoice",
+        error: friendlyError,
       },
       { status: 400 }
     );

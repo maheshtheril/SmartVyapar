@@ -35,6 +35,34 @@ export const ScannedInvoiceResultSchema = z.object({
 export type ScannedPurchaseItem = z.infer<typeof ScannedPurchaseItemSchema>;
 export type ScannedInvoiceResult = z.infer<typeof ScannedInvoiceResultSchema>;
 
+export function cleanHumanReadableAiError(error: any): string {
+  if (!error) {
+    return "AI scanning service is currently unavailable. Please verify your Google API key or enter items manually.";
+  }
+  const msg = typeof error === "string" ? error : error.message || String(error);
+
+  if (/API_KEY_INVALID|API key not valid/i.test(msg)) {
+    return "Google Gemini API key is invalid. Please verify your key in Settings or paste an active key below.";
+  }
+  if (/PERMISSION_DENIED|denied access|403/i.test(msg)) {
+    return "Google Cloud access denied (Permission Denied). Please ensure Generative Language API is enabled on your Google project or paste an active Gemini key below.";
+  }
+  if (/RESOURCE_EXHAUSTED|quota|429/i.test(msg)) {
+    return "Google AI rate limit or quota exceeded. Please wait a minute or use a custom API key below.";
+  }
+  if (/not found|404|no longer available/i.test(msg)) {
+    return "The requested Google AI model is currently unavailable. Please verify your Google AI Studio key.";
+  }
+  if (/timed out|timeout/i.test(msg)) {
+    return "AI invoice processing timed out. Please check your network connection or upload a clearer, smaller image.";
+  }
+  if (/Gemini AI OCR is not configured/i.test(msg)) {
+    return "Google Gemini API key is not configured. Please paste your Gemini API key below or enter invoice items manually.";
+  }
+
+  return "Unable to scan this invoice document. Please ensure the document is clear and legible, or enter the bill items manually below.";
+}
+
 export async function scanPurchaseInvoiceWithGemini(
   base64Data: string,
   mimeType: string,
@@ -125,10 +153,8 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
   const CANDIDATE_MODELS = [
     "gemini-2.5-flash",
     "gemini-flash-latest",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
+    "gemini-2.5-pro",
     "gemini-pro-latest",
-    "gemini-1.5-pro-latest",
   ];
 
   let rawText = "";
@@ -156,8 +182,7 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
   }
 
   if (!rawText) {
-    const errorMsg = lastError?.message || "Unknown error connecting to Gemini AI";
-    throw new Error(`AI invoice scanning failed: ${errorMsg}. Please verify your Gemini API key in Settings or enter invoice items manually.`);
+    throw new Error(cleanHumanReadableAiError(lastError));
   }
 
   try {
