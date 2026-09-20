@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SmartVyapar ERP - Complete Official User Manual (End-to-End Guide)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    @page {
+      size: A4;
+      margin: 18mm 16mm 18mm 16mm;
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: 'Inter', sans-serif;
+        font-size: 8pt;
+        color: #64748b;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #0f172a;
+      line-height: 1.5;
+      font-size: 9.5pt;
+      margin: 0;
+      background: #ffffff;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      page-break-after: always;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 20px;
+      background: linear-gradient(145deg, #f8fafc 0%, #eff6ff 100%);
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: #4f46e5;
+      color: white;
+      font-weight: 800;
+      font-size: 11pt;
+      border-radius: 30px;
+      letter-spacing: 0.5px;
+    }
+
+    .cover-title {
+      font-size: 28pt;
+      font-weight: 900;
+      color: #0f172a;
+      line-height: 1.15;
+      margin: 20px 0 10px 0;
+    }
+
+    .cover-subtitle {
+      font-size: 14pt;
+      color: #475569;
+      font-weight: 500;
+      margin-bottom: 25px;
+    }
+
+    .demo-credentials-box {
+      background: white;
+      border: 2px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 18px 24px;
+      margin: 20px 0;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+
+    .demo-credentials-title {
+      font-size: 11pt;
+      font-weight: 800;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .cred-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .cred-item {
+      background: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .cred-label {
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+
+    .cred-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10pt;
+      font-weight: 700;
+      color: #4f46e5;
+    }
+
+    /* Chapter Headers */
+    .chapter {
+      page-break-before: always;
+      padding-top: 10px;
+    }
+
+    h1 {
+      font-size: 18pt;
+      font-weight: 900;
+      color: #0f172a;
+      border-bottom: 2.5px solid #4f46e5;
+      padding-bottom: 6px;
+      margin-top: 0;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h2 {
+      font-size: 13pt;
+      font-weight: 800;
+      color: #1e293b;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      border-left: 4px solid #4f46e5;
+      padding-left: 8px;
+    }
+
+    h3 {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+
+    p, li {
+      color: #334155;
+      line-height: 1.5;
+    }
+
+    ul, ol {
+      margin-top: 4px;
+      margin-bottom: 10px;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 4px;
+    }
+
+    /* Callout Boxes */
+    .callout {
+      padding: 10px 14px;
+      border-radius: 10px;
+      margin: 12px 0;
+      font-size: 8.5pt;
+    }
+
+    .callout-info {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      color: #1e3a8a;
+    }
+
+    .callout-success {
+      background: #f0fdf4;
+      border-left: 4px solid #22c55e;
+      color: #14532d;
+    }
+
+    .callout-warning {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      color: #78350f;
+    }
+
+    /* Step Workflows */
+    .step-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin: 8px 0;
+      background: #ffffff;
+    }
+
+    .step-number {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      background: #4f46e5;
+      color: white;
+      font-size: 8pt;
+      font-weight: 800;
+      text-align: center;
+      line-height: 20px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .step-title {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 9.5pt;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8pt;
+    }
+
+    th {
+      background: #1e293b;
+      color: #ffffff;
+      font-weight: 700;
+      text-align: left;
+      padding: 6px 8px;
+    }
+
+    td {
+      border: 1px solid #e2e8f0;
+      padding: 5px 8px;
+      color: #334155;
+    }
+
+    tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-primary { background: #e0e7ff; color: #4338ca; }
+    .badge-warning { background: #fef3c7; color: #b45309; }
+
+    .toc {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 20px 0;
+    }
+
+    .toc-title {
+      font-size: 11pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    .toc-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      font-size: 8.5pt;
+    }
+
+    .toc-item {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dotted #cbd5e1;
+      padding-bottom: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- COVER PAGE -->
+  <div class="cover-page">
+    <div>
+      <div class="brand-badge">⚡ SMARTVYAPAR ERP</div>
+      <div class="cover-title">Official User Manual & Operating Guide</div>
+      <div class="cover-subtitle">Complete End-to-End Enterprise Standard from Signup to Statutory Filing</div>
+
+      <div class="demo-credentials-box">
+        <div class="demo-credentials-title">🔑 Live Demo & Evaluation Credentials</div>
+        <div class="cred-grid">
+          <div class="cred-item">
+            <div class="cred-label">Production Web URL</div>
+            <div class="cred-value">https://smartvyapar.vercel.app</div>
+          </div>
+          <div class="cred-item">
+            <div class="cred-label">Demo Store Name</div>
+            <div class="cred-value">Ziona Tech & Electricals</div>
+          </div>
+          <div class="cred-item">
+            <div class="cred-label">Demo Username (Email)</div>
+            <div class="cred-value">demo@smartvyapar.app</div>
+          </div>
+          <div class="cred-item">
+            <div class="cred-label">Demo Password</div>
+            <div class="cred-value">SmartVyapar@2026</div>
+          </div>
+          <div class="cred-item">
+            <div class="cred-label">Default Role</div>
+            <div class="cred-value">Store Owner / Administrator</div>
+          </div>
+          <div class="cred-item">
+            <div class="cred-label">Demo GSTIN (Kerala 32)</div>
+            <div class="cred-value">32AAAAA0000A1Z5</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toc">
+        <div class="toc-title">📖 Manual Table of Contents</div>
+        <ul class="toc-list">
+          <li class="toc-item"><span>1. Getting Started: Signup & Login</span> <span>Sec. 1</span></li>
+          <li class="toc-item"><span>2. Store Profile & Tax Setup</span> <span>Sec. 2</span></li>
+          <li class="toc-item"><span>3. Inventory, Batches & Godowns</span> <span>Sec. 3</span></li>
+          <li class="toc-item"><span>4. Purchase Inward & GRN</span> <span>Sec. 4</span></li>
+          <li class="toc-item"><span>5. Sales POS Billing & Checkout</span> <span>Sec. 5</span></li>
+          <li class="toc-item"><span>6. Thermal Printing & Silent ESC/POS</span> <span>Sec. 6</span></li>
+          <li class="toc-item"><span>7. WhatsApp Dispatch & 2-Way Bot</span> <span>Sec. 7</span></li>
+          <li class="toc-item"><span>8. Double-Entry General Ledger</span> <span>Sec. 8</span></li>
+          <li class="toc-item"><span>9. Automated Bank Reconciliation (BRS)</span> <span>Sec. 9</span></li>
+          <li class="toc-item"><span>10. Official GST Filing (GSTR-1/3B)</span> <span>Sec. 10</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="font-size: 8pt; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; display: flex; justify-content: space-between;">
+      <span>SmartVyapar ERP v2.0 Enterprise • Multi-Tenant Cloud Architecture</span>
+      <span>Engineered for Indian SMEs, Retailers & Distributors</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1 & 2: SIGNUP, LOGIN & SETTINGS -->
+  <div class="chapter">
+    <h1>1. Getting Started: Signup, Login & Store Setup</h1>
+
+    <h2>1.1 Registering a New Merchant Account</h2>
+    <p>Any business owner can register and launch their cloud ERP workspace within 60 seconds:</p>
+    
+    <div class="step-box">
+      <span class="step-number">1</span>
+      <span class="step-title">Navigate to Signup:</span> Open your browser and go to <code>https://smartvyapar.vercel.app/signup</code>.
+    </div>
+    <div class="step-box">
+      <span class="step-number">2</span>
+      <span class="step-title">Enter Business Information:</span> Provide your Business Name, Owner Full Name, Mobile Number, Email Address, and Secure Password.
+    </div>
+    <div class="step-box">
+      <span class="step-number">3</span>
+      <span class="step-title">Select Business Classification:</span> Choose from <strong>Automobile / Auto Spares</strong>, <strong>Electrical & Electronics</strong>, <strong>Retail Supermarket</strong>, <strong>Pharmacy & Healthcare</strong>, or <strong>Restaurant / Food</strong>.
+    </div>
+    <div class="step-box">
+      <span class="step-number">4</span>
+      <span class="step-title">Automatic Workspace Provisioning:</span> The system immediately initializes your tenant database, default Chart of Accounts, system accounts, and security keys.
+    </div>
+
+    <h2>1.2 Logging In to Your Workspace</h2>
+    <p>Visit <code>/login</code> and sign in using your registered credentials or the pre-loaded Evaluation Account (<code>demo@smartvyapar.app</code> / <code>SmartVyapar@2026</code>).</p>
+
+    <h2>1.3 Configuring Store Profile & Statutory GST Details</h2>
+    <p>Go to <strong>Settings</strong> (Gear Icon in left navigation):</p>
+    <ul>
+      <li><strong>GSTIN:</strong> Enter your 15-character statutory GSTIN (e.g., <code>32AAAAA0000A1Z5</code>). SmartVyapar automatically extracts your 2-digit Home State Code.</li>
+      <li><strong>UPI VPA ID:</strong> Enter your shop's UPI address (e.g. <code>mybusiness@icici</code>). This dynamically generates payment QR codes on bills.</li>
+      <li><strong>Store Logo & Header:</strong> Upload your branding logo to be printed on receipts and WhatsApp PDF bills.</li>
+      <li><strong>Composition Scheme:</strong> Toggle ON if you are registered under the GST Composition Scheme (1% or 5% flat rate).</li>
+    </ul>
+
+    <h2>1.4 Team Roles & Role-Based Access Control (RBAC)</h2>
+    <table>
+      <thead>
+        <tr><th>Role</th><th>Permissions & Scope</th><th>Access Area</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>OWNER</strong></td><td>Full access to Profit & Loss, Balance Sheet, GST filing, User invitations, and Subscription Billing.</td><td>All Modules + System Settings</td></tr>
+        <tr><td><strong>MANAGER</strong></td><td>Purchase entry, pricing updates, stock audits, warehouse transfers, and view team list.</td><td>Inventory + Sales + Ledger View</td></tr>
+        <tr><td><strong>STAFF / CASHIER</strong></td><td>Fast POS counter billing, customer search, receipt printing, and payment collection.</td><td>POS Counter Only</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 3 & 4: INVENTORY, BATCHES & PURCHASE GRN -->
+  <div class="chapter">
+    <h1>2. Inventory, Batches & Purchase Inward (GRN)</h1>
+
+    <h2>2.1 Products, HSN Codes & Multiple Units</h2>
+    <p>SmartVyapar supports standard retail SKUs, batch-managed items, and service lines:</p>
+    <ul>
+      <li><strong>Barcode / SKU:</strong> Compatible with all standard 1D/2D USB and Bluetooth barcode scanners.</li>
+      <li><strong>HSN / SAC Code:</strong> 4, 6, or 8-digit statutory HSN code for automated Table 12 GSTR-1 summaries.</li>
+      <li><strong>GST Tax Slabs:</strong> 0% (Exempt), 5%, 12%, 18%, or 28%. The system automatically bifurcates CGST + SGST (Intra-State) or IGST (Inter-State).</li>
+      <li><strong>DGFT Statutory UQC:</strong> Units mapped to official standards: <code>PCS</code>, <code>NOS</code>, <code>KGS</code>, <code>LTR</code>, <code>BOX</code>, <code>CTN</code>, <code>MTR</code>.</li>
+    </ul>
+
+    <h2>2.2 Batch & Expiry Management</h2>
+    <p>For items requiring expiration monitoring (e.g. engine oils, batteries, lubricants, pharmaceuticals):</p>
+    <ul>
+      <li>Track unique <strong>Batch Numbers</strong> with separate Manufacturing Date and Expiry Date.</li>
+      <li>System displays automatic color-coded badges: 🟢 Fresh, 🟡 Expiring within 60 days, 🔴 Expired.</li>
+      <li>Each batch maintains its own distinct <strong>Cost Price, MRP, and Selling Price</strong>.</li>
+    </ul>
+
+    <h2>2.3 World-Standard Full-Screen Purchase Inward & GRN Modal</h2>
+    <p>Navigate to <strong>Inventory & Purchases</strong> (<code>/inventory/purchase</code>) and click <strong>"+ New Inward Bill / GRN"</strong>:</p>
+
+    <div class="step-box">
+      <span class="step-number">1</span>
+      <span class="step-title">Select Supplier:</span> Type supplier name in the instant search box. If new, click <em>"+ Quick Add Supplier"</em> to register with GSTIN, Phone, and State Code.
+    </div>
+    <div class="step-box">
+      <span class="step-number">2</span>
+      <span class="step-title">Godown Allocation:</span> Select target warehouse (Main Godown, Counter Rack, Transit Store).
+    </div>
+    <div class="step-box">
+      <span class="step-number">3</span>
+      <span class="step-title">Barcode Scanning / Item Addition:</span> Scan item barcode or search by name. Press <span class="kbd">Alt+A</span> to add new rows.
+    </div>
+    <div class="step-box">
+      <span class="step-number">4</span>
+      <span class="step-title">Bidirectional Sales Margin Engine:</span>
+      <ul>
+        <li>Enter Cost Price & Selling Price &rarr; Margin % calculates automatically.</li>
+        <li>Enter Margin % &rarr; Selling Price updates instantly.</li>
+        <li><strong>Bulk Strategy Toolbar:</strong> Click presets (<code>15%</code>, <code>20%</code>, <code>25%</code>, <code>30%</code>, <code>35%</code>) or enter custom margin to apply across all bill items in 1-click.</li>
+      </ul>
+    </div>
+    <div class="step-box">
+      <span class="step-number">5</span>
+      <span class="step-title">Save & Confirm Inward:</span> Press <span class="kbd">Ctrl+S</span>. The system generates statutory GRN number (<code>GRN-2026-XXXX</code>), posts double-entry journal vouchers to Trade Payables (<code>A/c 2000</code>), updates stock in the godown, and claims Input Tax Credit (ITC).
+    </div>
+
+    <h2>2.4 Printing GRN Slips & Barcode Sticker Labels</h2>
+    <ul>
+      <li><strong>🖨️ Print GRN Slip:</strong> Official inward audit slip showing received quantities, batch numbers, supplier invoice reference, and inspector sign-off.</li>
+      <li><strong>🏷️ Print Barcode Stickers:</strong> Generates high-density Code128 barcode stickers ready for standard thermal label printers (TVS, TSC, Zebra) with Product Name, MRP, Our Price, and SKU.</li>
+    </ul>
+  </div>
+
+  <!-- SECTION 5 & 6: SALES POS, CHECKOUT & THERMAL PRINTING -->
+  <div class="chapter">
+    <h1>3. High-Speed Sales POS Counter & Silent Thermal Printing</h1>
+
+    <h2>3.1 POS Checkout Counter Interface</h2>
+    <p>Open <strong>POS Billing</strong> (<code>/billing/new</code>). Designed for keyboard-first operation at checkout counters:</p>
+
+    <table>
+      <thead>
+        <tr><th>Keyboard Shortcut</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="kbd">F2</span> or <span class="kbd">Ctrl+F</span></td><td>Focus Item Search / Barcode Scanner Input</td></tr>
+        <tr><td><span class="kbd">Enter</span> (in Quantity)</td><td>Move to next line row</td></tr>
+        <tr><td><span class="kbd">F4</span></td><td>Tender Cash Payment</td></tr>
+        <tr><td><span class="kbd">F8</span></td><td>Tender Dynamic UPI QR Payment</td></tr>
+        <tr><td><span class="kbd">F9</span></td><td>Tender Customer Credit / Khata (Udhar)</td></tr>
+        <tr><td><span class="kbd">Ctrl+S</span> / <span class="kbd">F12</span></td><td>Finalize & Save Invoice</td></tr>
+        <tr><td><span class="kbd">Esc</span></td><td>Close Receipt Modal / Clear Form</td></tr>
+      </tbody>
+    </table>
+
+    <h2>3.2 Offline-First POS Engine (IndexedDB Local Queue)</h2>
+    <div class="callout callout-success">
+      <strong>Zero Downtime Internet Outages:</strong> If your store broadband or Wi-Fi drops during a busy evening rush, SmartVyapar automatically detects offline status via its native IndexedDB engine.
+    </div>
+    <ul>
+      <li>The cashier can continue scanning barcodes and issuing invoices without interruption.</li>
+      <li>Bills are queued locally with official offline sequence <code>OFF-YYYYMMDD-XXXX</code>.</li>
+      <li>As soon as the internet reconnects, the system automatically flushes queued bills to the cloud server with zero duplicate entries.</li>
+    </ul>
+
+    <h2>3.3 Silent Thermal ESC/POS Direct Hardware Driver</h2>
+    <p>SmartVyapar supports standard <strong>2-Inch (58mm)</strong> and <strong>3-Inch (80mm)</strong> thermal roll printers:</p>
+    <ul>
+      <li><strong>Standard Browser Print (<span class="kbd">Enter</span>):</strong> Prints via Windows printer dialog.</li>
+      <li><strong>⚡ Silent Print (Direct USB/Serial):</strong> Uses the built-in EPSON ESC/POS binary engine via WebSerial. Directly triggers thermal printing, cutter blade, and cash drawer kick without any browser popups.</li>
+      <li><strong>Dynamic UPI QR on Receipt:</strong> Prints a live UPI QR code containing the exact bill amount. Customers scan with PhonePe, GPay, or Paytm to pay instantly.</li>
+    </ul>
+  </div>
+
+  <!-- SECTION 7 & 8: OMNICHANNEL WHATSAPP & ACCOUNTING -->
+  <div class="chapter">
+    <h1>4. Omnichannel WhatsApp & Double-Entry Accounting</h1>
+
+    <h2>4.1 WhatsApp Cloud Invoicing & 2-Way Bot</h2>
+    <p>SmartVyapar integrates directly with Meta WhatsApp Cloud API:</p>
+    <ul>
+      <li><strong>1-Click WhatsApp PDF Share:</strong> Click the WhatsApp button on any invoice to dispatch a clean digital bill directly to the customer's phone number.</li>
+      <li><strong>2-Way Customer Bot:</strong> Customers can text your business WhatsApp number with simple keywords:
+        <ul>
+          <li><code>HI</code> or <code>MENU</code> &rarr; Displays interactive service menu.</li>
+          <li><code>BALANCE</code> or <code>KHATA</code> &rarr; Returns their outstanding balance and dues.</li>
+          <li><code>BILL</code> &rarr; Sends their latest invoice PDF link.</li>
+          <li><code>PAY</code> &rarr; Sends instant UPI payment link for instant settlement.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>4.2 Automated Double-Entry General Ledger</h2>
+    <p>Unlike simple invoice makers, SmartVyapar is a true statutory double-entry accounting engine. Every transaction posts balanced debits and credits automatically:</p>
+
+    <table>
+      <thead>
+        <tr><th>Transaction Type</th><th>Debit Entry (Dr.)</th><th>Credit Entry (Cr.)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Cash / UPI POS Sale</strong></td><td>Cash / Bank Account (<code>1001</code>)</td><td>Sales Revenue (<code>4000</code>) + Output GST (<code>2100</code>)</td></tr>
+        <tr><td><strong>Credit Sale (Khata)</strong></td><td>Customer Accounts Receivable (<code>1200</code>)</td><td>Sales Revenue (<code>4000</code>) + Output GST (<code>2100</code>)</td></tr>
+        <tr><td><strong>Purchase Inward (GRN)</strong></td><td>Inventory Asset (<code>1100</code>) + Inward ITC (<code>1300</code>)</td><td>Trade Payables / Supplier Ledger (<code>2000</code>)</td></tr>
+        <tr><td><strong>Customer Payment Received</strong></td><td>Bank / Cash Account (<code>1001</code>)</td><td>Customer Accounts Receivable (<code>1200</code>)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4.3 Statutory Financial Reports</h2>
+    <p>Located in <strong>Accounting & Reports</strong> (<code>/accounting/reports</code>):</p>
+    <ul>
+      <li><strong>Trial Balance:</strong> Real-time mathematical debit/credit balance verification with running checks.</li>
+      <li><strong>Profit & Loss (P&L):</strong> Gross sales, Cost of Goods Sold (COGS), Gross Profit %, Operating Expenses, and Net Profit.</li>
+      <li><strong>Balance Sheet:</strong> Total Assets, Liabilities, and Owner Equity verified using the fundamental accounting equation ($\text{Assets} = \text{Liabilities} + \text{Equity}$).</li>
+      <li><strong>Individual Account Statements:</strong> Complete ledger transaction history with opening and running balances.</li>
+    </ul>
+  </div>
+
+  <!-- SECTION 9 & 10: BANK RECONCILIATION & STATUTORY GST -->
+  <div class="chapter">
+    <h1>5. Automated Bank Reconciliation (BRS) & Statutory GST Filing</h1>
+
+    <h2>5.1 Automated Bank Reconciliation Statement (BRS)</h2>
+    <p>Navigate to <strong>Accounting &rarr; Bank Reconciliation (BRS)</strong> (<code>/accounting/reconciliation</code>):</p>
+    
+    <div class="step-box">
+      <span class="step-number">1</span>
+      <span class="step-title">Select Bank Account Ledger:</span> Choose your bank account (e.g. <code>A/c 1001 HDFC Current Account</code>).
+    </div>
+    <div class="step-box">
+      <span class="step-number">2</span>
+      <span class="step-title">Upload Bank Statement CSV:</span> Export your statement from HDFC, SBI, ICICI, or Axis NetBanking and drag-and-drop into the upload zone.
+    </div>
+    <div class="step-box">
+      <span class="step-number">3</span>
+      <span class="step-title">Auto-Reconcile:</span> Click <em>"Run Automated Reconciliation"</em>. The AI matching algorithm compares dates within $\pm 3$ days, matches reference/UTR numbers, and pairs Bank Debits with Book Credits.
+    </div>
+    <div class="step-box">
+      <span class="step-number">4</span>
+      <span class="step-title">Review Variance:</span> View matched transactions (Green) and items pending clearance (Amber). Identifies bank charges or interest not yet booked in your ledger.
+    </div>
+
+    <h2>5.2 Official GST Filing (GSTR-1, GSTR-3B, e-Invoice & e-Way Bill)</h2>
+    <p>SmartVyapar conforms 100% to the official CBIC and GSTN portal schema specifications:</p>
+
+    <table>
+      <thead>
+        <tr><th>Statutory Form</th><th>Government Portal Section</th><th>SmartVyapar Engine Implementation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>GSTR-1 Table 4</strong></td><td>B2B Tax Invoices</td><td>Groups buyer GSTINs (<code>ctin</code>), invoice number, date, value, POS, and tax slabs.</td></tr>
+        <tr><td><strong>GSTR-1 Table 7</strong></td><td>B2C Small (B2CS)</td><td>Aggregates retail turnover by POS + Tax Rate + Supply Type (<code>INTRA</code>/<code>INTER</code>).</td></tr>
+        <tr><td><strong>GSTR-1 Table 9B</strong></td><td>Credit / Debit Notes</td><td>Links sales returns to original tax invoice numbers and dates (CDNR/CDNUR).</td></tr>
+        <tr><td><strong>GSTR-1 Table 12</strong></td><td>HSN Summary Outward</td><td>Aggregates quantity, value, and tax per HSN with standardized DGFT UQCs.</td></tr>
+        <tr><td><strong>GSTR-1 Table 13</strong></td><td>Documents Issued</td><td>Tracks outward serial number ranges: <code>from</code> to <code>to</code>, cancelled, and net issued.</td></tr>
+        <tr><td><strong>GSTR-3B Netting</strong></td><td>Monthly Tax Settlement</td><td>Net Output Tax (Sales) minus Eligible Inward ITC (GRN Purchases) = Net Cash Payable.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5.3 How to File to Government GST Portal</h2>
+    <p>Go to <strong>Invoices Register</strong> (<code>/invoices</code>):</p>
+    <ul>
+      <li><strong>Method 1: Portal Upload JSON (95% of SMEs & CAs):</strong> Click <strong>"Portal JSON (GSTR-1)"</strong>. Upload the downloaded <code>${GSTIN}_GSTR1_${MMYYYY}.json</code> file to <code>gst.gov.in &rarr; Returns Dashboard &rarr; Prepare Offline &rarr; Upload</code>. Tables 4, 7, 9B, 12, and 13 auto-populate within seconds!</li>
+      <li><strong>Method 2: ⚡ 1-Click Direct File (GSP Gateway):</strong> Click <strong>"⚡ 1-Click Direct File (GSP)"</strong>. SmartVyapar authenticates with the GSP/NIC API gateway, submits the return, and generates an official 15-character statutory ARN confirmation on your screen.</li>
+    </ul>
+
+    <div class="callout callout-info" style="margin-top: 20px;">
+      <strong>Summary:</strong> SmartVyapar provides an end-to-end, audited, world-standard business management system. For support, custom configurations, or API integrations, contact your dedicated account manager.
+    </div>
+  </div>
+
+</body>
+</html>
