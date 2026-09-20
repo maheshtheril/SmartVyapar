@@ -47,4 +47,4 @@ logs/
 backups/
 *.dump
 *.sql.gz
-
+scratch/

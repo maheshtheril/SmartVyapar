@@ -18,12 +18,16 @@ import {
   Keyboard,
   X,
   Clock,
-  User
+  User,
+  Maximize2,
+  Minimize2,
+  Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import ProductSearchCombobox, { ProductOption } from '@/components/ProductSearchCombobox';
 import CustomerSearch, { CustomerOption } from '@/components/CustomerSearch';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
+import PosPaymentModal, { PosPaymentDetails } from '@/components/PosPaymentModal';
 import { cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
 import OfflineStatusPill from '@/components/OfflineStatusPill';
 
@@ -99,6 +103,32 @@ export default function NewInvoicePage() {
       gst: 18,
     },
   ]);
+
+  // POS Full-Screen Payment Terminal Modal State
+  const [showPosPaymentModal, setShowPosPaymentModal] = useState(false);
+  const [isFullScreenPOS, setIsFullScreenPOS] = useState(false);
+
+  // Toggle Full-Screen POS for counter touchscreens
+  const toggleFullScreenPOS = () => {
+    if (typeof document === 'undefined') return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      setIsFullScreenPOS(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setIsFullScreenPOS(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullScreenPOS(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
 
   // Held Bills (Multi-Cart / Parked Bills)
   const [heldBills, setHeldBills] = useState<HeldBill[]>([]);
@@ -213,8 +243,26 @@ export default function NewInvoicePage() {
   // Keyboard Shortcuts (F2, F7, F8, Ctrl+Enter)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // If modal is open, let modal manage keyboard events
+      if (showPosPaymentModal) return;
+
+      // F4 or Ctrl+Enter: Open Fullscreen POS Payment Terminal
+      if (e.key === 'F4' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
+        e.preventDefault();
+        const validCount = billItems.filter((i) => i.productId && i.price > 0).length;
+        if (validCount > 0 && !isSubmitting) {
+          setShowPosPaymentModal(true);
+        } else if (validCount === 0) {
+          alert("Please add at least 1 product to open POS checkout");
+        }
+      }
+      // F11: Fullscreen POS Mode Toggle
+      else if (e.key === 'F11') {
+        e.preventDefault();
+        toggleFullScreenPOS();
+      }
       // F7: Hold Bill
-      if (e.key === 'F7') {
+      else if (e.key === 'F7') {
         e.preventDefault();
         handleHoldBill();
       }
@@ -228,13 +276,6 @@ export default function NewInvoicePage() {
         e.preventDefault();
         handleAddItem();
       }
-      // Ctrl + Enter: Quick Submit
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        if (totalTaxable > 0 && !isSubmitting) {
-          handleCreateBill();
-        }
-      }
       // F9: Reset / New Sale
       else if (e.key === 'F9') {
         e.preventDefault();
@@ -244,7 +285,7 @@ export default function NewInvoicePage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [billItems, customerName, customerPhone, customerState, grandTotal, totalTaxable, isSubmitting, heldBills]);
+  }, [billItems, customerName, customerPhone, customerState, grandTotal, totalTaxable, isSubmitting, heldBills, showPosPaymentModal]);
 
   // Multi-Item Handlers
   const handleAddItem = () => {
@@ -447,8 +488,8 @@ export default function NewInvoicePage() {
     setReceiptData(null);
   };
 
-  // Submit Invoice to Neon DB
-  const handleCreateBill = async () => {
+  // Submit Invoice to Neon DB (or Offline Storage)
+  const handleCreateBill = async (customPaymentDetails?: PosPaymentDetails) => {
     const validItems = billItems.filter((i) => i.productId && i.price > 0);
     if (validItems.length === 0) {
       alert("Please add at least one valid product item");
@@ -456,16 +497,41 @@ export default function NewInvoicePage() {
     }
 
     setIsSubmitting(true);
-    const computedPaid = paymentStatus === "PAID" ? grandTotal : (paymentMode === "CASH" && numericCashReceived > 0 ? Math.min(grandTotal, numericCashReceived) : 0);
+
+    // Resolve tender & payment details
+    const activeMode = customPaymentDetails?.paymentMode === "SPLIT"
+      ? "CASH"
+      : (customPaymentDetails?.paymentMode || paymentMode);
+    const activeStatus = customPaymentDetails?.paymentStatus || paymentStatus;
+    const activeCashReceived = customPaymentDetails?.cashReceived !== undefined
+      ? customPaymentDetails.cashReceived
+      : numericCashReceived;
+    const activeChangeDue = customPaymentDetails?.changeReturned !== undefined
+      ? customPaymentDetails.changeReturned
+      : changeDue;
+
+    const computedPaid = activeStatus === "PAID"
+      ? grandTotal
+      : (activeMode === "CASH" && activeCashReceived > 0 ? Math.min(grandTotal, activeCashReceived) : 0);
     const computedDue = Math.max(0, grandTotal - computedPaid);
+
+    let paymentNotes: string | undefined = undefined;
+    if (customPaymentDetails?.paymentMode === "SPLIT") {
+      paymentNotes = `Split Tender: Cash ₹${Number(customPaymentDetails.splitCash || 0).toFixed(2)}, Online ₹${Number(customPaymentDetails.splitOnline || 0).toFixed(2)}`;
+    }
+    if (customPaymentDetails?.cardRef || customPaymentDetails?.cardLast4) {
+      const cardInfo = `Card Ref: ${customPaymentDetails.cardRef || 'N/A'}${customPaymentDetails.cardLast4 ? ` (Last 4: ${customPaymentDetails.cardLast4})` : ''}`;
+      paymentNotes = paymentNotes ? `${paymentNotes} | ${cardInfo}` : cardInfo;
+    }
 
     const invoicePayload = {
       customerName: customerName || "Walk-in Cash Customer",
       customerPhone: customerPhone || "9999999999",
       customerStateCode: customerState,
-      paymentStatus,
-      paymentMode,
+      paymentStatus: activeStatus,
+      paymentMode: activeMode,
       paidAmount: computedPaid,
+      notes: paymentNotes,
       items: validItems.map((i) => ({
         productId: i.productId,
         quantity: i.quantity,
@@ -494,6 +560,8 @@ export default function NewInvoicePage() {
         total: item.price * item.quantity,
       };
     });
+
+    const displayPaymentMode = customPaymentDetails?.paymentMode || paymentMode;
 
     // Check if offline
     if (typeof window !== "undefined" && !navigator.onLine) {
@@ -526,9 +594,9 @@ export default function NewInvoicePage() {
         totalAmount: Number(grandTotal),
         paidAmount: Number(computedPaid),
         dueAmount: Number(computedDue),
-        paymentMode,
-        cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
-        changeReturned: changeDue > 0 ? changeDue : undefined,
+        paymentMode: displayPaymentMode,
+        cashReceived: activeCashReceived > 0 ? activeCashReceived : undefined,
+        changeReturned: activeChangeDue > 0 ? activeChangeDue : undefined,
         totalSavings: totalSavings > 0 ? totalSavings : undefined,
         upiUri: currentUpiUri,
       });
@@ -566,9 +634,9 @@ export default function NewInvoicePage() {
         totalAmount: Number(data.invoice.totalAmount || grandTotal),
         paidAmount: Number(data.invoice.paidAmount),
         dueAmount: Number(data.invoice.dueAmount),
-        paymentMode,
-        cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
-        changeReturned: changeDue > 0 ? changeDue : undefined,
+        paymentMode: displayPaymentMode,
+        cashReceived: activeCashReceived > 0 ? activeCashReceived : undefined,
+        changeReturned: activeChangeDue > 0 ? activeChangeDue : undefined,
         totalSavings: totalSavings > 0 ? totalSavings : undefined,
         upiUri: data.invoice.upiUri || currentUpiUri,
       });
@@ -594,9 +662,9 @@ export default function NewInvoicePage() {
             totalAmount: Number(grandTotal),
             paidAmount: Number(computedPaid),
             dueAmount: Number(computedDue),
-            paymentMode,
-            cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
-            changeReturned: changeDue > 0 ? changeDue : undefined,
+            paymentMode: displayPaymentMode,
+            cashReceived: activeCashReceived > 0 ? activeCashReceived : undefined,
+            changeReturned: activeChangeDue > 0 ? activeChangeDue : undefined,
             totalSavings: totalSavings > 0 ? totalSavings : undefined,
             upiUri: currentUpiUri,
           });
@@ -613,6 +681,17 @@ export default function NewInvoicePage() {
     }
   };
 
+  // Complete Sale Callback from Full-Screen POS Modal
+  const handleCompleteSaleFromModal = async (details: PosPaymentDetails) => {
+    if (details.cashReceived !== undefined) {
+      setCashReceived(String(details.cashReceived));
+    }
+    setPaymentMode(details.paymentMode === "SPLIT" ? "CASH" : (details.paymentMode as any));
+    setPaymentStatus(details.paymentStatus);
+    await handleCreateBill(details);
+    setShowPosPaymentModal(false);
+  };
+
   return (
     <div className="space-y-5">
       {/* Top Header & Keyboard Hotkeys Bar */}
@@ -627,9 +706,21 @@ export default function NewInvoicePage() {
           </div>
         </div>
 
-        {/* Hold & Recall Actions & Offline Pill */}
+        {/* Hold, Recall, Fullscreen Actions & Offline Pill */}
         <div className="flex items-center space-x-2">
           <OfflineStatusPill />
+
+          {/* Fullscreen POS Toggle */}
+          <button
+            type="button"
+            onClick={toggleFullScreenPOS}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition flex items-center space-x-1.5 shadow-sm"
+            title="Toggle full screen dedicated POS terminal (F11)"
+          >
+            {isFullScreenPOS ? <Minimize2 className="h-4 w-4 text-indigo-600" /> : <Maximize2 className="h-4 w-4 text-indigo-600" />}
+            <span className="hidden sm:inline">{isFullScreenPOS ? "Exit Fullscreen" : "Fullscreen POS"}</span>
+            <span className="hidden md:inline rounded bg-slate-100 px-1 py-0.2 text-[9px] font-mono text-slate-500">F11</span>
+          </button>
 
           {/* Hold Current Bill Button */}
           <button
@@ -663,16 +754,17 @@ export default function NewInvoicePage() {
 
       {/* Keyboard Shortcuts Helper Ribbon */}
       <div className="hidden lg:flex items-center justify-between rounded-xl bg-slate-900 text-slate-300 px-4 py-2 text-[11px] font-medium">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3.5">
           <span className="flex items-center space-x-1 text-slate-400 font-bold">
             <Keyboard className="h-3.5 w-3.5 text-indigo-400" />
-            <span>Shortcuts:</span>
+            <span>Hotkeys:</span>
           </span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F2</kbd> +Add Line</span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F7</kbd> Hold Bill</span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F8</kbd> Recall Carts</span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">Ctrl + Enter</kbd> Save Bill</span>
-          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F9</kbd> New Bill</span>
+          <span><kbd className="bg-indigo-600 text-white px-1.5 py-0.5 rounded font-mono font-bold">F4 / Ctrl+↵</kbd> Pay & Tender</span>
+          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F2</kbd> +Line</span>
+          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F7</kbd> Hold</span>
+          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F8</kbd> Carts</span>
+          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F9</kbd> Reset</span>
+          <span><kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold">F11</kbd> Fullscreen</span>
         </div>
         <div className="text-[10px] text-slate-400 font-mono">
           Tax Rule: {isIntraState ? "CGST (9%) + SGST (9%)" : "IGST (18%)"}
@@ -832,13 +924,25 @@ export default function NewInvoicePage() {
           </div>
 
           <button
-            onClick={handleCreateBill}
+            type="button"
+            onClick={() => {
+              const validCount = billItems.filter((i) => i.productId && i.price > 0).length;
+              if (validCount === 0) {
+                alert("Please add at least one product to open POS checkout");
+                return;
+              }
+              setShowPosPaymentModal(true);
+            }}
             disabled={isSubmitting || totalTaxable === 0}
-            className="w-full rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 py-4 text-sm font-black text-white shadow-lg hover:shadow-indigo-500/25 hover:from-indigo-500 hover:to-indigo-700 transition disabled:bg-slate-300 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
           >
-            {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+            {isSubmitting ? (
+              <RefreshCw className="h-5 w-5 animate-spin" />
+            ) : (
+              <Sparkles className="h-5 w-5 text-amber-300 animate-pulse" />
+            )}
             <span>
-              {isSubmitting ? "Saving to Neon Database..." : `Save Bill & Print (Total: ₹${grandTotal.toFixed(2)})`}
+              {isSubmitting ? "Processing Sale..." : `⚡ Pay & Tender Terminal (F4 / Ctrl+Enter) • ₹${grandTotal.toFixed(2)}`}
             </span>
           </button>
         </div>
@@ -1008,7 +1112,24 @@ export default function NewInvoicePage() {
             )}
           </div>
 
-          <div className="pt-4 border-t border-slate-100 flex space-x-2">
+          <div className="pt-4 border-t border-slate-100 space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                const validCount = billItems.filter((i) => i.productId && i.price > 0).length;
+                if (validCount === 0) {
+                  alert("Please add at least 1 product to open POS checkout");
+                  return;
+                }
+                setShowPosPaymentModal(true);
+              }}
+              disabled={totalTaxable === 0 || isSubmitting}
+              className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 py-3 text-xs font-black text-white shadow-md transition disabled:bg-slate-300 disabled:from-slate-300 disabled:to-slate-300 flex items-center justify-center space-x-2"
+            >
+              <Sparkles className="h-4 w-4 text-amber-300" />
+              <span>⚡ Open Tender Terminal (F4)</span>
+            </button>
+
             <a
               href={`https://wa.me/91${customerPhone}?text=${encodeURIComponent(
                 `Hello ${customerName}, your invoice total is ₹${grandTotal.toFixed(
@@ -1017,7 +1138,7 @@ export default function NewInvoicePage() {
               )}`}
               target="_blank"
               rel="noreferrer"
-              className={`flex-1 rounded-xl py-2.5 text-center text-xs font-semibold text-white flex items-center justify-center space-x-1 ${
+              className={`w-full rounded-xl py-2.5 text-center text-xs font-semibold text-white flex items-center justify-center space-x-1 ${
                 customerPhone && totalTaxable > 0
                   ? 'bg-emerald-600 hover:bg-emerald-700'
                   : 'bg-slate-300 pointer-events-none'
@@ -1214,6 +1335,30 @@ export default function NewInvoicePage() {
           </div>
         </div>
       )}
+
+      {/* World-Class Full-Screen POS Payment & Tender Terminal Modal */}
+      <PosPaymentModal
+        isOpen={showPosPaymentModal}
+        onClose={() => setShowPosPaymentModal(false)}
+        grandTotal={grandTotal}
+        totalTaxable={totalTaxable}
+        totalTax={isIntraState ? totalCgst + totalSgst : totalIgst}
+        items={billItems
+          .filter((i) => i.productId && i.price > 0)
+          .map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            price: i.price,
+            gst: i.gst,
+            batchNumber: i.batchNumber,
+          }))}
+        customerName={customerName}
+        customerPhone={customerPhone}
+        upiId={business.upiId || ""}
+        businessName={business.name}
+        onCompleteSale={handleCompleteSaleFromModal}
+        isSubmitting={isSubmitting}
+      />
 
       {/* ESC/POS Thermal Roll Receipt Modal (80mm / 58mm) */}
       <ThermalReceiptModal
