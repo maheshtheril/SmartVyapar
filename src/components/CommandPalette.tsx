@@ -404,7 +404,7 @@ export default function CommandPalette() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-start justify-center p-4 pt-16 sm:pt-24 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 pt-16 sm:pt-24 animate-in fade-in duration-150">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
