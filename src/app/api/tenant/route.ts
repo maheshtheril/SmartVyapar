@@ -135,6 +135,14 @@ export async function GET(req: NextRequest) {
             badgeColor: "rose"
           },
           { 
+            id: "purchase-orders", 
+            name: "Purchase Orders (PO)", 
+            href: "/inventory/purchase/orders", 
+            icon: "FileText",
+            badge: "Procure",
+            badgeColor: "indigo"
+          },
+          { 
             id: "purchase-inward", 
             name: "Purchase Bills & GRN", 
             href: "/inventory/purchase", 
