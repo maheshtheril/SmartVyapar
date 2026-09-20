@@ -48,6 +48,7 @@ export interface ThermalReceiptData {
   cashReceived?: number;
   changeReturned?: number;
   totalSavings?: number;
+  discountAmount?: number;
   upiUri?: string;
   irn?: string;
   ackNo?: string;
@@ -506,9 +507,16 @@ export default function ThermalReceiptModal({
               {/* Totals Section */}
               <div className="space-y-1 text-[10px]">
                 <div className="flex justify-between">
-                  <span>Subtotal (Taxable):</span>
+                  <span>Subtotal (Gross):</span>
                   <span>₹{(data.taxableAmount || data.subTotal).toFixed(2)}</span>
                 </div>
+
+                {data.discountAmount !== undefined && data.discountAmount > 0 && (
+                  <div className="flex justify-between font-bold text-emerald-800">
+                    <span>Discount / Promo:</span>
+                    <span>-₹{data.discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
 
                 {data.cgstAmount !== undefined && data.cgstAmount > 0 && (
                   <div className="flex justify-between">

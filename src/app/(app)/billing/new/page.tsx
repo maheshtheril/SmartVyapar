@@ -46,6 +46,7 @@ interface BillItem {
   unitSold?: string;
   quantity: number;
   price: number;
+  discountPercent?: number;
   gst: number;
   batchId?: string;
   batchNumber?: string;
@@ -61,6 +62,8 @@ interface HeldBill {
   customerState: string;
   items: BillItem[];
   total: number;
+  billDiscountType?: 'PERCENT' | 'FLAT';
+  billDiscountValue?: number;
 }
 
 // Indian Denomination Breakdown Helper
@@ -162,6 +165,10 @@ export default function NewInvoicePage() {
   const [cardLast4, setCardLast4] = useState<string>("");
   const [soundboxPlayed, setSoundboxPlayed] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+
+  // Bill-Level Discount States
+  const [billDiscountType, setBillDiscountType] = useState<'PERCENT' | 'FLAT'>('PERCENT');
+  const [billDiscountValue, setBillDiscountValue] = useState<number>(0);
 
   // Multi-item rows (default with 1 empty row for quick scanning)
   const [billItems, setBillItems] = useState<BillItem[]>([
@@ -282,18 +289,46 @@ export default function NewInvoicePage() {
     }
   };
 
-  // Multi-Item Row Calculations
+  // Multi-Item Row Calculations with Line & Bill Discounts
   const isIntraState = customerState === business.stateCode;
-  let totalTaxable = 0;
+  let grossSubtotal = 0;
+  let totalLineDiscount = 0;
+
+  billItems.forEach((item) => {
+    if (item.productId && item.price > 0) {
+      const lineBase = item.price * item.quantity;
+      const lineDisc = (lineBase * Math.min(100, Math.max(0, item.discountPercent || 0))) / 100;
+      totalLineDiscount += lineDisc;
+      grossSubtotal += (lineBase - lineDisc);
+    }
+  });
+
+  // Bill-Level Discount (Coupon / Flat Promo)
+  let billDiscountAmount = 0;
+  if (grossSubtotal > 0 && billDiscountValue > 0) {
+    if (billDiscountType === 'PERCENT') {
+      billDiscountAmount = (grossSubtotal * Math.min(100, billDiscountValue)) / 100;
+    } else {
+      billDiscountAmount = Math.min(grossSubtotal, billDiscountValue);
+    }
+  }
+
+  const totalDiscount = totalLineDiscount + billDiscountAmount;
+  const netTaxable = Math.max(0, grossSubtotal - billDiscountAmount);
+
+  // Apportion net taxable across items proportionally to compute exact GST rates per slab
   let totalCgst = 0;
   let totalSgst = 0;
   let totalIgst = 0;
 
+  const discountRatio = grossSubtotal > 0 ? netTaxable / grossSubtotal : 1;
+
   billItems.forEach((item) => {
     if (item.productId && item.price > 0) {
-      const itemSubtotal = item.price * item.quantity;
-      totalTaxable += itemSubtotal;
-      const itemTax = (itemSubtotal * item.gst) / 100;
+      const lineBase = item.price * item.quantity;
+      const lineDisc = (lineBase * Math.min(100, Math.max(0, item.discountPercent || 0))) / 100;
+      const itemTaxable = (lineBase - lineDisc) * discountRatio;
+      const itemTax = (itemTaxable * item.gst) / 100;
       if (isIntraState) {
         totalCgst += itemTax / 2;
         totalSgst += itemTax / 2;
@@ -303,7 +338,8 @@ export default function NewInvoicePage() {
     }
   });
 
-  const grandTotal = totalTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst);
+  const totalTaxable = netTaxable;
+  const grandTotal = netTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst);
   const currentUpiUri = `upi://pay?pa=${encodeURIComponent(business.upiId || "zionabusiness@icici")}&pn=${encodeURIComponent(business.name)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=Invoice%20for%20${encodeURIComponent(customerName || "Customer")}`;
 
   // Cash Change Return Calculations
@@ -504,6 +540,12 @@ export default function NewInvoicePage() {
     setBillItems(updated);
   };
 
+  const handleDiscountChange = (index: number, disc: number) => {
+    const updated = [...billItems];
+    updated[index].discountPercent = Math.max(0, Math.min(100, disc));
+    setBillItems(updated);
+  };
+
   const handleRemoveItem = (index: number) => {
     if (billItems.length === 1) {
       setBillItems([
@@ -551,6 +593,8 @@ export default function NewInvoicePage() {
       customerState: customerState || "32",
       items: activeItems,
       total: grandTotal,
+      billDiscountType,
+      billDiscountValue,
     };
 
     const updated = [newHeld, ...heldBills];
@@ -560,6 +604,7 @@ export default function NewInvoicePage() {
     setCustomerName("");
     setCustomerPhone("");
     setCashReceived("");
+    setBillDiscountValue(0);
     setBillItems([
       {
         id: `row-${Date.now()}`,
@@ -580,6 +625,8 @@ export default function NewInvoicePage() {
     setCustomerState(heldBill.customerState);
     setBillItems(heldBill.items);
     setCashReceived("");
+    setBillDiscountType(heldBill.billDiscountType || 'PERCENT');
+    setBillDiscountValue(heldBill.billDiscountValue || 0);
 
     // Remove from held list
     const updated = heldBills.filter((h) => h.id !== heldBill.id);
@@ -604,6 +651,8 @@ export default function NewInvoicePage() {
     setSplitCashInput("");
     setCardRef("");
     setCardLast4("");
+    setBillDiscountType('PERCENT');
+    setBillDiscountValue(0);
     setBillItems([
       {
         id: `row-${Date.now()}`,
@@ -643,6 +692,10 @@ export default function NewInvoicePage() {
       const cardInfo = `Card Ref: ${cardRef || 'N/A'}${cardLast4 ? ` (Last 4: ${cardLast4})` : ''}`;
       paymentNotes = paymentNotes ? `${paymentNotes} | ${cardInfo}` : cardInfo;
     }
+    if (totalDiscount > 0) {
+      const discNote = `Discount: ₹${totalDiscount.toFixed(2)}${billDiscountValue > 0 ? ` (${billDiscountValue}${billDiscountType === 'PERCENT' ? '%' : '₹'} Bill Disc)` : ''}`;
+      paymentNotes = paymentNotes ? `${paymentNotes} | ${discNote}` : discNote;
+    }
 
     const invoicePayload = {
       customerName: customerName || "Walk-in Cash Customer",
@@ -652,32 +705,43 @@ export default function NewInvoicePage() {
       paymentMode: activeMode,
       paidAmount: computedPaid,
       notes: paymentNotes,
-      items: validItems.map((i) => ({
-        productId: i.productId,
-        quantity: i.quantity,
-        price: i.price,
-        batchId: i.batchId,
-        batchNumber: i.batchNumber,
-      })),
+      items: validItems.map((i) => {
+        const lineBase = i.price * i.quantity;
+        const lineDisc = (lineBase * Math.min(100, Math.max(0, i.discountPercent || 0))) / 100;
+        const effectiveLineTaxable = (lineBase - lineDisc) * discountRatio;
+        const effectiveUnitPrice = Number((effectiveLineTaxable / i.quantity).toFixed(2));
+        return {
+          productId: i.productId,
+          quantity: i.quantity,
+          price: effectiveUnitPrice,
+          batchId: i.batchId,
+          batchNumber: i.batchNumber,
+        };
+      }),
     };
 
-    // Calculate savings from catalog / batch MRP
-    let totalSavings = 0;
+    // Calculate savings from catalog / batch MRP plus all discounts
+    let totalSavings = totalDiscount;
     const receiptItems = validItems.map((item) => {
       const catItem = catalog.find((c) => c.id === item.productId);
       const itemMrp = item.batchMrp || (catItem && catItem.sellingPrice ? Math.max(item.price, Number(catItem.sellingPrice) * 1.15) : item.price);
       if (itemMrp > item.price) {
         totalSavings += (itemMrp - item.price) * item.quantity;
       }
+      const lineBase = item.price * item.quantity;
+      const lineDisc = (lineBase * Math.min(100, Math.max(0, item.discountPercent || 0))) / 100;
+      const effectiveLineTaxable = (lineBase - lineDisc) * discountRatio;
+      const effectiveUnitPrice = Number((effectiveLineTaxable / item.quantity).toFixed(2));
+
       return {
         name: item.batchNumber ? `${item.name} [${item.batchNumber}]` : item.name,
         hsn: item.hsn,
         quantity: item.quantity,
         unit: item.unitSold || "PCS",
-        price: item.price,
+        price: effectiveUnitPrice,
         mrp: itemMrp,
         gstRate: item.gst,
-        total: item.price * item.quantity,
+        total: Number(effectiveLineTaxable.toFixed(2)),
       };
     });
 
@@ -704,8 +768,9 @@ export default function NewInvoicePage() {
         customerState: customerState,
         cashierName: "Counter 1 (Offline)",
         items: receiptItems,
-        subTotal: Number(totalTaxable),
+        subTotal: Number(grossSubtotal),
         taxableAmount: Number(totalTaxable),
+        discountAmount: totalDiscount > 0 ? totalDiscount : undefined,
         cgstAmount: Number(isIntraState ? totalCgst : 0),
         sgstAmount: Number(isIntraState ? totalSgst : 0),
         igstAmount: Number(!isIntraState ? totalIgst : 0),
@@ -744,8 +809,9 @@ export default function NewInvoicePage() {
         customerState: customerState,
         cashierName: "Counter 1",
         items: receiptItems,
-        subTotal: Number(data.invoice.subTotal || totalTaxable),
+        subTotal: Number(data.invoice.subTotal || grossSubtotal),
         taxableAmount: Number(totalTaxable),
+        discountAmount: totalDiscount > 0 ? totalDiscount : undefined,
         cgstAmount: Number(data.invoice.cgstAmount || (isIntraState ? totalCgst : 0)),
         sgstAmount: Number(data.invoice.sgstAmount || (isIntraState ? totalSgst : 0)),
         igstAmount: Number(data.invoice.igstAmount || (!isIntraState ? totalIgst : 0)),
@@ -1032,7 +1098,7 @@ export default function NewInvoicePage() {
                   </div>
 
                   {/* Price */}
-                  <div className="w-24 shrink-0">
+                  <div className="w-20 shrink-0">
                     <input
                       type="number"
                       min="0"
@@ -1041,16 +1107,42 @@ export default function NewInvoicePage() {
                       className="w-full h-7 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono font-bold text-xs text-right px-2 focus:border-indigo-500 focus:outline-none"
                       placeholder="₹ Price"
                     />
-                    <span className="block text-[9px] text-slate-400 text-right mt-0.5 font-mono">
+                    <span className="block text-[8px] text-slate-400 text-right mt-0.5 font-mono">
                       +{item.gst}% GST
+                    </span>
+                  </div>
+
+                  {/* Line Discount % */}
+                  <div className="w-14 shrink-0">
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={item.discountPercent || ''}
+                        onChange={(e) => handleDiscountChange(idx, Number(e.target.value))}
+                        className="w-full h-7 rounded-lg bg-slate-950 border border-slate-700 text-emerald-400 font-mono font-bold text-xs text-right pr-4 pl-1 focus:border-emerald-500 focus:outline-none placeholder:text-slate-600"
+                        placeholder="0"
+                      />
+                      <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] text-slate-500 font-bold pointer-events-none">
+                        %
+                      </span>
+                    </div>
+                    <span className="block text-[8px] text-slate-400 text-right mt-0.5">
+                      Disc
                     </span>
                   </div>
 
                   {/* Line Total */}
                   <div className="w-20 text-right shrink-0">
                     <div className="font-mono font-black text-sm text-white">
-                      ₹{itemSubtotal.toFixed(2)}
+                      ₹{((item.price * item.quantity) * (1 - (item.discountPercent || 0) / 100)).toFixed(2)}
                     </div>
+                    {(item.discountPercent || 0) > 0 && (
+                      <span className="text-[9px] text-emerald-400 font-mono block">
+                        -{item.discountPercent}% off
+                      </span>
+                    )}
                   </div>
 
                   {/* Trash */}
@@ -1066,10 +1158,90 @@ export default function NewInvoicePage() {
             })}
           </div>
 
+          {/* Bill-Level Promo & Discount Controller */}
+          <div className="mt-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800 shrink-0 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-slate-300 flex items-center space-x-1">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Bill Discount:</span>
+              </span>
+              {/* Mode Toggle % or ₹ */}
+              <div className="flex rounded-lg bg-slate-950 border border-slate-700 p-0.5 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setBillDiscountType('PERCENT')}
+                  className={`px-2 py-0.5 rounded transition ${billDiscountType === 'PERCENT' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                  %
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillDiscountType('FLAT')}
+                  className={`px-2 py-0.5 rounded transition ${billDiscountType === 'FLAT' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                  ₹ Flat
+                </button>
+              </div>
+              <input
+                type="number"
+                min="0"
+                value={billDiscountValue || ''}
+                onChange={(e) => setBillDiscountValue(Math.max(0, Number(e.target.value)))}
+                placeholder="0"
+                className="w-16 h-7 rounded-lg bg-slate-950 border border-slate-700 text-emerald-400 font-mono font-bold text-xs px-2 text-right focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Quick Presets */}
+            <div className="flex items-center space-x-1">
+              {[
+                { label: '5%', type: 'PERCENT', val: 5 },
+                { label: '10%', type: 'PERCENT', val: 10 },
+                { label: '₹50', type: 'FLAT', val: 50 },
+                { label: '₹100', type: 'FLAT', val: 100 },
+              ].map((btn) => (
+                <button
+                  key={btn.label}
+                  type="button"
+                  onClick={() => {
+                    setBillDiscountType(btn.type as any);
+                    setBillDiscountValue(btn.val);
+                  }}
+                  className={`px-2 py-0.5 rounded-lg border font-bold text-[10px] transition ${
+                    billDiscountType === btn.type && billDiscountValue === btn.val
+                      ? 'bg-emerald-600 text-white border-emerald-500'
+                      : 'bg-slate-800 text-indigo-300 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+              {billDiscountValue > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setBillDiscountValue(0)}
+                  className="text-rose-400 hover:text-rose-300 text-[10px] font-bold underline ml-1"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Subtotal Summary Footer */}
-          <div className="mt-3 p-3.5 rounded-2xl bg-slate-900 border border-slate-800 shrink-0 text-xs text-slate-400 space-y-1">
+          <div className="mt-2 p-3 rounded-2xl bg-slate-900 border border-slate-800 shrink-0 text-xs text-slate-400 space-y-1">
             <div className="flex justify-between">
-              <span>Taxable Subtotal:</span>
+              <span>Subtotal (Gross):</span>
+              <span className="font-mono font-bold text-slate-200">₹{grossSubtotal.toFixed(2)}</span>
+            </div>
+            {totalDiscount > 0 && (
+              <div className="flex justify-between text-emerald-400 font-bold">
+                <span>Total Discount Applied:</span>
+                <span className="font-mono">-₹{totalDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span>Net Taxable:</span>
               <span className="font-mono font-bold text-slate-200">₹{totalTaxable.toFixed(2)}</span>
             </div>
             {isIntraState ? (
@@ -1103,6 +1275,11 @@ export default function NewInvoicePage() {
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
                   Taxable: ₹{totalTaxable.toFixed(2)} • GST: ₹{(isIntraState ? totalCgst + totalSgst : totalIgst).toFixed(2)}
+                  {totalDiscount > 0 && (
+                    <span className="text-emerald-400 font-bold ml-1.5">
+                      • Saved ₹{totalDiscount.toFixed(2)}
+                    </span>
+                  )}
                 </div>
               </div>
 
