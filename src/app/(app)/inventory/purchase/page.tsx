@@ -35,6 +35,7 @@ import {
   ScanBarcode
 } from 'lucide-react';
 import BarcodeSvg from '@/components/BarcodeSvg';
+import PurchaseReturnModal from '@/components/PurchaseReturnModal';
 
 interface PurchaseItemRow {
   productId?: string;
@@ -136,6 +137,9 @@ export default function PurchaseInwardPage() {
 
   // Post-Inward Success Confirmation Modal
   const [postInwardModal, setPostInwardModal] = useState<{ open: boolean; bill: any } | null>(null);
+
+  // Selected Bill for Purchase Return / Supplier Debit Note Modal
+  const [selectedBillForReturn, setSelectedBillForReturn] = useState<any>(null);
 
   // New Purchase Bill Form State
   const [supplierName, setSupplierName] = useState('');
@@ -952,6 +956,13 @@ export default function PurchaseInwardPage() {
                                 <Barcode className="w-3 h-3 text-emerald-600" /> Barcodes ({bill.items.length})
                               </button>
                             )}
+                            <button
+                              onClick={() => setSelectedBillForReturn(bill)}
+                              className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                              title="Issue Purchase Return / Supplier Debit Note"
+                            >
+                              <RotateCcw className="w-3 h-3 text-rose-600" /> Return
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -2120,6 +2131,16 @@ export default function PurchaseInwardPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL 3: PURCHASE RETURN & SUPPLIER DEBIT NOTE */}
+      <PurchaseReturnModal
+        isOpen={!!selectedBillForReturn}
+        onClose={() => setSelectedBillForReturn(null)}
+        bill={selectedBillForReturn}
+        onSuccess={(_debitNote) => {
+          loadBills();
+        }}
+      />
     </div>
   );
 }
