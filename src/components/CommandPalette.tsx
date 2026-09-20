@@ -32,6 +32,7 @@ import {
   FileCheck,
   Scale,
   ClipboardCheck,
+  Wallet,
 } from 'lucide-react';
 
 interface PaletteItem {
@@ -57,6 +58,17 @@ const PALETTE_ITEMS: PaletteItem[] = [
     icon: PlusCircle,
     keywords: ['new', 'create', 'bill', 'pos', 'invoice', 'sale', 'counter', 'quick'],
     badge: 'Fast Bill',
+    badgeColor: 'emerald',
+  },
+  {
+    id: 'act-cash-drawer',
+    title: 'Cash Drawer Settlement & Z-Reports',
+    subtitle: 'Register shift management, cash float, petty cash payouts, and thermal Z-Reports',
+    category: 'ACTIONS',
+    href: '/billing/shifts',
+    icon: Wallet,
+    keywords: ['cash', 'drawer', 'till', 'shift', 'float', 'settle', 'close', 'reconciliation', 'variance', 'z-report', 'audit'],
+    badge: 'POS Till',
     badgeColor: 'emerald',
   },
   {

@@ -28,12 +28,15 @@ import {
   Volume2,
   Copy,
   AlertTriangle,
-  Coins
+  Coins,
+  Wallet
 } from 'lucide-react';
 import Link from 'next/link';
 import ProductSearchCombobox, { ProductOption } from '@/components/ProductSearchCombobox';
 import CustomerSearch, { CustomerOption } from '@/components/CustomerSearch';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
+import CashDrawerModal from '@/components/CashDrawerModal';
+import ThermalZReportModal, { ZReportData } from '@/components/ThermalZReportModal';
 import QrCodeCanvas from '@/components/QrCodeCanvas';
 import { cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
 import OfflineStatusPill from '@/components/OfflineStatusPill';
@@ -242,6 +245,35 @@ export default function NewInvoicePage() {
   const [batchPickerItemIndex, setBatchPickerItemIndex] = useState<number | null>(null);
   const [availableBatches, setAvailableBatches] = useState<any[]>([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
+
+  // Cash Drawer Till & Z-Report States
+  const [showCashDrawerModal, setShowCashDrawerModal] = useState<boolean>(false);
+  const [showZReportModal, setShowZReportModal] = useState<boolean>(false);
+  const [zReportData, setZReportData] = useState<ZReportData | null>(null);
+  const [activeShiftInfo, setActiveShiftInfo] = useState<{ shiftNumber: string; openingFloat: number } | null>(null);
+
+  const fetchShiftStatus = async () => {
+    try {
+      const res = await fetch("/api/cash-drawer/current");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.shift) {
+          setActiveShiftInfo({
+            shiftNumber: data.shift.shiftNumber,
+            openingFloat: Number(data.shift.openingFloat),
+          });
+        } else {
+          setActiveShiftInfo(null);
+        }
+      }
+    } catch (err) {
+      // Ignore background failure
+    }
+  };
+
+  useEffect(() => {
+    fetchShiftStatus();
+  }, []);
 
   // Load products & held bills from localStorage
   useEffect(() => {
@@ -1092,6 +1124,28 @@ export default function NewInvoicePage() {
         {/* Right: Actions, Fullscreen Toggle, and Exit POS */}
         <div className="flex items-center space-x-2 shrink-0">
           <OfflineStatusPill />
+
+          {/* Cash Drawer Shift Management */}
+          <button
+            type="button"
+            onClick={() => setShowCashDrawerModal(true)}
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs ${
+              activeShiftInfo
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
+            }`}
+            title="Cash Drawer Till Management & Thermal Z-Report"
+          >
+            <Wallet className="h-4 w-4 text-emerald-600" />
+            <span className="hidden sm:inline">
+              {activeShiftInfo ? `Till: ${activeShiftInfo.shiftNumber}` : 'Open Till'}
+            </span>
+            <span
+              className={`h-2 w-2 rounded-full ${
+                activeShiftInfo ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`}
+            />
+          </button>
 
           {/* Hold Current Cart */}
           <button
@@ -2137,6 +2191,30 @@ export default function NewInvoicePage() {
         data={receiptData}
         business={business}
         onNewSale={handleResetNewSale}
+      />
+
+      {/* Cash Drawer & Shift Settlement Modal */}
+      <CashDrawerModal
+        isOpen={showCashDrawerModal}
+        onClose={() => {
+          setShowCashDrawerModal(false);
+          fetchShiftStatus();
+        }}
+        onShiftClosed={(zReport) => {
+          setActiveShiftInfo(null);
+          setZReportData(zReport);
+          setShowZReportModal(true);
+        }}
+      />
+
+      {/* Thermal End-of-Day Z-Report Slip Modal */}
+      <ThermalZReportModal
+        isOpen={showZReportModal}
+        onClose={() => {
+          setShowZReportModal(false);
+          fetchShiftStatus();
+        }}
+        data={zReportData}
       />
 
     </div>

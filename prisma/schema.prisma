@@ -101,6 +101,8 @@ model Tenant {
   journalEntries       JournalEntry[]
   purchaseOrders       PurchaseOrder[]
   loyaltyTransactions  LoyaltyTransaction[]
+  cashDrawerShifts     CashDrawerShift[]
+  cashDrawerPayouts    CashDrawerPayout[]
 
   @@map("tenants")
 }
@@ -943,4 +945,58 @@ model StockTransferItem {
   @@index([transferId])
   @@index([productId])
   @@map("stock_transfer_items")
+}
+
+// ----------------------------------------------------
+// 19. CASH DRAWER SHIFT RECONCILIATION & Z-REPORT
+// ----------------------------------------------------
+model CashDrawerShift {
+  id                 String              @id @default(uuid())
+  tenantId           String
+  shiftNumber        String              // e.g. "SHIFT-2026-0001"
+  openedAt           DateTime            @default(now())
+  closedAt           DateTime?
+  openedByUserId     String
+  openedByName       String
+  closedByUserId     String?
+  closedByName       String?
+  openingFloat       Decimal             @default(0.0) @db.Decimal(10, 2)
+  cashSales          Decimal             @default(0.0) @db.Decimal(10, 2)
+  upiSales           Decimal             @default(0.0) @db.Decimal(10, 2)
+  cardSales          Decimal             @default(0.0) @db.Decimal(10, 2)
+  creditSales        Decimal             @default(0.0) @db.Decimal(10, 2)
+  cashPayouts        Decimal             @default(0.0) @db.Decimal(10, 2)
+  expectedCash       Decimal             @default(0.0) @db.Decimal(10, 2)
+  actualCashCounted  Decimal?            @db.Decimal(10, 2)
+  cashDifference     Decimal?            @db.Decimal(10, 2)
+  denominationsJson  String?             @db.Text
+  status             String              @default("OPEN") // "OPEN", "CLOSED"
+  closingNotes       String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payouts            CashDrawerPayout[]
+
+  @@unique([tenantId, shiftNumber])
+  @@index([tenantId, status])
+  @@index([tenantId, openedAt])
+  @@map("cash_drawer_shifts")
+}
+
+model CashDrawerPayout {
+  id          String          @id @default(uuid())
+  tenantId    String
+  shiftId     String
+  amount      Decimal         @db.Decimal(10, 2)
+  reason      String
+  paidTo      String?
+  approvedBy  String
+  createdAt   DateTime        @default(now())
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shift       CashDrawerShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, shiftId])
+  @@map("cash_drawer_payouts")
 }

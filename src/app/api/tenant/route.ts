@@ -117,6 +117,12 @@ export async function GET(req: NextRequest) {
             href: "/invoices", 
             icon: "FileCode" 
           },
+          { 
+            id: "cash-drawer", 
+            name: "Cash Drawer & Z-Reports", 
+            href: "/billing/shifts", 
+            icon: "Wallet" 
+          },
         ],
       },
       {
