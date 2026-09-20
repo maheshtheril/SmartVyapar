@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -38,7 +38,9 @@ import {
   MessageSquare,
   FileCheck,
   Scale,
-  ClipboardCheck
+  ClipboardCheck,
+  Wallet,
+  ChevronsUpDown,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -70,7 +72,10 @@ const ICON_MAP: Record<string, any> = {
   CreditCard,
   MessageSquare,
   ClipboardCheck,
+  Wallet,
 };
+
+const EXPANDED_STORAGE_KEY = 'sv_sidebar_expanded';
 
 interface NavChildNode {
   id: string;
@@ -92,61 +97,105 @@ interface NavTreeGroup {
   children: NavChildNode[];
 }
 
+function loadPersistedExpanded(): Record<string, boolean> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(EXPANDED_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
+function savePersistedExpanded(state: Record<string, boolean>) {
+  try {
+    localStorage.setItem(EXPANDED_STORAGE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tenant, setTenant] = useState({
-    businessName: "Loading Business...",
+    businessName: "Loading...",
     subscriptionTier: "FREE",
     gstin: "",
   });
   const [currentUser, setCurrentUser] = useState({ name: "", role: "" });
   const [treeGroups, setTreeGroups] = useState<NavTreeGroup[]>([]);
 
-  // Expanded state for parent tree categories
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    billing: true,
-    inventory: true,
-    restaurant: false,
-    parties: false,
-    accounting: false,
-    ai: true,
-  });
+  // Expanded state – seeded from localStorage (all closed by default if no saved state)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() =>
+    loadPersistedExpanded()
+  );
 
-  const toggleGroup = (groupId: string) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupId]: !prev[groupId],
-    }));
-  };
+  const updateExpanded = useCallback((updater: (prev: Record<string, boolean>) => Record<string, boolean>) => {
+    setExpandedGroups((prev) => {
+      const next = updater(prev);
+      savePersistedExpanded(next);
+      return next;
+    });
+  }, []);
 
-  // Auto-expand group if current path matches any child
+  const toggleGroup = useCallback((groupId: string) => {
+    updateExpanded((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+  }, [updateExpanded]);
+
+  const collapseAll = useCallback(() => {
+    updateExpanded(() => ({}));
+  }, [updateExpanded]);
+
+  const expandAll = useCallback(() => {
+    setTreeGroups((groups) => {
+      const allExpanded: Record<string, boolean> = {};
+      groups.forEach((g) => { allExpanded[g.id] = true; });
+      savePersistedExpanded(allExpanded);
+      setExpandedGroups(allExpanded);
+      return groups;
+    });
+  }, []);
+
+  // Auto-expand the group containing the active page – only when it's currently collapsed
   useEffect(() => {
-    if (pathname.startsWith('/billing') || pathname.startsWith('/invoices')) {
-      setExpandedGroups((prev) => ({ ...prev, billing: true }));
-    } else if (pathname.startsWith('/inventory')) {
-      setExpandedGroups((prev) => ({ ...prev, inventory: true }));
-    } else if (pathname.startsWith('/restaurant')) {
-      setExpandedGroups((prev) => ({ ...prev, restaurant: true }));
-    } else if (pathname.startsWith('/customers')) {
-      setExpandedGroups((prev) => ({ ...prev, parties: true }));
-    } else if (pathname.startsWith('/accounting')) {
-      setExpandedGroups((prev) => ({ ...prev, accounting: true }));
-    }
+    setExpandedGroups((prev) => {
+      const groupMap: Record<string, string> = {
+        '/billing': 'billing',
+        '/invoices': 'billing',
+        '/inventory': 'inventory',
+        '/restaurant': 'restaurant',
+        '/customers': 'parties',
+        '/accounting': 'accounting',
+      };
+      let targetGroup: string | null = null;
+      for (const [prefix, groupId] of Object.entries(groupMap)) {
+        if (pathname.startsWith(prefix)) {
+          targetGroup = groupId;
+          break;
+        }
+      }
+      if (targetGroup && !prev[targetGroup]) {
+        const next = { ...prev, [targetGroup]: true };
+        savePersistedExpanded(next);
+        return next;
+      }
+      return prev;
+    });
   }, [pathname]);
 
-  // Dynamically load Tenant Profile & Live DB Tree from /api/tenant
+  // Fetch tenant data ONCE on mount only (no dependency on router)
   useEffect(() => {
+    let cancelled = false;
     async function loadTenantData() {
       try {
         const res = await fetch("/api/tenant");
+        if (cancelled) return;
         if (res.status === 401) {
           router.push("/login");
           return;
         }
         const data = await res.json();
+        if (cancelled) return;
         if (data.success) {
           if (data.tenant) {
             setTenant({
@@ -158,7 +207,6 @@ export default function Sidebar() {
           if (data.user) {
             setCurrentUser({ name: data.user.name, role: data.user.role });
           }
-          // Set dynamic menu tree populated by Neon Database
           if (Array.isArray(data.menuTree)) {
             setTreeGroups(data.menuTree);
           }
@@ -166,11 +214,13 @@ export default function Sidebar() {
       } catch (err) {
         console.error("Failed to load tenant profile for sidebar:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     loadTenantData();
-  }, [router]);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← empty deps: fetch exactly once, never re-fetch on navigation
 
   const handleLogout = async () => {
     try {
@@ -181,6 +231,10 @@ export default function Sidebar() {
       console.error("Logout failed:", err);
     }
   };
+
+  // Count how many groups are currently expanded
+  const expandedCount = Object.values(expandedGroups).filter(Boolean).length;
+  const hasAnyExpanded = expandedCount > 0;
 
   return (
     <>
@@ -212,7 +266,7 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Dynamic Hierarchical Tree Sidebar (Loaded from Database) */}
+      {/* Dynamic Hierarchical Tree Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -257,7 +311,7 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Quick Menu Search Trigger (World Standard Ctrl+K) */}
+        {/* Quick Menu Search Trigger (Ctrl+K) */}
         <div className="px-3 pb-2 shrink-0">
           <button
             type="button"
@@ -278,7 +332,7 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Dynamic Tree Navigation from Database */}
+        {/* Dynamic Tree Navigation */}
         <nav className="flex-1 space-y-1.5 px-3 py-2 overflow-y-auto">
           {/* Root Link: Dashboard */}
           <Link
@@ -299,10 +353,21 @@ export default function Sidebar() {
             )}
           </Link>
 
-          <div className="pt-2">
+          {/* ERP Modules Header + Collapse/Expand All Toggle */}
+          <div className="pt-2 flex items-center justify-between pr-1">
             <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
               ERP Modules
             </p>
+            {treeGroups.length > 0 && (
+              <button
+                onClick={hasAnyExpanded ? collapseAll : expandAll}
+                title={hasAnyExpanded ? "Collapse all sections" : "Expand all sections"}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+              >
+                <ChevronsUpDown className="h-3 w-3" />
+                {hasAnyExpanded ? "Collapse" : "Expand"}
+              </button>
+            )}
           </div>
 
           {/* Loading Skeleton */}
