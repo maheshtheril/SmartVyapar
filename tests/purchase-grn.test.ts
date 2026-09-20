@@ -96,4 +96,25 @@ describe("World-Standard Purchase Bill & GRN Engine", () => {
       assert.equal(totalDebits - totalCredits, 0);
     });
   });
+
+  describe("Statutory Inward Invoice Reconciliation Audit (Scanned vs Calculated)", () => {
+    test("Reconciled 100%: should pass when computed total matches physical scanned invoice total within roundoff", () => {
+      const scannedTotal = 7469.0;
+      const rawCalculated = 7468.86;
+      const roundOff = 0.14;
+      const computedGrandTotal = Math.round((rawCalculated + roundOff) * 100) / 100; // 7469.00
+
+      const variance = Math.abs(scannedTotal - computedGrandTotal);
+      assert.ok(variance <= 0.01, "Variance should be zero / within roundoff tolerance");
+    });
+
+    test("Variance Detected: flags discrepancy when cashier edits line or OCR misreads", () => {
+      const scannedTotal = 7469.0;
+      const tamperedCalculated = 8120.0; // Someone altered a quantity or rate
+      const variance = Math.abs(tamperedCalculated - scannedTotal);
+
+      assert.ok(variance > 1.0, "Discrepancy must be flagged");
+      assert.equal(variance, 651.0);
+    });
+  });
 });

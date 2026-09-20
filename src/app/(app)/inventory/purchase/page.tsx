@@ -98,7 +98,8 @@ export default function PurchaseInwardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isScanningInvoice, setIsScanningInvoice] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
-  const [scanSuccessInfo, setScanSuccessInfo] = useState<{ count: number; billNumber: string; confidence: number } | null>(null);
+  const [scanSuccessInfo, setScanSuccessInfo] = useState<{ count: number; billNumber: string; confidence: number; scannedTotal?: number } | null>(null);
+  const [scannedTotal, setScannedTotal] = useState<number>(0);
   const [customApiKeyInput, setCustomApiKeyInput] = useState('');
   const [keySavedBanner, setKeySavedBanner] = useState(false);
 
@@ -178,6 +179,7 @@ export default function PurchaseInwardPage() {
     setNotes('');
     setScanSuccessInfo(null);
     setScanError(null);
+    setScannedTotal(0);
     setItems([
       {
         productName: '',
@@ -450,6 +452,10 @@ export default function PurchaseInwardPage() {
       if (data.billNumber) setBillNumber(data.billNumber);
       if (data.billDate && data.billDate.length >= 10) setBillDate(data.billDate.substring(0, 10));
 
+      if (data.totalAmount && Number(data.totalAmount) > 0) {
+        setScannedTotal(Number(data.totalAmount));
+      }
+
       if (Array.isArray(data.items) && data.items.length > 0) {
         const mappedRows: PurchaseItemRow[] = data.items.map((it: any) => {
           // Attempt catalog match by name or SKU
@@ -497,6 +503,7 @@ export default function PurchaseInwardPage() {
           count: mappedRows.length,
           billNumber: data.billNumber || 'Auto-detected',
           confidence: Math.round((data.confidenceScore || 0.95) * 100),
+          scannedTotal: data.totalAmount ? Number(data.totalAmount) : 0,
         });
       }
     } catch (err: any) {
@@ -657,6 +664,15 @@ export default function PurchaseInwardPage() {
     grandTotal = Math.round((rawGrandTotal + roundOff) * 100) / 100;
   }
 
+  // Auto-adjust roundoff to match scanned document total exactly
+  const handleAutoReconcileRoundoff = () => {
+    if (scannedTotal > 0) {
+      const neededDiff = Math.round((scannedTotal - rawGrandTotal) * 100) / 100;
+      setIsAutoRound(false);
+      setRoundOff(neededDiff);
+    }
+  };
+
   // Open Multi-Item Consignment Barcode Modal
   const openBatchBarcodeModal = (bill: any) => {
     setSelectedBillForBarcodeBatch(bill);
@@ -684,6 +700,16 @@ export default function PurchaseInwardPage() {
     if (items.some((it) => !it.productName.trim() || Number(it.quantity) <= 0 || Number(it.purchasePrice) < 0)) {
       alert('Please verify line items: ensure description, quantity (> 0), and price are entered.');
       return;
+    }
+
+    // Statutory Inward Audit Reconciliation (Compare Scanned Document Total vs Calculated Lines)
+    if (scannedTotal > 0 && Math.abs(grandTotal - scannedTotal) > 1.0) {
+      const diff = Math.abs(grandTotal - scannedTotal).toFixed(2);
+      const isHigher = grandTotal > scannedTotal;
+      const proceed = window.confirm(
+        `⚠️ Total Mismatch / Variance Detected:\n\nThe printed scanned invoice total is ₹${scannedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}, but the calculated line items equal ₹${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${isHigher ? '₹' + diff + ' higher' : '₹' + diff + ' lower'}).\n\nDo you want to proceed and save this voucher anyway?`
+      );
+      if (!proceed) return;
     }
 
     setSubmitting(true);
@@ -1732,6 +1758,43 @@ export default function PurchaseInwardPage() {
 
               {/* Grand Total & Primary Post Actions */}
               <div className="flex items-center gap-4">
+                {/* Statutory Inward Reconciliation Audit (Scanned vs Calculated) */}
+                {scannedTotal > 0 && (
+                  <div className="flex flex-col items-start px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs shadow-xs">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                      Scanned Total (Physical Bill)
+                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono font-bold text-slate-800 text-sm">
+                        ₹{scannedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
+                      {Math.abs(scannedTotal - grandTotal) <= 1.0 ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Reconciled (Matched)
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
+                            <AlertTriangle className="w-3 h-3 text-rose-600" />
+                            Diff: {grandTotal > scannedTotal ? `+₹${(grandTotal - scannedTotal).toFixed(2)}` : `-₹${(scannedTotal - grandTotal).toFixed(2)}`}
+                          </span>
+                          {Math.abs(scannedTotal - rawGrandTotal) <= 20 && (
+                            <button
+                              type="button"
+                              onClick={handleAutoReconcileRoundoff}
+                              className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                              title="Automatically adjust roundoff to match scanned bill total"
+                            >
+                              Auto-Match
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-slate-900 text-white px-5 py-2 rounded-xl flex flex-col items-end shadow-sm">
                   <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Grand Total Inward</span>
                   <span className="text-xl font-black font-mono tracking-tight text-white">
