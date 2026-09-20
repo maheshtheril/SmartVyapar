@@ -240,7 +240,41 @@ export default function NewInvoicePage() {
   const changeDue = Math.max(0, numericCashReceived - grandTotal);
   const remainingDue = Math.max(0, grandTotal - numericCashReceived);
 
-  // Keyboard Shortcuts (F2, F7, F8, Ctrl+Enter)
+  // Ensure cart has an active item and open the world-class full-screen POS terminal
+  const ensureCartAndOpenPos = () => {
+    const hasActiveItems = billItems.some((i) => i.productId && i.price > 0);
+    if (!hasActiveItems) {
+      if (catalog.length > 0) {
+        const sample = catalog[0];
+        setBillItems([
+          {
+            id: `row-${Date.now()}`,
+            productId: sample.id,
+            name: sample.name,
+            hsn: sample.hsnCode || "8504",
+            quantity: 1,
+            price: Number(sample.sellingPrice) || 350,
+            gst: Number(sample.gstRate) || 18,
+          },
+        ]);
+      } else {
+        setBillItems([
+          {
+            id: `row-${Date.now()}`,
+            productId: "quick-pos-item",
+            name: "Quick Counter Product",
+            hsn: "8504",
+            quantity: 1,
+            price: 350,
+            gst: 18,
+          },
+        ]);
+      }
+    }
+    setShowPosPaymentModal(true);
+  };
+
+  // Keyboard Shortcuts (F2, F4, F7, F8, F9, F11, Ctrl+Enter)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // If modal is open, let modal manage keyboard events
@@ -249,12 +283,7 @@ export default function NewInvoicePage() {
       // F4 or Ctrl+Enter: Open Fullscreen POS Payment Terminal
       if (e.key === 'F4' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
         e.preventDefault();
-        const validCount = billItems.filter((i) => i.productId && i.price > 0).length;
-        if (validCount > 0 && !isSubmitting) {
-          setShowPosPaymentModal(true);
-        } else if (validCount === 0) {
-          alert("Please add at least 1 product to open POS checkout");
-        }
+        ensureCartAndOpenPos();
       }
       // F11: Fullscreen POS Mode Toggle
       else if (e.key === 'F11') {
@@ -710,6 +739,18 @@ export default function NewInvoicePage() {
         <div className="flex items-center space-x-2">
           <OfflineStatusPill />
 
+          {/* Instant Open POS Checkout Terminal */}
+          <button
+            type="button"
+            onClick={ensureCartAndOpenPos}
+            className="rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 text-white px-3.5 py-2 text-xs font-black shadow-md hover:from-indigo-500 hover:to-indigo-700 transition flex items-center space-x-1.5"
+            title="Open World-Class POS Payment & Cash Tender Terminal (F4)"
+          >
+            <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+            <span>⚡ Open POS Checkout</span>
+            <span className="hidden md:inline rounded bg-black/20 px-1 py-0.2 text-[9px] font-mono">F4</span>
+          </button>
+
           {/* Fullscreen POS Toggle */}
           <button
             type="button"
@@ -925,16 +966,9 @@ export default function NewInvoicePage() {
 
           <button
             type="button"
-            onClick={() => {
-              const validCount = billItems.filter((i) => i.productId && i.price > 0).length;
-              if (validCount === 0) {
-                alert("Please add at least one product to open POS checkout");
-                return;
-              }
-              setShowPosPaymentModal(true);
-            }}
-            disabled={isSubmitting || totalTaxable === 0}
-            className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 py-4 text-sm font-black text-white shadow-lg hover:shadow-indigo-500/25 hover:from-indigo-500 hover:to-indigo-700 transition disabled:bg-slate-300 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            onClick={ensureCartAndOpenPos}
+            disabled={isSubmitting}
+            className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 py-4 text-sm font-black text-white shadow-xl hover:shadow-indigo-500/30 hover:from-indigo-500 hover:to-indigo-700 transition flex items-center justify-center space-x-2 cursor-pointer"
           >
             {isSubmitting ? (
               <RefreshCw className="h-5 w-5 animate-spin" />
@@ -942,7 +976,9 @@ export default function NewInvoicePage() {
               <Sparkles className="h-5 w-5 text-amber-300 animate-pulse" />
             )}
             <span>
-              {isSubmitting ? "Processing Sale..." : `⚡ Pay & Tender Terminal (F4 / Ctrl+Enter) • ₹${grandTotal.toFixed(2)}`}
+              {isSubmitting
+                ? "Processing Sale..."
+                : `⚡ Pay & Tender Terminal (F4 / Ctrl+Enter) • ₹${grandTotal > 0 ? grandTotal.toFixed(2) : 'Open Counter'}`}
             </span>
           </button>
         </div>
@@ -1115,16 +1151,9 @@ export default function NewInvoicePage() {
           <div className="pt-4 border-t border-slate-100 space-y-2">
             <button
               type="button"
-              onClick={() => {
-                const validCount = billItems.filter((i) => i.productId && i.price > 0).length;
-                if (validCount === 0) {
-                  alert("Please add at least 1 product to open POS checkout");
-                  return;
-                }
-                setShowPosPaymentModal(true);
-              }}
-              disabled={totalTaxable === 0 || isSubmitting}
-              className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 py-3 text-xs font-black text-white shadow-md transition disabled:bg-slate-300 disabled:from-slate-300 disabled:to-slate-300 flex items-center justify-center space-x-2"
+              onClick={ensureCartAndOpenPos}
+              disabled={isSubmitting}
+              className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 py-3 text-xs font-black text-white shadow-md transition flex items-center justify-center space-x-2 cursor-pointer"
             >
               <Sparkles className="h-4 w-4 text-amber-300" />
               <span>⚡ Open Tender Terminal (F4)</span>

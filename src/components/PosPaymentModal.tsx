@@ -132,6 +132,9 @@ export default function PosPaymentModal({
 }: PosPaymentModalProps) {
   const [activeTab, setActiveTab] = useState<"CASH" | "UPI" | "CARD" | "SPLIT" | "CREDIT">("CASH");
   const [cashInput, setCashInput] = useState<string>("");
+  const [customPayable, setCustomPayable] = useState<number>(grandTotal > 0 ? grandTotal : 350);
+  const effectiveGrandTotal = grandTotal > 0 ? grandTotal : customPayable;
+
   const [splitCashInput, setSplitCashInput] = useState<string>("");
   const [cardRef, setCardRef] = useState<string>("");
   const [cardLast4, setCardLast4] = useState<string>("");
@@ -141,11 +144,12 @@ export default function PosPaymentModal({
   // Initialize cash tender input with exact amount when modal opens
   useEffect(() => {
     if (isOpen) {
-      setCashInput(grandTotal > 0 ? String(grandTotal) : "");
-      setSplitCashInput(grandTotal > 0 ? String(Math.round(grandTotal / 2)) : "");
+      const initAmount = grandTotal > 0 ? grandTotal : customPayable;
+      setCashInput(String(initAmount));
+      setSplitCashInput(String(Math.round(initAmount / 2)));
       setSoundboxPlayed(false);
     }
-  }, [isOpen, grandTotal]);
+  }, [isOpen, grandTotal, customPayable]);
 
   // Global Keyboard listener for POS tender actions
   useEffect(() => {
@@ -180,30 +184,30 @@ export default function PosPaymentModal({
 
   // Numerical calculations
   const numericTendered = parseFloat(cashInput) || 0;
-  const changeDue = Math.max(0, numericTendered - grandTotal);
-  const shortAmount = Math.max(0, grandTotal - numericTendered);
-  const isExactOrMore = numericTendered >= grandTotal;
+  const changeDue = Math.max(0, numericTendered - effectiveGrandTotal);
+  const shortAmount = Math.max(0, effectiveGrandTotal - numericTendered);
+  const isExactOrMore = numericTendered >= effectiveGrandTotal;
 
   // Split calculations
   const splitCash = parseFloat(splitCashInput) || 0;
-  const splitOnlineRemaining = Math.max(0, grandTotal - splitCash);
+  const splitOnlineRemaining = Math.max(0, effectiveGrandTotal - splitCash);
 
   // Quick denomination suggestions for India
   const denominations = [
-    { label: `Exact (₹${grandTotal.toFixed(2)})`, value: grandTotal },
-    { label: `₹${Math.ceil(grandTotal / 10) * 10}`, value: Math.ceil(grandTotal / 10) * 10 },
-    { label: `₹${Math.ceil(grandTotal / 50) * 50}`, value: Math.ceil(grandTotal / 50) * 50 },
-    { label: `₹${Math.ceil(grandTotal / 100) * 100}`, value: Math.ceil(grandTotal / 100) * 100 },
+    { label: `Exact (₹${effectiveGrandTotal.toFixed(2)})`, value: effectiveGrandTotal },
+    { label: `₹${Math.ceil(effectiveGrandTotal / 10) * 10}`, value: Math.ceil(effectiveGrandTotal / 10) * 10 },
+    { label: `₹${Math.ceil(effectiveGrandTotal / 50) * 50}`, value: Math.ceil(effectiveGrandTotal / 50) * 50 },
+    { label: `₹${Math.ceil(effectiveGrandTotal / 100) * 100}`, value: Math.ceil(effectiveGrandTotal / 100) * 100 },
     { label: '₹500', value: 500 },
     { label: '₹1,000', value: 1000 },
     { label: '₹2,000', value: 2000 },
-  ].filter((d, idx, arr) => d.value >= grandTotal && arr.findIndex(x => x.value === d.value) === idx);
+  ].filter((d, idx, arr) => d.value >= effectiveGrandTotal && arr.findIndex(x => x.value === d.value) === idx);
 
   // Suggested currency notes to return
   const returnNotes = getIndianDenominations(changeDue);
 
   // Generate real NPCI UPI URI
-  const upiUri = `upi://pay?pa=${encodeURIComponent(upiId || 'zionabusiness@icici')}&pn=${encodeURIComponent(businessName || 'SmartVyapar')}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Bill payment ${customerName || 'Customer'}`)}`;
+  const upiUri = `upi://pay?pa=${encodeURIComponent(upiId || 'zionabusiness@icici')}&pn=${encodeURIComponent(businessName || 'SmartVyapar')}&am=${effectiveGrandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Bill payment ${customerName || 'Customer'}`)}`;
 
   // NumPad buttons handler
   const handleNumpadPress = (char: string) => {
@@ -331,18 +335,18 @@ export default function PosPaymentModal({
                   Total Amount Payable
                 </span>
                 <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-white mt-0.5">
-                  ₹{grandTotal.toFixed(2)}
+                  ₹{effectiveGrandTotal.toFixed(2)}
                 </div>
                 <div className="text-xs text-indigo-200 mt-1 flex items-center gap-2">
-                  <span>Taxable: ₹{totalTaxable.toFixed(2)}</span>
+                  <span>Taxable: ₹{grandTotal > 0 ? totalTaxable.toFixed(2) : (effectiveGrandTotal * 0.82).toFixed(2)}</span>
                   <span>•</span>
-                  <span>GST: ₹{totalTax.toFixed(2)}</span>
+                  <span>GST: ₹{grandTotal > 0 ? totalTax.toFixed(2) : (effectiveGrandTotal * 0.18).toFixed(2)}</span>
                 </div>
               </div>
 
               <div className="text-right">
                 <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-white border border-white/20">
-                  {items.length} {items.length === 1 ? 'Product' : 'Products'}
+                  {items.length > 0 ? `${items.length} ${items.length === 1 ? 'Product' : 'Products'}` : 'Quick Counter'}
                 </span>
               </div>
             </div>
@@ -350,28 +354,55 @@ export default function PosPaymentModal({
             {/* Scrollable Items List */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-4">
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">
-                Order Items in Cart
+                {items.length > 0 ? 'Order Items in Cart' : 'Quick Open Tender'}
               </div>
-              {items.map((it, idx) => (
-                <div key={idx} className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-between">
-                  <div className="min-w-0 flex-1 pr-3">
-                    <p className="text-xs font-bold text-slate-800 truncate">{it.name}</p>
-                    <div className="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5 font-mono">
-                      <span>{it.quantity} × ₹{it.price.toFixed(2)}</span>
-                      <span>•</span>
-                      <span>GST {it.gst}%</span>
-                      {it.batchNumber && (
-                        <span className="text-indigo-600 font-semibold bg-indigo-50 px-1.5 py-0.2 rounded">
-                          Batch: {it.batchNumber}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-xs font-black font-mono text-slate-900 text-right shrink-0">
-                    ₹{(it.quantity * it.price).toFixed(2)}
+              {items.length === 0 ? (
+                <div className="p-4 rounded-2xl bg-white border border-dashed border-indigo-200 text-center space-y-2.5">
+                  <div className="text-xs font-black text-indigo-900">Custom / Walk-in Open Tender</div>
+                  <p className="text-[11px] text-slate-500">Pick a quick preset amount or type any cash in the NumPad:</p>
+                  <div className="flex justify-center items-center gap-1.5 flex-wrap">
+                    {[50, 100, 200, 350, 500, 1000, 2000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          setCustomPayable(amt);
+                          setCashInput(String(amt));
+                          setSplitCashInput(String(Math.round(amt / 2)));
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition ${
+                          effectiveGrandTotal === amt
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'bg-slate-50 border border-slate-200 text-slate-700 hover:border-indigo-400'
+                        }`}
+                      >
+                        ₹{amt}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
+              ) : (
+                items.map((it, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-between">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="text-xs font-bold text-slate-800 truncate">{it.name}</p>
+                      <div className="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5 font-mono">
+                        <span>{it.quantity} × ₹{it.price.toFixed(2)}</span>
+                        <span>•</span>
+                        <span>GST {it.gst}%</span>
+                        {it.batchNumber && (
+                          <span className="text-indigo-600 font-semibold bg-indigo-50 px-1.5 py-0.2 rounded">
+                            Batch: {it.batchNumber}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs font-black font-mono text-slate-900 text-right shrink-0">
+                      ₹{(it.quantity * it.price).toFixed(2)}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Customer Information Card */}
