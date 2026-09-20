@@ -54,6 +54,12 @@ interface BillItem {
   batchMrp?: number;
 }
 
+export interface PaymentItem {
+  method: 'CASH' | 'UPI' | 'CARD' | 'CREDIT';
+  amount: number;
+  reference?: string;
+}
+
 interface HeldBill {
   id: string;
   heldAt: string;
@@ -169,6 +175,14 @@ export default function NewInvoicePage() {
   const [cardLast4, setCardLast4] = useState<string>("");
   const [soundboxPlayed, setSoundboxPlayed] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+
+  // Financial Payment Settlement Terminal Modal States (SAAS_ERP Standard)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [activePaymentAmount, setActivePaymentAmount] = useState<string>("");
+  const [changeDueState, setChangeDueState] = useState<number | null>(null);
+  const [invoiceNote, setInvoiceNote] = useState<string>("");
+  const amountInputRef = useRef<HTMLInputElement | null>(null);
 
   // Bill-Level Discount States
   const [billDiscountType, setBillDiscountType] = useState<'PERCENT' | 'FLAT'>('PERCENT');
@@ -387,6 +401,83 @@ export default function NewInvoicePage() {
     }
   }, [paymentMode, grandTotal]);
 
+  // Payment Stream Metrics (SAAS_ERP Architecture)
+  const totalPaidStream = Number(payments.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2));
+  const streamBalanceDue = Number(Math.max(0, grandTotal - totalPaidStream).toFixed(2));
+  const isStreamBalanced = grandTotal > 0 && Math.abs(totalPaidStream - grandTotal) < 0.05;
+  const isStreamDeficit = totalPaidStream < grandTotal;
+  const isStreamSurplus = totalPaidStream > grandTotal;
+
+  // Auto-snap active payment amount when Payment Terminal opens
+  useEffect(() => {
+    if (isPaymentModalOpen) {
+      if (payments.length === 0) {
+        setActivePaymentAmount(grandTotal.toFixed(2));
+      }
+      setTimeout(() => amountInputRef.current?.focus(), 150);
+    }
+  }, [isPaymentModalOpen, grandTotal, payments.length]);
+
+  // Handler to add payment to stream
+  const handleAddPaymentToStream = (method: 'CASH' | 'UPI' | 'CARD' | 'CREDIT') => {
+    const amt = parseFloat(activePaymentAmount) || 0;
+    if (amt <= 0) {
+      alert("Please enter an amount before choosing a payment method.");
+      return;
+    }
+
+    const currentPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const remaining = Math.max(0, grandTotal - currentPaid);
+    let finalAmt = amt;
+
+    if (method === 'CASH' && amt > remaining) {
+      setChangeDueState(Number((amt - remaining).toFixed(2)));
+      finalAmt = remaining;
+    }
+
+    setPayments((prev) => {
+      const existingIdx = prev.findIndex((p) => p.method === method);
+      let updated = [...prev];
+      if (existingIdx !== -1) {
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          amount: Number((updated[existingIdx].amount + finalAmt).toFixed(2)),
+        };
+      } else {
+        updated.push({
+          method,
+          amount: finalAmt,
+          reference: method === 'CARD' ? (cardRef || undefined) : undefined,
+        });
+      }
+      const newTotal = updated.reduce((sum, p) => sum + p.amount, 0);
+      const newRemaining = Math.max(0, grandTotal - newTotal);
+      setTimeout(() => setActivePaymentAmount(newRemaining > 0 ? newRemaining.toFixed(2) : ''), 0);
+      return updated;
+    });
+  };
+
+  // Handler to give change and tally
+  const handleGiveChangeAndTally = () => {
+    let amountToReduce = Number((totalPaidStream - grandTotal).toFixed(2));
+    setPayments((prev) => {
+      let updated = [...prev];
+      for (let i = updated.length - 1; i >= 0; i--) {
+        if (updated[i].method === 'CASH' && amountToReduce > 0) {
+          if (updated[i].amount > amountToReduce) {
+            updated[i].amount = Number((updated[i].amount - amountToReduce).toFixed(2));
+            amountToReduce = 0;
+          } else {
+            amountToReduce = Number((amountToReduce - updated[i].amount).toFixed(2));
+            updated[i].amount = 0;
+          }
+        }
+      }
+      return updated.filter((p) => p.amount > 0);
+    });
+    setChangeDueState(null);
+  };
+
   // NumPad button click handler
   const handleNumpadPress = (char: string) => {
     if (char === 'C') {
@@ -426,12 +517,10 @@ export default function NewInvoicePage() {
         setPaymentStatus('PAID');
       } else if (e.key === 'F5') {
         e.preventDefault();
-        setPaymentMode('CREDIT');
-        setPaymentStatus('UNPAID');
+        setIsPaymentModalOpen(true);
       } else if (e.key === 'F6') {
         e.preventDefault();
-        setPaymentMode('SPLIT');
-        setPaymentStatus('PAID');
+        setIsPaymentModalOpen(true);
       } else if (e.key === 'F7') {
         e.preventDefault();
         handleHoldBill();
@@ -446,10 +535,24 @@ export default function NewInvoicePage() {
         toggleFullScreenPOS();
       } else if (e.key === 'Enter' && !isInputFocused) {
         e.preventDefault();
-        if (totalTaxable > 0 && !isSubmitting) {
-          handleCreateBill();
+        if (isPaymentModalOpen) {
+          if (isStreamBalanced || isStreamDeficit) {
+            handleCreateBill();
+          }
+        } else if (totalTaxable > 0 && !isSubmitting) {
+          setIsPaymentModalOpen(true);
         }
       } else if (e.key === 'Escape') {
+        if (changeDueState !== null) {
+          e.preventDefault();
+          setChangeDueState(null);
+          return;
+        }
+        if (isPaymentModalOpen) {
+          e.preventDefault();
+          setIsPaymentModalOpen(false);
+          return;
+        }
         // Exit to dashboard
         if (!showHeldModal && !showBatchModal && !showReceiptModal) {
           router.push('/');
@@ -459,7 +562,7 @@ export default function NewInvoicePage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [billItems, customerName, customerPhone, customerState, grandTotal, totalTaxable, isSubmitting, heldBills, paymentMode, cashReceived, splitCash, splitUpi, splitCard, splitCredit, showHeldModal, showBatchModal, showReceiptModal]);
+  }, [billItems, customerName, customerPhone, customerState, grandTotal, totalTaxable, isSubmitting, heldBills, paymentMode, cashReceived, splitCash, splitUpi, splitCard, splitCredit, isPaymentModalOpen, changeDueState, payments, activePaymentAmount, isStreamBalanced, isStreamDeficit, showHeldModal, showBatchModal, showReceiptModal]);
 
   // Multi-Item Handlers
   const handleAddItem = () => {
@@ -671,6 +774,11 @@ export default function NewInvoicePage() {
     setSplitCard("");
     setSplitCredit("");
     setShowSplitUpiQr(false);
+    setIsPaymentModalOpen(false);
+    setPayments([]);
+    setActivePaymentAmount("");
+    setChangeDueState(null);
+    setInvoiceNote("");
     setCardRef("");
     setCardLast4("");
     setBillDiscountType('PERCENT');
@@ -700,12 +808,31 @@ export default function NewInvoicePage() {
 
     setIsSubmitting(true);
 
-    const isSplitMode = paymentMode === "SPLIT";
+    const finalPayments = payments.filter((p) => p.amount > 0);
+    const isStreamActive = finalPayments.length > 0;
+    const isSplitMode = isStreamActive ? finalPayments.length > 1 : paymentMode === "SPLIT";
     let computedPaid = 0;
     let computedDue = 0;
     let paymentNotes: string | undefined = undefined;
 
-    if (isSplitMode) {
+    if (isStreamActive) {
+      computedPaid = Number(
+        finalPayments
+          .filter((p) => p.method !== 'CREDIT')
+          .reduce((sum, p) => sum + p.amount, 0)
+          .toFixed(2)
+      );
+      computedDue = Number(
+        (
+          finalPayments
+            .filter((p) => p.method === 'CREDIT')
+            .reduce((sum, p) => sum + p.amount, 0) + Math.max(0, grandTotal - totalPaidStream)
+        ).toFixed(2)
+      );
+
+      const parts = finalPayments.map((p) => `${p.method} ₹${p.amount.toFixed(2)}`);
+      paymentNotes = `Payment Stream: ${parts.join(' + ')}${invoiceNote ? ` | ${invoiceNote}` : ''}`;
+    } else if (isSplitMode) {
       computedPaid = Number((numSplitCash + numSplitUpi + numSplitCard).toFixed(2));
       computedDue = Number((numSplitCredit + Math.max(0, grandTotal - totalSplitAllocated)).toFixed(2));
 
@@ -735,8 +862,8 @@ export default function NewInvoicePage() {
       customerName: customerName || "Walk-in Cash Customer",
       customerPhone: customerPhone || "9999999999",
       customerStateCode: customerState,
-      paymentStatus: isSplitMode ? (computedDue > 0 ? "PARTIAL" : "PAID") : paymentStatus,
-      paymentMode: isSplitMode ? "CASH" : paymentMode,
+      paymentStatus: (isStreamActive || isSplitMode) ? (computedDue > 0 ? "PARTIAL" : "PAID") : paymentStatus,
+      paymentMode: (isStreamActive || isSplitMode) ? "CASH" : paymentMode,
       paidAmount: computedPaid,
       notes: paymentNotes,
       items: validItems.map((i) => {
@@ -820,6 +947,7 @@ export default function NewInvoicePage() {
       });
 
       setShowReceiptModal(true);
+      setIsPaymentModalOpen(false);
       setIsSubmitting(false);
       return;
     }
@@ -862,6 +990,7 @@ export default function NewInvoicePage() {
       });
 
       setShowReceiptModal(true);
+      setIsPaymentModalOpen(false);
     } catch (err: any) {
       if (typeof window !== "undefined" && (!navigator.onLine || err.message?.includes("Failed to fetch") || err.message?.includes("network"))) {
         try {
@@ -890,6 +1019,7 @@ export default function NewInvoicePage() {
             notes: paymentNotes,
           });
           setShowReceiptModal(true);
+          setIsPaymentModalOpen(false);
           return;
         } catch (enqueueErr) {
           alert("Error: " + err.message);
@@ -1820,21 +1950,17 @@ export default function NewInvoicePage() {
 
           </div>
 
-          {/* BOTTOM ACTIONS: COMPLETE SALE & WHATSAPP */}
+          {/* BOTTOM ACTIONS: COLLECT PAYMENT & WHATSAPP */}
           <div className="pt-2.5 border-t border-slate-800 space-y-1.5 shrink-0">
             <button
               type="button"
-              onClick={handleCreateBill}
+              onClick={() => setIsPaymentModalOpen(true)}
               disabled={isSubmitting || totalTaxable === 0}
-              className="w-full py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm sm:text-base font-black shadow-lg shadow-emerald-900/30 transition flex items-center justify-center space-x-2 disabled:bg-slate-800 disabled:from-slate-800 disabled:to-slate-800 disabled:cursor-not-allowed cursor-pointer active:scale-98"
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white text-sm sm:text-base font-black shadow-lg shadow-emerald-900/30 transition flex items-center justify-center space-x-2 disabled:bg-slate-800 disabled:from-slate-800 disabled:to-slate-800 disabled:cursor-not-allowed cursor-pointer active:scale-98"
             >
-              {isSubmitting ? (
-                <RefreshCw className="h-5 w-5 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-5 w-5 text-white" />
-              )}
+              <CreditCard className="h-5 w-5 text-white" />
               <span>
-                {isSubmitting ? "Recording Transaction..." : `⚡ COMPLETE SALE & PRINT (Enter) • ₹${grandTotal.toFixed(2)}`}
+                {isSubmitting ? "Processing..." : `⚡ COLLECT PAYMENT & SETTLE [F5] • ₹${grandTotal.toFixed(2)}`}
               </span>
             </button>
 
@@ -1950,6 +2076,440 @@ export default function NewInvoicePage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* FINANCIAL PAYMENT SETTLEMENT TERMINAL (SAAS_ERP POPUP)   */}
+      {/* ======================================================== */}
+      {isPaymentModalOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-200">
+          <div className="w-full max-w-5xl rounded-[2.5rem] bg-slate-900 text-white shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white flex items-center space-x-2">
+                    <span>Financial Payment Settlement Terminal</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      Multi-Tender Stream
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Customer: <strong className="text-slate-200">{customerName || "Walk-in Customer"}</strong>
+                    {customerPhone && <span className="font-mono ml-2 text-emerald-400">📱 {customerPhone}</span>}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body: 2 Columns */}
+            <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-12 min-h-0">
+              {/* COLUMN 1: Financial Audit Node (Left - 5 Cols) */}
+              <div className="md:col-span-5 bg-slate-950 p-6 border-r border-slate-800 flex flex-col justify-between space-y-5">
+                <div className="space-y-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400">
+                    Financial Audit Node
+                  </div>
+
+                  {/* Gross Bill Total */}
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider">Gross Bill Total:</span>
+                    <span className={`font-mono font-black ${totalDiscount > 0 ? 'text-slate-500 line-through' : 'text-slate-200 text-sm'}`}>
+                      ₹{grossSubtotal.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* Bill Discount Row */}
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex justify-between items-center">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-rose-400 block">
+                        Discount Applied
+                      </span>
+                      <span className="text-[10px] text-rose-300/80">
+                        {billDiscountValue > 0 ? `${billDiscountValue}${billDiscountType === 'PERCENT' ? '%' : '₹'} Bill Discount` : 'No discount'}
+                      </span>
+                    </div>
+                    <span className="text-sm font-mono font-black text-rose-400">
+                      -₹{totalDiscount.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* Giant Total Payable Card */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white shadow-xl space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 block">
+                      Total Net Payable
+                    </span>
+                    <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight">
+                      ₹{grandTotal.toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-indigo-200/80 pt-1 border-t border-white/10 flex justify-between font-mono">
+                      <span>Taxable: ₹{totalTaxable.toFixed(2)}</span>
+                      <span>GST: ₹{(isIntraState ? totalCgst + totalSgst : totalIgst).toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Payment Stream List */}
+                  <div className="space-y-2 pt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Payment Stream ({payments.length})
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-slate-300">
+                        Allocated: ₹{totalPaidStream.toFixed(2)}
+                      </span>
+                    </div>
+
+                    {payments.length === 0 ? (
+                      <div className="p-4 rounded-xl border border-dashed border-slate-800 text-center text-slate-500 text-xs">
+                        No payments added yet. Enter an amount on the right and select a payment method.
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                        {payments.map((p, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <div className="p-1.5 rounded-lg bg-slate-800">
+                                {p.method === 'CASH' && <Banknote className="h-3.5 w-3.5 text-emerald-400" />}
+                                {p.method === 'UPI' && <QrCode className="h-3.5 w-3.5 text-indigo-400" />}
+                                {p.method === 'CARD' && <CreditCard className="h-3.5 w-3.5 text-cyan-400" />}
+                                {p.method === 'CREDIT' && <BookOpen className="h-3.5 w-3.5 text-amber-400" />}
+                              </div>
+                              <div>
+                                <span className="font-bold text-white block leading-tight">{p.method}</span>
+                                {p.reference && <span className="text-[9px] text-slate-400 font-mono">{p.reference}</span>}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2.5">
+                              <span className="font-mono font-bold text-sm text-white">₹{p.amount.toFixed(2)}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPayments(payments.filter((_, i) => i !== idx));
+                                  setActivePaymentAmount((prev) => ((parseFloat(prev) || 0) + p.amount).toFixed(2));
+                                }}
+                                className="text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tally Summary Box */}
+                <div className="pt-3 border-t border-slate-800 space-y-2">
+                  {isStreamSurplus ? (
+                    <div className="p-4 rounded-2xl bg-emerald-600 text-white shadow-lg space-y-2 animate-in zoom-in-95">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black uppercase tracking-wider opacity-90">Change to Return</span>
+                        <span className="text-[9px] font-bold bg-white/20 px-2 py-0.5 rounded-full">Surplus</span>
+                      </div>
+                      <div className="text-3xl font-black font-mono">
+                        ₹{(totalPaidStream - grandTotal).toFixed(2)}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleGiveChangeAndTally}
+                        className="w-full py-2 rounded-xl bg-white text-emerald-800 text-xs font-black uppercase tracking-wider hover:bg-slate-100 transition shadow-sm active:scale-98 cursor-pointer"
+                      >
+                        Give Change & Tally Invoice
+                      </button>
+                    </div>
+                  ) : isStreamBalanced ? (
+                    <div className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <span>✓ 100% Balanced • Perfectly Tallied. Ready to finalize!</span>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold">
+                      Deficit: ₹{streamBalanceDue.toFixed(2)} remaining. Will be posted as Customer Credit / Khata if finalized now.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* COLUMN 2: Payment Matrix & Tenders (Right - 7 Cols) */}
+              <div className="md:col-span-7 bg-slate-900 p-6 flex flex-col justify-between space-y-4">
+                <div className="space-y-4">
+                  {/* Ledger Notes */}
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
+                      Transaction Remarks / Ledger Notes
+                    </label>
+                    <input
+                      type="text"
+                      value={invoiceNote}
+                      onChange={(e) => setInvoiceNote(e.target.value)}
+                      placeholder="e.g. Split cash + UPI, GPay reference, or cashier note..."
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-sans placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  {/* Active Amount Input Box */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">
+                      Payment Amount to Allocate
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xl font-mono font-black text-slate-500">₹</span>
+                      <input
+                        ref={amountInputRef}
+                        type="text"
+                        value={activePaymentAmount}
+                        onChange={(e) => setActivePaymentAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddPaymentToStream('CASH');
+                          }
+                        }}
+                        placeholder="0.00"
+                        className="w-full pl-9 pr-4 py-3 rounded-2xl bg-slate-950 border-2 border-indigo-500 text-white font-mono font-black text-2xl tracking-wide focus:outline-none focus:ring-4 focus:ring-indigo-500/20 shadow-inner"
+                      />
+                    </div>
+
+                    {/* Quick Denomination Chips */}
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setActivePaymentAmount(streamBalanceDue.toFixed(2))}
+                        className="px-2 py-1 rounded-lg text-xs font-bold font-mono bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm cursor-pointer"
+                      >
+                        Exact Due (₹{streamBalanceDue.toFixed(2)})
+                      </button>
+                      {[50, 100, 500].map((step) => (
+                        <button
+                          key={step}
+                          type="button"
+                          onClick={() => setActivePaymentAmount(String((parseFloat(activePaymentAmount) || 0) + step))}
+                          className="px-2 py-1 rounded-lg text-xs font-bold font-mono bg-slate-800 text-indigo-300 border border-slate-700 hover:bg-slate-700 cursor-pointer"
+                        >
+                          +{step}
+                        </button>
+                      ))}
+                      {[500, 1000, 2000].map((val) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setActivePaymentAmount(String(val))}
+                          className="px-2 py-1 rounded-lg text-xs font-bold font-mono bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 cursor-pointer"
+                        >
+                          ₹{val}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 4 Method Selector Buttons (SAAS_ERP Matrix) */}
+                  <div className="space-y-1.5 pt-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block">
+                      Choose Tender Method for Active Amount
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAddPaymentToStream('CASH')}
+                        className="p-3 rounded-2xl bg-slate-950 border border-slate-800 hover:border-emerald-500 hover:bg-emerald-950/20 transition flex flex-col items-center justify-center space-y-1 group active:scale-95 cursor-pointer"
+                      >
+                        <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20">
+                          <Banknote className="h-5 w-5" />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-200">CASH</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddPaymentToStream('UPI')}
+                        className="p-3 rounded-2xl bg-slate-950 border border-slate-800 hover:border-indigo-500 hover:bg-indigo-950/20 transition flex flex-col items-center justify-center space-y-1 group active:scale-95 cursor-pointer"
+                      >
+                        <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20">
+                          <QrCode className="h-5 w-5" />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-200">UPI / QR</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddPaymentToStream('CARD')}
+                        className="p-3 rounded-2xl bg-slate-950 border border-slate-800 hover:border-cyan-500 hover:bg-cyan-950/20 transition flex flex-col items-center justify-center space-y-1 group active:scale-95 cursor-pointer"
+                      >
+                        <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20">
+                          <CreditCard className="h-5 w-5" />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-200">CARD / EDC</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddPaymentToStream('CREDIT')}
+                        className="p-3 rounded-2xl bg-slate-950 border border-slate-800 hover:border-amber-500 hover:bg-amber-950/20 transition flex flex-col items-center justify-center space-y-1 group active:scale-95 cursor-pointer"
+                      >
+                        <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20">
+                          <BookOpen className="h-5 w-5" />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-200">KHATA / DUE</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dynamic UPI QR Code Drawer */}
+                  {payments.some((p) => p.method === 'UPI') && (
+                    <div className="p-3 rounded-2xl bg-slate-950 border border-indigo-500/30 flex items-center space-x-3 animate-in fade-in">
+                      <div className="bg-white p-1 rounded-xl shadow-sm shrink-0">
+                        <QrCodeCanvas
+                          value={`upi://pay?pa=${encodeURIComponent(business.upiId || "zionabusiness@icici")}&pn=${encodeURIComponent(business.name)}&am=${(payments.find(p => p.method === 'UPI')?.amount || grandTotal).toFixed(2)}&cu=INR&tn=Invoice%20${encodeURIComponent(customerName || "Customer")}`}
+                          size={70}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="text-xs font-bold text-indigo-300 flex items-center justify-between">
+                          <span>Scan to Pay UPI Portion</span>
+                          <span className="font-mono text-white font-black">
+                            ₹{(payments.find(p => p.method === 'UPI')?.amount || grandTotal).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono truncate">
+                          {business.upiId || "zionabusiness@icici"}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard?.writeText(`upi://pay?pa=${encodeURIComponent(business.upiId || "zionabusiness@icici")}&pn=${encodeURIComponent(business.name)}&am=${(payments.find(p => p.method === 'UPI')?.amount || grandTotal).toFixed(2)}&cu=INR&tn=Invoice`);
+                              setCopiedLink(true);
+                              setTimeout(() => setCopiedLink(false), 2000);
+                            }}
+                            className="text-[9px] font-bold text-indigo-400 hover:underline flex items-center space-x-1 cursor-pointer"
+                          >
+                            <Copy className="h-2.5 w-2.5" />
+                            <span>{copiedLink ? "Copied UPI Link!" : "Copy Payment Link"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => playSoundboxChime(String(payments.find(p => p.method === 'UPI')?.amount || grandTotal))}
+                            className="text-[9px] font-bold text-amber-400 hover:underline flex items-center space-x-1 cursor-pointer"
+                          >
+                            <Volume2 className="h-2.5 w-2.5" />
+                            <span>Test Voice Chime</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Action Buttons */}
+                <div className="pt-4 border-t border-slate-800 grid grid-cols-3 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsPaymentModalOpen(false)}
+                    className="py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white bg-slate-950 border border-slate-800 transition text-center cursor-pointer"
+                  >
+                    Cancel (Esc)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayments([]);
+                      setActivePaymentAmount(grandTotal.toFixed(2));
+                      setInvoiceNote("");
+                    }}
+                    className="py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-rose-400 hover:text-rose-300 bg-slate-950 border border-rose-900/40 transition text-center cursor-pointer"
+                  >
+                    Reset Stream
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCreateBill}
+                    disabled={isSubmitting || totalTaxable === 0}
+                    className="py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-900/30 transition flex items-center justify-center space-x-1.5 active:scale-98 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4 text-white" />
+                    )}
+                    <span>
+                      {isStreamDeficit ? "Post as Credit" : "Finalize (Enter)"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TENDERED CASH CHANGE RETURN MODAL (SAAS_ERP Standard)   */}
+      {/* ======================================================== */}
+      {changeDueState !== null && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-slate-900 text-white shadow-2xl border border-emerald-500/40 p-6 text-center space-y-4">
+            <div className="flex items-center justify-center text-emerald-400">
+              <Coins className="h-10 w-10 animate-bounce" />
+            </div>
+            <h4 className="text-sm font-black uppercase tracking-widest text-emerald-300">
+              Cash Tendered • Hand Change Back
+            </h4>
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-100">
+                Change to Return:
+              </span>
+              <div className="text-4xl font-black font-mono">
+                ₹{changeDueState.toFixed(2)}
+              </div>
+            </div>
+
+            {/* Indian Denomination Breakdown */}
+            {getIndianDenominations(changeDueState).length > 0 && (
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] space-y-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Recommended Notes to Return:
+                </span>
+                <div className="flex flex-wrap justify-center gap-1.5 font-mono font-bold">
+                  {getIndianDenominations(changeDueState).map((denom, i) => (
+                    <span key={i} className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      {denom.count} × {denom.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-400">
+              Payment is tallied. Please hand the change to the customer.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setChangeDueState(null)}
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg transition cursor-pointer"
+            >
+              Got it, Change Handed Over
+            </button>
           </div>
         </div>
       )}
