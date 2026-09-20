@@ -13,6 +13,7 @@ export interface NavChildNode {
   badgeColor?: "amber" | "rose" | "emerald" | "indigo";
   aiTag?: string;
   highlight?: boolean;
+  proTierOnly?: boolean;
 }
 
 export interface NavTreeGroup {
@@ -111,7 +112,8 @@ export async function GET(req: NextRequest) {
             href: "/invoices/eway-bills", 
             icon: "Truck",
             badge: "Dispatch",
-            badgeColor: "emerald"
+            badgeColor: "emerald",
+            proTierOnly: true,
           },
           { 
             id: "gstr1-export", 
@@ -150,7 +152,8 @@ export async function GET(req: NextRequest) {
             href: "/inventory/challans", 
             icon: "Truck",
             badge: "Rule 55",
-            badgeColor: "indigo"
+            badgeColor: "indigo",
+            proTierOnly: true,
           },
           { 
             id: "purchase-orders", 
@@ -207,7 +210,8 @@ export async function GET(req: NextRequest) {
             href: "/inventory/transfers", 
             icon: "Truck",
             badge: "Multi-Store",
-            badgeColor: "indigo"
+            badgeColor: "indigo",
+            proTierOnly: true,
           },
         ],
       },
@@ -307,6 +311,7 @@ export async function GET(req: NextRequest) {
             icon: "ShieldCheck",
             badge: "ITC",
             badgeColor: "indigo",
+            proTierOnly: true,
           },
           {
             id: "gstr3b-assistant",
@@ -315,6 +320,7 @@ export async function GET(req: NextRequest) {
             icon: "Calculator",
             badge: "Monthly",
             badgeColor: "emerald",
+            proTierOnly: true,
           },
         ],
       });

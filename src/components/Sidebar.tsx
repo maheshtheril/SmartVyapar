@@ -41,6 +41,12 @@ import {
   ClipboardCheck,
   Wallet,
   ChevronsUpDown,
+  Lock,
+  Clock,
+  Calculator,
+  Crown,
+  Zap,
+  CheckCircle2,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -73,6 +79,11 @@ const ICON_MAP: Record<string, any> = {
   MessageSquare,
   ClipboardCheck,
   Wallet,
+  Lock,
+  Clock,
+  Calculator,
+  Crown,
+  Zap,
 };
 
 const EXPANDED_STORAGE_KEY = 'sv_sidebar_expanded';
@@ -86,6 +97,7 @@ interface NavChildNode {
   badgeColor?: 'amber' | 'rose' | 'emerald' | 'indigo';
   aiTag?: string;
   highlight?: boolean;
+  proTierOnly?: boolean;
 }
 
 interface NavTreeGroup {
@@ -124,6 +136,7 @@ export default function Sidebar() {
   });
   const [currentUser, setCurrentUser] = useState({ name: "", role: "" });
   const [treeGroups, setTreeGroups] = useState<NavTreeGroup[]>([]);
+  const [proModalFeature, setProModalFeature] = useState<{ name: string; href: string } | null>(null);
 
   // Expanded state – seeded from localStorage (all closed by default if no saved state)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() =>
@@ -280,7 +293,7 @@ export default function Sidebar() {
             </div>
             <div>
               <span className="text-base font-bold text-slate-900">Smart<span className="text-indigo-600">Vyapar</span></span>
-              <span className="ml-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">PRO</span>
+              <span className="ml-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">ERP</span>
             </div>
           </div>
           <button
@@ -300,11 +313,28 @@ export default function Sidebar() {
               </div>
               <div className="truncate flex-1 min-w-0">
                 <p className="truncate text-xs font-bold text-slate-900">{tenant.businessName}</p>
-                <div className="flex items-center space-x-1 mt-0.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                  <p className="text-[10px] text-slate-500 font-medium">
-                    Plan: <span className="font-bold text-indigo-600">{tenant.subscriptionTier}</span>
-                  </p>
+                <div className="flex items-center justify-between mt-1">
+                  <div className="flex items-center space-x-1">
+                    <span className={`inline-block h-1.5 w-1.5 rounded-full ${tenant.subscriptionTier === 'FREE' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      Plan: <span className={`font-bold ${tenant.subscriptionTier === 'FREE' ? 'text-amber-700' : 'text-indigo-600'}`}>{tenant.subscriptionTier}</span>
+                    </p>
+                  </div>
+                  {tenant.subscriptionTier === 'FREE' ? (
+                    <button
+                      onClick={() => setProModalFeature({ name: "SmartVyapar PRO Plan", href: "/settings?tab=billing" })}
+                      className="inline-flex items-center space-x-0.5 rounded-md bg-amber-500 hover:bg-amber-600 px-1.5 py-0.5 text-[9px] font-extrabold text-white shadow-2xs transition cursor-pointer"
+                      title="Upgrade to SmartVyapar PRO"
+                    >
+                      <Zap className="h-2.5 w-2.5" />
+                      <span>UPGRADE</span>
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center space-x-0.5 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                      <Crown className="h-2.5 w-2.5 text-amber-500" />
+                      <span>ACTIVE</span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -429,23 +459,26 @@ export default function Sidebar() {
                     {group.children.map((child) => {
                       const isChildActive = pathname === child.href;
                       const ChildIcon = ICON_MAP[child.icon] || FileText;
+                      const isProLocked = !!(child.proTierOnly && tenant.subscriptionTier === 'FREE');
 
-                      return (
-                        <Link
-                          key={child.id}
-                          href={child.href}
-                          onClick={() => setMobileOpen(false)}
-                          className={`group flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
-                            isChildActive
-                              ? 'bg-indigo-600 text-white shadow-xs font-semibold'
-                              : child.highlight
-                              ? 'bg-emerald-50 text-emerald-800 font-semibold hover:bg-emerald-100'
-                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                          }`}
-                        >
+                      // World-standard SaaS gate: visible but locked for FREE users
+                      const sharedClasses = `group flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition w-full text-left ${
+                        isProLocked
+                          ? 'text-slate-500 hover:bg-amber-50/60 hover:text-amber-900 opacity-90'
+                          : isChildActive
+                          ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                          : child.highlight
+                          ? 'bg-emerald-50 text-emerald-800 font-semibold hover:bg-emerald-100'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`;
+
+                      const innerContent = (
+                        <>
                           <div className="flex items-center space-x-2 truncate">
                             <ChildIcon className={`h-3.5 w-3.5 shrink-0 ${
-                              isChildActive
+                              isProLocked
+                                ? 'text-amber-400'
+                                : isChildActive
                                 ? 'text-white'
                                 : child.highlight
                                 ? 'text-emerald-600'
@@ -455,22 +488,62 @@ export default function Sidebar() {
                           </div>
 
                           <div className="flex items-center space-x-1 shrink-0">
-                            {child.badge && (
-                              <span className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
-                                child.badgeColor === 'amber'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-rose-100 text-rose-800'
-                              }`}>
-                                {child.badge}
+                            {isProLocked ? (
+                              <span className="inline-flex items-center space-x-0.5 rounded-full bg-amber-100 border border-amber-300 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-800">
+                                <Lock className="h-2.5 w-2.5" />
+                                <span>PRO</span>
                               </span>
-                            )}
-                            {child.aiTag && (
-                              <span className="flex items-center space-x-0.5 rounded-full bg-linear-to-r from-violet-500 to-indigo-500 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs">
-                                <Sparkles className="h-2.5 w-2.5" />
-                                <span>{child.aiTag}</span>
-                              </span>
+                            ) : (
+                              <>
+                                {child.badge && (
+                                  <span className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                                    child.badgeColor === 'amber'
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : child.badgeColor === 'emerald'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : child.badgeColor === 'indigo'
+                                      ? 'bg-indigo-100 text-indigo-800'
+                                      : 'bg-rose-100 text-rose-800'
+                                  }`}>
+                                    {child.badge}
+                                  </span>
+                                )}
+                                {child.aiTag && (
+                                  <span className="flex items-center space-x-0.5 rounded-full bg-linear-to-r from-violet-500 to-indigo-500 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs">
+                                    <Sparkles className="h-2.5 w-2.5" />
+                                    <span>{child.aiTag}</span>
+                                  </span>
+                                )}
+                              </>
                             )}
                           </div>
+                        </>
+                      );
+
+                      if (isProLocked) {
+                        return (
+                          <button
+                            key={child.id}
+                            onClick={() => {
+                              setMobileOpen(false);
+                              setProModalFeature({ name: child.name, href: "/settings?tab=billing" });
+                            }}
+                            className={sharedClasses}
+                            title={`${child.name} — Upgrade to PRO to unlock`}
+                          >
+                            {innerContent}
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <Link
+                          key={child.id}
+                          href={child.href}
+                          onClick={() => setMobileOpen(false)}
+                          className={sharedClasses}
+                        >
+                          {innerContent}
                         </Link>
                       );
                     })}
@@ -508,6 +581,92 @@ export default function Sidebar() {
           </div>
         </div>
       </aside>
+
+      {/* PRO Upgrade Modal — fires when FREE user clicks a proTierOnly feature */}
+      {proModalFeature && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setProModalFeature(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm p-6 space-y-5 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-200">
+                  <Crown className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">PRO Feature</p>
+                  <h2 className="text-base font-extrabold text-slate-900 leading-snug">Unlock SmartVyapar PRO</h2>
+                </div>
+              </div>
+              <button
+                onClick={() => setProModalFeature(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Feature Name */}
+            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center space-x-3">
+              <Lock className="h-4 w-4 text-amber-500 shrink-0" />
+              <div>
+                <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Trying to access</p>
+                <p className="text-sm font-bold text-slate-900">{proModalFeature.name}</p>
+              </div>
+            </div>
+
+            {/* Benefits List */}
+            <ul className="space-y-2">
+              {[
+                "E-Way Bills (Rule 138) for dispatch compliance",
+                "Delivery Challans (Rule 55) with invoice conversion",
+                "Warehouses & Multi-Store stock transfers",
+                "GSTR-2B ITC Matcher with Rule 36(4) auto-reconcile",
+                "GSTR-3B Preparation with Rule 88A Electronic setoff",
+                "Unlimited invoices, products & customers",
+                "Advanced analytics, WhatsApp dunning & bulk export",
+              ].map((benefit) => (
+                <li key={benefit} className="flex items-start space-x-2 text-xs text-slate-700">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* Pricing Callout */}
+            <div className="rounded-xl bg-indigo-50 border border-indigo-200 px-4 py-3 text-center">
+              <p className="text-xs text-slate-600">Starting from</p>
+              <p className="text-2xl font-extrabold text-indigo-700">₹499<span className="text-sm font-semibold text-slate-500">/month</span></p>
+              <p className="text-[10px] text-indigo-600 font-semibold">or ₹4,999/year — Save 2 months free</p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setProModalFeature(null);
+                  router.push(proModalFeature.href);
+                }}
+                className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl px-4 py-3 text-sm font-extrabold shadow-lg shadow-amber-200 transition"
+              >
+                <Zap className="h-4 w-4" />
+                <span>Upgrade to PRO Now</span>
+              </button>
+              <button
+                onClick={() => setProModalFeature(null)}
+                className="w-full text-center text-xs text-slate-500 hover:text-slate-700 transition py-1"
+              >
+                Maybe later — continue on Free plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
