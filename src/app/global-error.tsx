@@ -24,10 +24,16 @@ export default function GlobalError({
             </svg>
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Unexpected Application Error</h2>
-          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+          <p className="text-slate-400 text-sm mb-4 leading-relaxed">
             SmartVyapar encountered an unexpected issue. Our engineering team has been automatically alerted via Sentry crash telemetry.
           </p>
-          {error.digest && (
+          {error?.message && (
+            <div className="text-left bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4 text-xs font-mono text-rose-400 max-h-32 overflow-auto">
+              <span className="font-bold text-rose-300 block text-[10px] uppercase tracking-wider mb-0.5">Details:</span>
+              {error.message}
+            </div>
+          )}
+          {error?.digest && (
             <p className="text-xs font-mono text-slate-500 mb-6 bg-slate-950 py-1.5 px-3 rounded-lg border border-slate-800/80 inline-block">
               Error Digest: {error.digest}
             </p>

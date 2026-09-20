@@ -102,9 +102,9 @@ export default function ThermalReceiptModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  if (!isOpen || !data) return null;
-
   const [printingDirect, setPrintingDirect] = useState(false);
+
+  if (!isOpen || !data) return null;
 
   const handlePrint = () => {
     window.print();

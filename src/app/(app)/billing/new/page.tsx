@@ -288,7 +288,10 @@ export default function NewInvoicePage() {
     try {
       const savedHeld = localStorage.getItem("smartvyapar_held_bills");
       if (savedHeld) {
-        setHeldBills(JSON.parse(savedHeld));
+        const parsed = JSON.parse(savedHeld);
+        if (Array.isArray(parsed)) {
+          setHeldBills(parsed);
+        }
       }
     } catch (e) {
       console.warn("Could not read held bills from storage", e);
@@ -1571,10 +1574,10 @@ export default function NewInvoicePage() {
                   >
                     <div>
                       <div className="font-bold text-xs text-slate-900">{bill.customerName} ({bill.heldAt})</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">{bill.items.length} Products</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">{(bill.items || []).length} Products</div>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <div className="font-mono font-bold text-sm text-slate-900">₹{bill.total.toFixed(2)}</div>
+                      <div className="font-mono font-bold text-sm text-slate-900">₹{(Number(bill.total) || 0).toFixed(2)}</div>
                       <button
                         type="button"
                         onClick={(e) => handleDeleteHeldBill(bill.id, e)}

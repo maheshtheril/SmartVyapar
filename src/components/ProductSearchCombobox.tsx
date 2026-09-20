@@ -51,10 +51,10 @@ export default function ProductSearchCombobox({
     : products.filter((p) => {
         const q = query.toLowerCase();
         return (
-          p.name.toLowerCase().includes(q) ||
+          (p.name && p.name.toLowerCase().includes(q)) ||
           (p.barcode && p.barcode.toLowerCase().includes(q)) ||
           (p.sku && p.sku.toLowerCase().includes(q)) ||
-          p.hsnCode.includes(q)
+          (p.hsnCode && p.hsnCode.includes(q))
         );
       }).slice(0, 50);
 
