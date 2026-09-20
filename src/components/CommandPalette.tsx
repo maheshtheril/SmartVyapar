@@ -195,6 +195,17 @@ const PALETTE_ITEMS: PaletteItem[] = [
     badge: 'Statements',
     badgeColor: 'emerald',
   },
+  {
+    id: 'mod-gstr2b-itc',
+    title: 'GSTR-2B vs Purchase Register ITC Reconciliation (Rule 36(4))',
+    subtitle: 'Auto-match supplier ITC claims against GSTN 2B data, flag mismatches, send WhatsApp notices',
+    category: 'MODULES',
+    href: '/accounting/reconciliation/gstr2b',
+    icon: ShieldCheck,
+    keywords: ['gstr2b', 'itc', 'reconciliation', 'rule 36', 'input tax credit', 'gst', '2b', 'supplier', 'match', 'mismatch', 'compliance'],
+    badge: 'ITC Match',
+    badgeColor: 'indigo',
+  },
 
   // 📦 INVENTORY & LOGISTICS
   {

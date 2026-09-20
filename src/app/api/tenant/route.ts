@@ -264,6 +264,14 @@ export async function GET(req: NextRequest) {
             badge: "Statements",
             badgeColor: "emerald"
           },
+          {
+            id: "gstr2b-itc-matcher",
+            name: "GSTR-2B ITC Matcher (Rule 36(4))",
+            href: "/accounting/reconciliation/gstr2b",
+            icon: "ShieldCheck",
+            badge: "ITC",
+            badgeColor: "indigo",
+          },
         ],
       });
     }

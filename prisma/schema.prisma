@@ -103,6 +103,7 @@ model Tenant {
   loyaltyTransactions  LoyaltyTransaction[]
   cashDrawerShifts     CashDrawerShift[]
   cashDrawerPayouts    CashDrawerPayout[]
+  gstr2bReconciliations Gstr2bReconciliation[]
 
   @@map("tenants")
 }
@@ -1000,3 +1001,41 @@ model CashDrawerPayout {
   @@index([tenantId, shiftId])
   @@map("cash_drawer_payouts")
 }
+
+// ----------------------------------------------------
+// 21. GSTR-2B ITC RECONCILIATION
+// ----------------------------------------------------
+model Gstr2bReconciliation {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  returnPeriod        String   // e.g. "082026" (MMYYYY)
+  financialYear       String   @default("2026-2027")
+  fileName            String?
+  uploadedAt          DateTime @default(now())
+
+  // Summary Counts
+  total2bInvoices     Int      @default(0)
+  totalBooksInvoices  Int      @default(0)
+  matchedCount        Int      @default(0)
+  mismatchedCount     Int      @default(0)
+  missingIn2bCount    Int      @default(0) // In Books, missing in 2B
+  missingInBooksCount Int      @default(0) // In 2B, missing in Books
+
+  // ITC Totals
+  matchedItc          Decimal  @default(0.0) @db.Decimal(12, 2)
+  pendingItc          Decimal  @default(0.0) @db.Decimal(12, 2) // At risk
+  ineligibleItc       Decimal  @default(0.0) @db.Decimal(12, 2)
+
+  // Full serialized audit payload
+  resultsJson         String   @db.Text
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, returnPeriod])
+  @@index([tenantId, uploadedAt])
+  @@map("gstr2b_reconciliations")
+}
+
