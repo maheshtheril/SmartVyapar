@@ -54,6 +54,10 @@ export interface ThermalReceiptData {
   ackNo?: string;
   signedQrCode?: string;
   notes?: string;
+  loyaltyPointsRedeemed?: number;
+  loyaltyPointsEarned?: number;
+  loyaltyDiscountAmount?: number;
+  customerLoyaltyBalance?: number;
 }
 
 interface BusinessProfile {
@@ -586,6 +590,33 @@ export default function ThermalReceiptModal({
                     </div>
                   )}
                 </div>
+
+                {/* Loyalty Rewards Summary */}
+                {(data.loyaltyPointsRedeemed || data.loyaltyPointsEarned || data.customerLoyaltyBalance != null) && (
+                  <div className="border-t border-dashed border-black pt-1 my-1 text-[9px] space-y-0.5">
+                    <div className="text-center font-bold uppercase tracking-wider text-slate-900">
+                      * LOYALTY REWARDS *
+                    </div>
+                    {data.loyaltyPointsRedeemed ? (
+                      <div className="flex justify-between">
+                        <span>Points Redeemed:</span>
+                        <span>{data.loyaltyPointsRedeemed} pts (-₹{data.loyaltyPointsRedeemed.toFixed(2)})</span>
+                      </div>
+                    ) : null}
+                    {data.loyaltyPointsEarned ? (
+                      <div className="flex justify-between">
+                        <span>Points Earned Today:</span>
+                        <span className="font-bold">+{data.loyaltyPointsEarned} pts</span>
+                      </div>
+                    ) : null}
+                    {data.customerLoyaltyBalance != null ? (
+                      <div className="flex justify-between font-bold border-t border-dotted border-slate-400 pt-0.5 mt-0.5">
+                        <span>Closing Point Balance:</span>
+                        <span>{data.customerLoyaltyBalance} pts</span>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               {/* Statutory B2B e-Invoice QR or Dynamic UPI QR Code */}

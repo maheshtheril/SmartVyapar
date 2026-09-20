@@ -9,6 +9,7 @@ export interface CustomerOption {
   phone: string;
   stateCode?: string;
   outstandingBalance: number;
+  loyaltyPoints?: number;
 }
 
 interface CustomerSearchProps {
@@ -226,15 +227,20 @@ export default function CustomerSearch({
                           </div>
                         </div>
 
-                        {bal > 0 && (
-                          <div className="text-right">
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                        <div className="text-right space-y-0.5">
+                          {c.loyaltyPoints != null && c.loyaltyPoints > 0 && (
+                            <div className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                              ⭐ {c.loyaltyPoints} pts
+                            </div>
+                          )}
+                          {bal > 0 && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border inline-block ${
                               isDark ? 'bg-rose-950/80 text-rose-300 border-rose-800' : 'bg-rose-50 text-rose-700 border-rose-100'
                             }`}>
                               Due: ₹{bal.toFixed(2)}
                             </span>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     );
                   })

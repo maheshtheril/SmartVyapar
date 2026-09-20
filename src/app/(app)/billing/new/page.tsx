@@ -188,6 +188,10 @@ export default function NewInvoicePage() {
   const [billDiscountType, setBillDiscountType] = useState<'PERCENT' | 'FLAT'>('PERCENT');
   const [billDiscountValue, setBillDiscountValue] = useState<number>(0);
 
+  // Customer Loyalty Rewards States
+  const [customerLoyaltyPoints, setCustomerLoyaltyPoints] = useState<number>(0);
+  const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState<number>(0);
+
   // Multi-item rows (default with 1 empty row for quick scanning)
   const [billItems, setBillItems] = useState<BillItem[]>([
     {
@@ -360,7 +364,9 @@ export default function NewInvoicePage() {
   });
 
   const totalTaxable = netTaxable;
-  const grandTotal = netTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst);
+  const baseGrandTotal = netTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst);
+  const effectiveLoyaltyDiscount = Math.min(loyaltyPointsToRedeem, customerLoyaltyPoints, Math.floor(baseGrandTotal));
+  const grandTotal = Math.max(0, baseGrandTotal - effectiveLoyaltyDiscount);
   const currentUpiUri = `upi://pay?pa=${encodeURIComponent(business.upiId || "zionabusiness@icici")}&pn=${encodeURIComponent(business.name)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=Invoice%20for%20${encodeURIComponent(customerName || "Customer")}`;
 
   // Cash Change Return Calculations
@@ -681,10 +687,14 @@ export default function NewInvoicePage() {
     if (!customer) {
       setCustomerName("");
       setCustomerPhone("");
+      setCustomerLoyaltyPoints(0);
+      setLoyaltyPointsToRedeem(0);
       return;
     }
     setCustomerName(customer.name);
     setCustomerPhone(customer.phone);
+    setCustomerLoyaltyPoints(customer.loyaltyPoints || 0);
+    setLoyaltyPointsToRedeem(0);
     if (customer.stateCode) {
       setCustomerState(customer.stateCode);
     }
@@ -857,6 +867,7 @@ export default function NewInvoicePage() {
       paymentStatus: (isStreamActive || isSplitMode) ? (computedDue > 0 ? "PARTIAL" : "PAID") : paymentStatus,
       paymentMode: (isStreamActive || isSplitMode) ? "CASH" : paymentMode,
       paidAmount: computedPaid,
+      loyaltyPointsToRedeem: effectiveLoyaltyDiscount > 0 ? effectiveLoyaltyDiscount : undefined,
       notes: paymentNotes,
       items: validItems.map((i) => {
         const lineBase = i.price * i.quantity;
@@ -979,6 +990,9 @@ export default function NewInvoicePage() {
         totalSavings: totalSavings > 0 ? totalSavings : undefined,
         upiUri: data.invoice.upiUri || currentUpiUri,
         notes: paymentNotes,
+        loyaltyPointsRedeemed: data.invoice.loyaltyPointsRedeemed || (effectiveLoyaltyDiscount > 0 ? effectiveLoyaltyDiscount : undefined),
+        loyaltyPointsEarned: data.invoice.loyaltyPointsEarned || Math.floor(grandTotal / 100),
+        customerLoyaltyBalance: data.invoice.customerLoyalty?.currentBalance,
       });
 
       setShowReceiptModal(true);
@@ -1383,6 +1397,45 @@ export default function NewInvoicePage() {
             </div>
           </div>
 
+          {/* Customer Loyalty Points Redemption Section */}
+          {customerLoyaltyPoints > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-amber-50/80 border border-amber-200 rounded-xl text-xs">
+              <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                <span>⭐ Loyalty Rewards:</span>
+                <span className="text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-mono font-bold">
+                  {customerLoyaltyPoints} Pts Available (₹{customerLoyaltyPoints})
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min="0"
+                  max={Math.min(customerLoyaltyPoints, Math.floor(baseGrandTotal))}
+                  value={loyaltyPointsToRedeem || ''}
+                  onChange={(e) => {
+                    const val = Math.max(0, Math.min(customerLoyaltyPoints, Math.floor(baseGrandTotal), parseInt(e.target.value) || 0));
+                    setLoyaltyPointsToRedeem(val);
+                  }}
+                  placeholder="0"
+                  className="w-16 h-7 rounded-lg bg-white border border-amber-300 text-slate-900 font-mono font-bold text-xs px-2 text-right focus:border-amber-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (loyaltyPointsToRedeem > 0) {
+                      setLoyaltyPointsToRedeem(0);
+                    } else {
+                      setLoyaltyPointsToRedeem(Math.min(customerLoyaltyPoints, Math.floor(baseGrandTotal)));
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg font-bold text-[10px] bg-amber-600 hover:bg-amber-700 text-white transition cursor-pointer"
+                >
+                  {loyaltyPointsToRedeem > 0 ? 'Clear' : 'Redeem Max'}
+                </button>
+              </div>
+            </div>
+          )}
+
         </section>
 
         {/* RIGHT PANEL: SINGLE, UNIFIED ORDER SUMMARY & SETTLEMENT CONSOLE (42% on Desktop) */}
@@ -1424,6 +1477,13 @@ export default function NewInvoicePage() {
                   <div className="flex justify-between items-center text-rose-600 font-medium">
                     <span>Cart Bill Discount ({billDiscountValue}{billDiscountType === 'PERCENT' ? '%' : '₹'}):</span>
                     <span className="font-mono font-bold">-₹{billDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {effectiveLoyaltyDiscount > 0 && (
+                  <div className="flex justify-between items-center text-amber-700 font-medium bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                    <span className="flex items-center gap-1">⭐ Loyalty Points Redeemed ({effectiveLoyaltyDiscount} pts):</span>
+                    <span className="font-mono font-bold">-₹{effectiveLoyaltyDiscount.toFixed(2)}</span>
                   </div>
                 )}
 

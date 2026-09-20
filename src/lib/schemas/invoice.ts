@@ -20,6 +20,7 @@ export const CreateInvoiceSchema = z.object({
   paymentMode: z.enum(["CASH", "UPI", "CARD", "BANK_TRANSFER", "CREDIT"]).default("UPI"),
   paidAmount: z.coerce.number().nonnegative("Paid amount cannot be negative").default(0),
   items: z.array(InvoiceItemSchema).min(1, "Invoice must contain at least one line item"),
+  loyaltyPointsToRedeem: z.coerce.number().nonnegative().default(0).optional(),
   notes: z.string().max(500, "Notes cannot exceed 500 characters").optional().nullable(),
 });
 

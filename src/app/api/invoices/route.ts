@@ -262,19 +262,9 @@ export async function POST(req: NextRequest) {
       }
 
       const totalTax = totalCgst + totalSgst + totalIgst;
-      const totalAmount = Number((subtotal + totalTax).toFixed(2));
-      const finalPaid = data.paymentStatus === "PAID" ? totalAmount : Number(data.paidAmount || 0);
-      const dueAmount = Number(Math.max(0, totalAmount - finalPaid).toFixed(2));
+      const grossAmount = Number((subtotal + totalTax).toFixed(2));
 
-      const upiUri = UpiService.generateUpiUri({
-        upiId: tenant.upiId,
-        payeeName: tenant.businessName,
-        amount: dueAmount > 0 ? dueAmount : totalAmount,
-        invoiceNumber,
-        note: `Invoice ${invoiceNumber} for ${data.customerName}`,
-      });
-
-      // Upsert Customer
+      // Upsert Customer first to check loyalty balance
       let customer = await tx.customer.findFirst({
         where: { tenantId, phone: data.customerPhone },
       });
@@ -286,17 +276,58 @@ export async function POST(req: NextRequest) {
             name: data.customerName,
             phone: data.customerPhone,
             stateCode: data.customerStateCode,
-            outstandingBalance: dueAmount,
-          },
-        });
-      } else if (dueAmount > 0) {
-        await tx.customer.update({
-          where: { id: customer.id },
-          data: {
-            outstandingBalance: { increment: dueAmount },
+            outstandingBalance: 0,
+            loyaltyPoints: 0,
           },
         });
       }
+
+      // 1. Process Loyalty Points Redemption (1 point = ₹1 discount)
+      const requestedRedeem = Number(data.loyaltyPointsToRedeem || 0);
+      const pointsToRedeem = Math.min(
+        Math.max(0, requestedRedeem),
+        customer.loyaltyPoints || 0,
+        Math.floor(grossAmount) // Cannot redeem more than total bill
+      );
+      const loyaltyDiscountAmount = pointsToRedeem;
+      const totalAmount = Number(Math.max(0, grossAmount - loyaltyDiscountAmount).toFixed(2));
+      const finalPaid = data.paymentStatus === "PAID" ? totalAmount : Number(data.paidAmount || 0);
+      const dueAmount = Number(Math.max(0, totalAmount - finalPaid).toFixed(2));
+
+      // 2. Process Loyalty Points Accrual (1 point per ₹100 billed)
+      const pointsEarned = Math.floor(totalAmount / 100);
+
+      // Net point adjustment on customer: -redeemed + earned
+      let currentPoints = customer.loyaltyPoints || 0;
+      if (pointsToRedeem > 0) {
+        currentPoints -= pointsToRedeem;
+      }
+      if (pointsEarned > 0) {
+        currentPoints += pointsEarned;
+      }
+
+      // Update customer outstanding balance and loyalty points
+      const customerUpdateData: any = {};
+      if (dueAmount > 0) {
+        customerUpdateData.outstandingBalance = { increment: dueAmount };
+      }
+      if (pointsToRedeem > 0 || pointsEarned > 0) {
+        customerUpdateData.loyaltyPoints = currentPoints;
+      }
+      if (Object.keys(customerUpdateData).length > 0) {
+        customer = await tx.customer.update({
+          where: { id: customer.id },
+          data: customerUpdateData,
+        });
+      }
+
+      const upiUri = UpiService.generateUpiUri({
+        upiId: tenant.upiId,
+        payeeName: tenant.businessName,
+        amount: dueAmount > 0 ? dueAmount : totalAmount,
+        invoiceNumber,
+        note: `Invoice ${invoiceNumber} for ${data.customerName}`,
+      });
 
       // Create Invoice
       const invoice = await tx.invoice.create({
@@ -306,6 +337,7 @@ export async function POST(req: NextRequest) {
           customerId: customer.id,
           customerName: data.customerName,
           customerPhone: data.customerPhone,
+          customerGstin: data.customerGstin,
           customerStateCode: data.customerStateCode,
           isInterState,
           subtotal,
@@ -320,6 +352,9 @@ export async function POST(req: NextRequest) {
           paymentMode: data.paymentMode as PaymentMode,
           upiUri,
           notes: data.notes,
+          loyaltyPointsEarned: pointsEarned,
+          loyaltyPointsRedeemed: pointsToRedeem,
+          loyaltyDiscountAmount,
           items: {
             create: processedItems,
           },
@@ -329,7 +364,43 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      return invoice;
+      // Log Loyalty Transactions if points were redeemed or earned
+      if (pointsToRedeem > 0) {
+        await tx.loyaltyTransaction.create({
+          data: {
+            tenantId,
+            customerId: customer.id,
+            invoiceId: invoice.id,
+            pointsChange: -pointsToRedeem,
+            balanceAfter: customer.loyaltyPoints - pointsEarned,
+            type: "REDEEM",
+            notes: `Redeemed ${pointsToRedeem} points (-₹${loyaltyDiscountAmount}) on Bill #${invoiceNumber}`,
+          },
+        });
+      }
+
+      if (pointsEarned > 0) {
+        await tx.loyaltyTransaction.create({
+          data: {
+            tenantId,
+            customerId: customer.id,
+            invoiceId: invoice.id,
+            pointsChange: pointsEarned,
+            balanceAfter: customer.loyaltyPoints,
+            type: "EARN",
+            notes: `Earned ${pointsEarned} reward points on Bill #${invoiceNumber}`,
+          },
+        });
+      }
+
+      return {
+        ...invoice,
+        customerLoyalty: {
+          pointsRedeemed: pointsToRedeem,
+          pointsEarned,
+          currentBalance: customer.loyaltyPoints,
+        },
+      };
     });
 
     return NextResponse.json({ success: true, invoice: result });
