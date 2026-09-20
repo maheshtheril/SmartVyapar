@@ -46,6 +46,28 @@ export default function ScannerPage() {
   const [stickerWidthMm, setStickerWidthMm] = useState(50);
   const [stickerHeightMm, setStickerHeightMm] = useState(25);
   const [gapMm, setGapMm] = useState(2);
+  const [customApiKeyInput, setCustomApiKeyInput] = useState('');
+  const [keySavedBanner, setKeySavedBanner] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('smartvyapar_gemini_api_key');
+      if (saved) setCustomApiKeyInput(saved);
+    }
+  }, []);
+
+  const saveCustomApiKey = () => {
+    if (typeof window !== 'undefined') {
+      if (customApiKeyInput.trim()) {
+        localStorage.setItem('smartvyapar_gemini_api_key', customApiKeyInput.trim());
+        setKeySavedBanner(true);
+        setTimeout(() => setKeySavedBanner(false), 4000);
+        setError(null);
+      } else {
+        localStorage.removeItem('smartvyapar_gemini_api_key');
+      }
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -74,8 +96,15 @@ export default function ScannerPage() {
       const formData = new FormData();
       formData.append('file', file);
 
+      const customApiKey = typeof window !== 'undefined' ? localStorage.getItem('smartvyapar_gemini_api_key') : null;
+      const headers: Record<string, string> = {};
+      if (customApiKey) {
+        headers['x-gemini-api-key'] = customApiKey;
+      }
+
       const res = await fetch('/api/scan-purchase', {
         method: 'POST',
+        headers,
         body: formData,
       });
 
@@ -286,10 +315,57 @@ export default function ScannerPage() {
             )}
           </button>
 
+          {keySavedBanner && (
+            <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-900 flex items-center space-x-2">
+              <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+              <span>Google Gemini API key saved! You can now click &quot;Start AI Extraction&quot;.</span>
+            </div>
+          )}
+
           {error && (
-            <div className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700 font-medium flex items-center space-x-2">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
+            <div className="rounded-xl bg-amber-50/90 border border-amber-300 p-4 text-xs text-amber-900 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block text-amber-950 font-bold">AI OCR Extraction Failed:</strong>
+                    <span className="text-amber-800 leading-relaxed">{error}</span>
+                  </div>
+                </div>
+                <button onClick={() => setError(null)} className="text-amber-600 hover:text-amber-800 p-0.5 cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-3 bg-white rounded-lg border border-amber-200/80 space-y-2">
+                <div className="text-[11px] font-semibold text-slate-700">
+                  Enter your Google Gemini API Key to enable instant document OCR:
+                </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    type="password"
+                    placeholder="Paste Gemini API Key (AIzaSy...)"
+                    value={customApiKeyInput}
+                    onChange={(e) => setCustomApiKeyInput(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 font-mono focus:bg-white focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={saveCustomApiKey}
+                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded text-xs transition cursor-pointer shrink-0"
+                  >
+                    Save API Key
+                  </button>
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 hover:underline text-xs font-semibold shrink-0 py-1.5"
+                  >
+                    Get Free Key &rarr;
+                  </a>
+                </div>
+              </div>
             </div>
           )}
         </div>

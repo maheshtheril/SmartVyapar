@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
         batchNumber: item.batchNumber?.trim() || null,
         mfgDate: item.mfgDate ? new Date(item.mfgDate) : null,
         expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
-        hsnCode: item.hsnCode || "8708",
+        hsnCode: item.hsnCode?.trim() || null,
         unit: (item.unit || "PCS").toUpperCase(),
         quantity: qty,
         packageSize: pkgSize,

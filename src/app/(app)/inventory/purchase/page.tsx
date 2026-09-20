@@ -99,6 +99,28 @@ export default function PurchaseInwardPage() {
   const [isScanningInvoice, setIsScanningInvoice] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanSuccessInfo, setScanSuccessInfo] = useState<{ count: number; billNumber: string; confidence: number } | null>(null);
+  const [customApiKeyInput, setCustomApiKeyInput] = useState('');
+  const [keySavedBanner, setKeySavedBanner] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedKey = localStorage.getItem('smartvyapar_gemini_api_key');
+      if (savedKey) setCustomApiKeyInput(savedKey);
+    }
+  }, []);
+
+  const saveCustomApiKey = () => {
+    if (typeof window !== 'undefined') {
+      if (customApiKeyInput.trim()) {
+        localStorage.setItem('smartvyapar_gemini_api_key', customApiKeyInput.trim());
+        setKeySavedBanner(true);
+        setTimeout(() => setKeySavedBanner(false), 4000);
+        setScanError(null);
+      } else {
+        localStorage.removeItem('smartvyapar_gemini_api_key');
+      }
+    }
+  };
 
   // Inward Register & History
   const [bills, setBills] = useState<any[]>([]);
@@ -131,7 +153,7 @@ export default function PurchaseInwardPage() {
   const [items, setItems] = useState<PurchaseItemRow[]>([
     {
       productName: '',
-      hsnCode: '8708',
+      hsnCode: '',
       unit: 'PCS',
       quantity: 1,
       packageSize: 1,
@@ -159,7 +181,7 @@ export default function PurchaseInwardPage() {
     setItems([
       {
         productName: '',
-        hsnCode: '8708',
+        hsnCode: '',
         unit: 'PCS',
         quantity: 1,
         packageSize: 1,
@@ -213,7 +235,7 @@ export default function PurchaseInwardPage() {
         setItems([{
           productId: found.id,
           productName: found.name,
-          hsnCode: found.hsnCode || '8708',
+          hsnCode: found.hsnCode || '',
           unit: found.baseUnit || 'PCS',
           quantity: 1,
           packageSize: 1,
@@ -233,7 +255,7 @@ export default function PurchaseInwardPage() {
           {
             productId: found.id,
             productName: found.name,
-            hsnCode: found.hsnCode || '8708',
+            hsnCode: found.hsnCode || '',
             unit: found.baseUnit || 'PCS',
             quantity: 1,
             packageSize: 1,
@@ -253,7 +275,7 @@ export default function PurchaseInwardPage() {
       if (items.length === 1 && !items[0].productName.trim()) {
         setItems([{
           productName: q,
-          hsnCode: '8708',
+          hsnCode: '',
           unit: 'PCS',
           quantity: 1,
           packageSize: 1,
@@ -272,7 +294,7 @@ export default function PurchaseInwardPage() {
           ...prev,
           {
             productName: q,
-            hsnCode: '8708',
+            hsnCode: '',
             unit: 'PCS',
             quantity: 1,
             packageSize: 1,
@@ -405,8 +427,15 @@ export default function PurchaseInwardPage() {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
+      const customApiKey = typeof window !== 'undefined' ? localStorage.getItem('smartvyapar_gemini_api_key') : null;
+      const headers: Record<string, string> = {};
+      if (customApiKey) {
+        headers['x-gemini-api-key'] = customApiKey;
+      }
+
       const res = await fetch('/api/scan-purchase', {
         method: 'POST',
+        headers,
         body: formData,
       });
 
@@ -447,7 +476,7 @@ export default function PurchaseInwardPage() {
           return {
             productId: match?.id || undefined,
             productName: it.productName || 'Unnamed Item',
-            hsnCode: it.hsnCode || match?.hsnCode || '8708',
+            hsnCode: it.hsnCode || match?.hsnCode || '',
             unit: it.unit || match?.baseUnit || 'PCS',
             quantity: Number(it.quantity || 1),
             packageSize: Number(it.packageSize || 1),
@@ -518,7 +547,7 @@ export default function PurchaseInwardPage() {
       if (selected) {
         row.productId = selected.id;
         row.productName = selected.name;
-        row.hsnCode = selected.hsnCode || '8708';
+        row.hsnCode = selected.hsnCode || '';
         row.unit = selected.baseUnit || 'PCS';
         row.purchasePrice = Number(selected.purchasePrice || 0);
         row.gstRate = Number(selected.gstRate || 18);
@@ -560,7 +589,7 @@ export default function PurchaseInwardPage() {
       ...items,
       {
         productName: '',
-        hsnCode: '8708',
+        hsnCode: '',
         unit: 'PCS',
         quantity: 1,
         packageSize: 1,
@@ -1022,15 +1051,59 @@ export default function PurchaseInwardPage() {
                 </div>
               )}
 
+              {keySavedBanner && (
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 flex items-center gap-2 text-xs">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Google Gemini API key saved! Please re-upload or click &quot;Scan Invoice with AI&quot; to scan.</span>
+                </div>
+              )}
+
               {scanError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span><strong>Scan Warning:</strong> {scanError}</span>
+                <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-900 space-y-2.5 text-xs shadow-xs">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block text-amber-950 font-bold text-sm">Live AI OCR Unavailable:</strong>
+                        <span className="text-amber-800 leading-relaxed">{scanError}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => setScanError(null)} className="text-amber-600 hover:text-amber-900 cursor-pointer p-1">
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button onClick={() => setScanError(null)} className="text-rose-500 hover:text-rose-700 cursor-pointer">
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="p-3 bg-white rounded-lg border border-amber-200/80 space-y-2">
+                    <div className="text-[11px] font-semibold text-slate-700">
+                      To enable 100% accurate AI OCR, enter your active Google Gemini API Key below, or simply enter items manually in the form:
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <input
+                        type="password"
+                        placeholder="Paste your Google Gemini API Key (e.g. AIzaSy...)"
+                        value={customApiKeyInput}
+                        onChange={(e) => setCustomApiKeyInput(e.target.value)}
+                        className="flex-1 bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 font-mono focus:bg-white focus:ring-1 focus:ring-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={saveCustomApiKey}
+                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded text-xs transition cursor-pointer shrink-0"
+                      >
+                        Save API Key
+                      </button>
+                      <a
+                        href="https://aistudio.google.com/app/apikey"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:underline text-xs font-semibold shrink-0 py-1.5 flex items-center gap-1"
+                      >
+                        Get Free Key &rarr;
+                      </a>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-amber-800 font-medium">
+                    &bull; Note: No fake or placeholder items will ever be entered. You can immediately enter supplier details and line items directly in the table below.
+                  </div>
                 </div>
               )}
 
@@ -1373,7 +1446,7 @@ export default function PurchaseInwardPage() {
                                           <div>
                                             <span className="font-bold text-slate-800">{prod.name}</span>
                                             <div className="text-[10px] text-slate-500 font-mono">
-                                              SKU: {prod.sku || 'N/A'} | HSN: {prod.hsnCode || '8708'} | Unit: {prod.baseUnit}
+                                              SKU: {prod.sku || 'N/A'} | HSN: {prod.hsnCode || 'N/A'} | Unit: {prod.baseUnit}
                                             </div>
                                           </div>
                                           <div className="text-right">
@@ -1425,7 +1498,7 @@ export default function PurchaseInwardPage() {
                             <td className="py-2 px-2 align-middle">
                               <input
                                 type="text"
-                                placeholder="8708"
+                                placeholder="HSN Code"
                                 value={row.hsnCode}
                                 onChange={(e) => updateItem(idx, 'hsnCode', e.target.value)}
                                 className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono"

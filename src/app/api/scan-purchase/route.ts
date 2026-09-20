@@ -65,7 +65,17 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const base64Data = buffer.toString("base64");
 
-    const extractedData = await scanPurchaseInvoiceWithGemini(base64Data, mimeType);
+    // Optional merchant-provided Gemini API key (via header or form-data)
+    const customApiKey =
+      req.headers.get("x-gemini-api-key") ||
+      (formData.get("apiKey") as string | null) ||
+      undefined;
+
+    const extractedData = await scanPurchaseInvoiceWithGemini(
+      base64Data,
+      mimeType,
+      customApiKey || undefined
+    );
 
     return NextResponse.json(
       {
@@ -82,8 +92,11 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Error in /api/scan-purchase:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to scan invoice" },
-      { status: 500 }
+      {
+        success: false,
+        error: error.message || "Failed to scan invoice",
+      },
+      { status: 400 }
     );
   }
 }
