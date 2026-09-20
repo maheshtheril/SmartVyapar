@@ -158,9 +158,13 @@ export default function NewInvoicePage() {
   const [paymentStatus, setPaymentStatus] = useState<"PAID" | "UNPAID">("PAID");
   const [paymentMode, setPaymentMode] = useState<"UPI" | "CASH" | "CARD" | "SPLIT" | "CREDIT">("CASH");
 
-  // Cash Tender States
+  // Cash & Multi-Tender Split States
   const [cashReceived, setCashReceived] = useState<string>("");
-  const [splitCashInput, setSplitCashInput] = useState<string>("");
+  const [splitCash, setSplitCash] = useState<string>("");
+  const [splitUpi, setSplitUpi] = useState<string>("");
+  const [splitCard, setSplitCard] = useState<string>("");
+  const [splitCredit, setSplitCredit] = useState<string>("");
+  const [showSplitUpiQr, setShowSplitUpiQr] = useState<boolean>(false);
   const [cardRef, setCardRef] = useState<string>("");
   const [cardLast4, setCardLast4] = useState<string>("");
   const [soundboxPlayed, setSoundboxPlayed] = useState<boolean>(false);
@@ -348,9 +352,17 @@ export default function NewInvoicePage() {
   const remainingDue = Math.max(0, grandTotal - numericCashReceived);
   const returnNotes = getIndianDenominations(changeDue);
 
-  // Split calculations
-  const numericSplitCash = parseFloat(splitCashInput) || 0;
-  const splitOnlineRemaining = Math.max(0, grandTotal - numericSplitCash);
+  // Split Multi-Tender calculations
+  const numSplitCash = parseFloat(splitCash) || 0;
+  const numSplitUpi = parseFloat(splitUpi) || 0;
+  const numSplitCard = parseFloat(splitCard) || 0;
+  const numSplitCredit = parseFloat(splitCredit) || 0;
+  const totalSplitAllocated = Number((numSplitCash + numSplitUpi + numSplitCard + numSplitCredit).toFixed(2));
+  const splitRemainingUnallocated = Math.max(0, Number((grandTotal - totalSplitAllocated).toFixed(2)));
+  const isSplitBalanced = grandTotal > 0 && Math.abs(totalSplitAllocated - grandTotal) < 0.05;
+
+  const splitUpiAmount = numSplitUpi > 0 ? numSplitUpi : (splitRemainingUnallocated > 0 ? splitRemainingUnallocated : grandTotal);
+  const splitUpiUri = `upi://pay?pa=${encodeURIComponent(business.upiId || "zionabusiness@icici")}&pn=${encodeURIComponent(business.name)}&am=${splitUpiAmount.toFixed(2)}&cu=INR&tn=Invoice%20Split%20for%20${encodeURIComponent(customerName || "Customer")}`;
 
   // Quick denomination suggestions for India
   const denominations = [
@@ -363,13 +375,15 @@ export default function NewInvoicePage() {
     { label: '₹2,000', value: 2000 },
   ].filter((d, idx, arr) => d.value >= grandTotal && arr.findIndex(x => x.value === d.value) === idx);
 
-  // Auto-fill exact cash when switching to Cash
+  // Auto-fill exact cash when switching to Cash or preset when switching to Split
   useEffect(() => {
     if (paymentMode === 'CASH' && grandTotal > 0 && !cashReceived) {
       setCashReceived(String(Math.ceil(grandTotal)));
     }
-    if (paymentMode === 'SPLIT' && grandTotal > 0 && !splitCashInput) {
-      setSplitCashInput(String(Math.round(grandTotal / 2)));
+    if (paymentMode === 'SPLIT' && grandTotal > 0 && !splitCash && !splitUpi && !splitCard && !splitCredit) {
+      const half = Math.floor(grandTotal / 2);
+      setSplitCash(String(half));
+      setSplitUpi(String(Number((grandTotal - half).toFixed(2))));
     }
   }, [paymentMode, grandTotal]);
 
@@ -414,6 +428,10 @@ export default function NewInvoicePage() {
         e.preventDefault();
         setPaymentMode('CREDIT');
         setPaymentStatus('UNPAID');
+      } else if (e.key === 'F6') {
+        e.preventDefault();
+        setPaymentMode('SPLIT');
+        setPaymentStatus('PAID');
       } else if (e.key === 'F7') {
         e.preventDefault();
         handleHoldBill();
@@ -441,7 +459,7 @@ export default function NewInvoicePage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [billItems, customerName, customerPhone, customerState, grandTotal, totalTaxable, isSubmitting, heldBills, paymentMode, cashReceived, showHeldModal, showBatchModal, showReceiptModal]);
+  }, [billItems, customerName, customerPhone, customerState, grandTotal, totalTaxable, isSubmitting, heldBills, paymentMode, cashReceived, splitCash, splitUpi, splitCard, splitCredit, showHeldModal, showBatchModal, showReceiptModal]);
 
   // Multi-Item Handlers
   const handleAddItem = () => {
@@ -648,7 +666,11 @@ export default function NewInvoicePage() {
     setPaymentMode("CASH");
     setPaymentStatus("PAID");
     setCashReceived("");
-    setSplitCashInput("");
+    setSplitCash("");
+    setSplitUpi("");
+    setSplitCard("");
+    setSplitCredit("");
+    setShowSplitUpiQr(false);
     setCardRef("");
     setCardLast4("");
     setBillDiscountType('PERCENT');
@@ -678,16 +700,28 @@ export default function NewInvoicePage() {
 
     setIsSubmitting(true);
 
-    const activeMode = paymentMode === "SPLIT" ? "CASH" : paymentMode;
-    const computedPaid = paymentStatus === "PAID" 
-      ? grandTotal 
-      : (activeMode === "CASH" && numericCashReceived > 0 ? Math.min(grandTotal, numericCashReceived) : 0);
-    const computedDue = Math.max(0, grandTotal - computedPaid);
-
+    const isSplitMode = paymentMode === "SPLIT";
+    let computedPaid = 0;
+    let computedDue = 0;
     let paymentNotes: string | undefined = undefined;
-    if (paymentMode === "SPLIT") {
-      paymentNotes = `Split Tender: Cash ₹${numericSplitCash.toFixed(2)}, Online ₹${splitOnlineRemaining.toFixed(2)}`;
+
+    if (isSplitMode) {
+      computedPaid = Number((numSplitCash + numSplitUpi + numSplitCard).toFixed(2));
+      computedDue = Number((numSplitCredit + Math.max(0, grandTotal - totalSplitAllocated)).toFixed(2));
+
+      const splitParts: string[] = [];
+      if (numSplitCash > 0) splitParts.push(`Cash ₹${numSplitCash.toFixed(2)}`);
+      if (numSplitUpi > 0) splitParts.push(`UPI ₹${numSplitUpi.toFixed(2)}`);
+      if (numSplitCard > 0) splitParts.push(`Card ₹${numSplitCard.toFixed(2)}`);
+      if (numSplitCredit > 0) splitParts.push(`Khata ₹${numSplitCredit.toFixed(2)}`);
+      paymentNotes = `Multi-Tender: ${splitParts.length > 0 ? splitParts.join(' + ') : 'Split'}`;
+    } else {
+      computedPaid = paymentStatus === "PAID" 
+        ? grandTotal 
+        : (paymentMode === "CASH" && numericCashReceived > 0 ? Math.min(grandTotal, numericCashReceived) : 0);
+      computedDue = Math.max(0, grandTotal - computedPaid);
     }
+
     if (cardRef || cardLast4) {
       const cardInfo = `Card Ref: ${cardRef || 'N/A'}${cardLast4 ? ` (Last 4: ${cardLast4})` : ''}`;
       paymentNotes = paymentNotes ? `${paymentNotes} | ${cardInfo}` : cardInfo;
@@ -701,8 +735,8 @@ export default function NewInvoicePage() {
       customerName: customerName || "Walk-in Cash Customer",
       customerPhone: customerPhone || "9999999999",
       customerStateCode: customerState,
-      paymentStatus,
-      paymentMode: activeMode,
+      paymentStatus: isSplitMode ? (computedDue > 0 ? "PARTIAL" : "PAID") : paymentStatus,
+      paymentMode: isSplitMode ? "CASH" : paymentMode,
       paidAmount: computedPaid,
       notes: paymentNotes,
       items: validItems.map((i) => {
@@ -777,11 +811,12 @@ export default function NewInvoicePage() {
         totalAmount: Number(grandTotal),
         paidAmount: Number(computedPaid),
         dueAmount: Number(computedDue),
-        paymentMode,
-        cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
+        paymentMode: isSplitMode ? "SPLIT (Multi-Tender)" : paymentMode,
+        cashReceived: isSplitMode ? (numSplitCash > 0 ? numSplitCash : undefined) : (numericCashReceived > 0 ? numericCashReceived : undefined),
         changeReturned: changeDue > 0 ? changeDue : undefined,
         totalSavings: totalSavings > 0 ? totalSavings : undefined,
         upiUri: currentUpiUri,
+        notes: paymentNotes,
       });
 
       setShowReceiptModal(true);
@@ -818,11 +853,12 @@ export default function NewInvoicePage() {
         totalAmount: Number(data.invoice.totalAmount || grandTotal),
         paidAmount: Number(data.invoice.paidAmount),
         dueAmount: Number(data.invoice.dueAmount),
-        paymentMode,
-        cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
+        paymentMode: isSplitMode ? "SPLIT (Multi-Tender)" : paymentMode,
+        cashReceived: isSplitMode ? (numSplitCash > 0 ? numSplitCash : undefined) : (numericCashReceived > 0 ? numericCashReceived : undefined),
         changeReturned: changeDue > 0 ? changeDue : undefined,
         totalSavings: totalSavings > 0 ? totalSavings : undefined,
         upiUri: data.invoice.upiUri || currentUpiUri,
+        notes: paymentNotes,
       });
 
       setShowReceiptModal(true);
@@ -846,11 +882,12 @@ export default function NewInvoicePage() {
             totalAmount: Number(grandTotal),
             paidAmount: Number(computedPaid),
             dueAmount: Number(computedDue),
-            paymentMode,
-            cashReceived: numericCashReceived > 0 ? numericCashReceived : undefined,
+            paymentMode: isSplitMode ? "SPLIT (Multi-Tender)" : paymentMode,
+            cashReceived: isSplitMode ? (numSplitCash > 0 ? numSplitCash : undefined) : (numericCashReceived > 0 ? numericCashReceived : undefined),
             changeReturned: changeDue > 0 ? changeDue : undefined,
             totalSavings: totalSavings > 0 ? totalSavings : undefined,
             upiUri: currentUpiUri,
+            notes: paymentNotes,
           });
           setShowReceiptModal(true);
           return;
@@ -1297,7 +1334,7 @@ export default function NewInvoicePage() {
                   { id: 'CASH', label: 'Cash', hotkey: 'F1', icon: Banknote },
                   { id: 'UPI', label: 'UPI QR', hotkey: 'F4', icon: QrCode },
                   { id: 'CARD', label: 'Card', hotkey: 'F3', icon: CreditCard },
-                  { id: 'SPLIT', label: 'Split', hotkey: 'F4', icon: Layers },
+                  { id: 'SPLIT', label: 'Split', hotkey: 'F6', icon: Layers },
                   { id: 'CREDIT', label: 'Khata', hotkey: 'F5', icon: BookOpen },
                 ].map((tab) => {
                   const Icon = tab.icon;
@@ -1536,26 +1573,234 @@ export default function NewInvoicePage() {
               </div>
             )}
 
-            {/* 4. SPLIT TENDER CONSOLE */}
+            {/* 4. SPLIT TENDER CONSOLE: 4-WAY MULTI-TENDER MATRIX */}
             {paymentMode === 'SPLIT' && (
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 animate-in fade-in duration-150 text-xs">
-                <div className="font-bold text-slate-300">Split Payment (Cash + Online UPI/Card)</div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">
-                    Cash Tender Portion (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={splitCashInput}
-                    onChange={(e) => setSplitCashInput(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono font-bold"
-                  />
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 animate-in fade-in duration-150 text-xs">
+                {/* Header & Live Balance Indicator */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-slate-200 block text-xs">Multi-Tender Settlement Matrix</span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Allocated: ₹{totalSplitAllocated.toFixed(2)} of ₹{grandTotal.toFixed(2)}
+                    </span>
+                  </div>
+                  <div>
+                    {isSplitBalanced ? (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-black flex items-center space-x-1">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                        <span>100% Balanced</span>
+                      </span>
+                    ) : splitRemainingUnallocated > 0 ? (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
+                        Remaining: ₹{splitRemainingUnallocated.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold">
+                        Overpaid: ₹{(totalSplitAllocated - grandTotal).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between font-mono font-bold">
-                  <span className="text-slate-400">Remaining to Pay Online:</span>
-                  <span className="text-indigo-400">₹{splitOnlineRemaining.toFixed(2)}</span>
+
+                {/* Quick 1-Click Preset Allocations */}
+                <div className="flex items-center justify-between pt-0.5">
+                  <div className="flex items-center space-x-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const half = Math.floor(grandTotal / 2);
+                        setSplitCash(String(half));
+                        setSplitUpi(String(Number((grandTotal - half).toFixed(2))));
+                        setSplitCard("");
+                        setSplitCredit("");
+                      }}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] font-bold transition"
+                    >
+                      ⚡ 50% Cash + 50% UPI
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSplitCash("");
+                        setSplitUpi("");
+                        setSplitCard("");
+                        setSplitCredit("");
+                        setShowSplitUpiQr(false);
+                      }}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 text-[10px] font-bold transition"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowSplitUpiQr((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center space-x-1 border transition ${
+                      showSplitUpiQr
+                        ? 'bg-indigo-600 text-white border-indigo-500'
+                        : 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
+                    }`}
+                  >
+                    <QrCode className="h-3 w-3" />
+                    <span>{showSplitUpiQr ? "Hide QR" : "Show UPI QR"}</span>
+                  </button>
                 </div>
+
+                {/* 4-Way Multi-Tender Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Tender 1: Cash */}
+                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-slate-300 flex items-center space-x-1">
+                        <Banknote className="h-3 w-3 text-emerald-400" />
+                        <span>Cash</span>
+                      </span>
+                      {splitRemainingUnallocated > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSplitCash(String(Number((numSplitCash + splitRemainingUnallocated).toFixed(2))))}
+                          className="text-[9px] font-bold text-emerald-400 hover:underline"
+                        >
+                          +Fill Rest
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 font-mono">₹</span>
+                      <input
+                        type="text"
+                        value={splitCash}
+                        onChange={(e) => setSplitCash(e.target.value.replace(/[^0-9.]/g, ''))}
+                        placeholder="0.00"
+                        className="w-full pl-5 pr-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono font-bold text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tender 2: UPI */}
+                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-slate-300 flex items-center space-x-1">
+                        <QrCode className="h-3 w-3 text-indigo-400" />
+                        <span>UPI</span>
+                      </span>
+                      {splitRemainingUnallocated > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSplitUpi(String(Number((numSplitUpi + splitRemainingUnallocated).toFixed(2))));
+                            setShowSplitUpiQr(true);
+                          }}
+                          className="text-[9px] font-bold text-indigo-400 hover:underline"
+                        >
+                          +Fill Rest
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 font-mono">₹</span>
+                      <input
+                        type="text"
+                        value={splitUpi}
+                        onChange={(e) => {
+                          setSplitUpi(e.target.value.replace(/[^0-9.]/g, ''));
+                          if (!showSplitUpiQr && e.target.value) setShowSplitUpiQr(true);
+                        }}
+                        placeholder="0.00"
+                        className="w-full pl-5 pr-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono font-bold text-xs focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tender 3: Card / POS */}
+                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-slate-300 flex items-center space-x-1">
+                        <CreditCard className="h-3 w-3 text-cyan-400" />
+                        <span>Card / EDC</span>
+                      </span>
+                      {splitRemainingUnallocated > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSplitCard(String(Number((numSplitCard + splitRemainingUnallocated).toFixed(2))))}
+                          className="text-[9px] font-bold text-cyan-400 hover:underline"
+                        >
+                          +Fill Rest
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 font-mono">₹</span>
+                      <input
+                        type="text"
+                        value={splitCard}
+                        onChange={(e) => setSplitCard(e.target.value.replace(/[^0-9.]/g, ''))}
+                        placeholder="0.00"
+                        className="w-full pl-5 pr-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono font-bold text-xs focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tender 4: Khata / Due */}
+                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-slate-300 flex items-center space-x-1">
+                        <BookOpen className="h-3 w-3 text-amber-400" />
+                        <span>Khata / Udhar</span>
+                      </span>
+                      {splitRemainingUnallocated > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSplitCredit(String(Number((numSplitCredit + splitRemainingUnallocated).toFixed(2))))}
+                          className="text-[9px] font-bold text-amber-400 hover:underline"
+                        >
+                          +Fill Rest
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 font-mono">₹</span>
+                      <input
+                        type="text"
+                        value={splitCredit}
+                        onChange={(e) => setSplitCredit(e.target.value.replace(/[^0-9.]/g, ''))}
+                        placeholder="0.00"
+                        className="w-full pl-5 pr-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono font-bold text-xs focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded Split UPI QR Box */}
+                {showSplitUpiQr && (
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-indigo-500/30 flex items-center space-x-3 animate-in fade-in duration-150">
+                    <div className="bg-white p-1 rounded-lg shadow-sm shrink-0">
+                      <QrCodeCanvas value={splitUpiUri} size={68} />
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="text-[11px] font-bold text-indigo-300 flex items-center justify-between">
+                        <span>Scan to Pay UPI Portion</span>
+                        <span className="font-mono text-white font-black">₹{splitUpiAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 font-mono truncate">
+                        {business.upiId || "zionabusiness@icici"}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(splitUpiUri);
+                          setCopiedLink(true);
+                          setTimeout(() => setCopiedLink(false), 2000);
+                        }}
+                        className="text-[9px] font-bold text-indigo-400 hover:underline flex items-center space-x-1"
+                      >
+                        <Copy className="h-2.5 w-2.5" />
+                        <span>{copiedLink ? "Copied UPI Intent Link!" : "Copy Payment Link"}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

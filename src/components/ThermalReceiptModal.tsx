@@ -376,6 +376,11 @@ export default function ThermalReceiptModal({
                     </div>
                   </>
                 )}
+                {data.notes && (
+                  <div className="pt-1 border-t border-slate-100 text-[11px] text-indigo-700 font-medium">
+                    {data.notes}
+                  </div>
+                )}
                 {data.totalSavings !== undefined && data.totalSavings > 0 && (
                   <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-2.5 text-emerald-800 text-[11px] font-bold flex items-center space-x-1.5">
                     <Sparkles className="h-4 w-4 text-emerald-600 flex-shrink-0" />
@@ -574,6 +579,11 @@ export default function ThermalReceiptModal({
                     <div className="flex justify-between font-bold text-rose-600">
                       <span>Balance Due:</span>
                       <span>₹{data.dueAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {data.notes && (
+                    <div className="pt-0.5 border-t border-dotted border-black text-[8px] text-slate-800">
+                      <span>{data.notes}</span>
                     </div>
                   )}
                 </div>
