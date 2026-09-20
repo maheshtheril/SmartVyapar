@@ -134,8 +134,6 @@ export default function Sidebar() {
       setExpandedGroups((prev) => ({ ...prev, parties: true }));
     } else if (pathname.startsWith('/accounting')) {
       setExpandedGroups((prev) => ({ ...prev, accounting: true }));
-    } else if (pathname.startsWith('/scanner')) {
-      setExpandedGroups((prev) => ({ ...prev, ai: true }));
     }
   }, [pathname]);
 

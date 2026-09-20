@@ -140,7 +140,8 @@ export async function GET(req: NextRequest) {
             href: "/inventory/purchase", 
             icon: "ClipboardCheck",
             badge: "Inward",
-            badgeColor: "indigo"
+            badgeColor: "indigo",
+            aiTag: "AI Vision"
           },
           { 
             id: "barcode", 
@@ -253,21 +254,6 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // AI Tools (Available to all authenticated merchants)
-    menuTree.push({
-      id: "ai",
-      name: "AI Smart Tools",
-      icon: "Sparkles",
-      children: [
-        { 
-          id: "scanner", 
-          name: "AI Purchase Bill Scanner", 
-          href: "/scanner", 
-          icon: "Camera", 
-          aiTag: "Gemini Vision" 
-        },
-      ],
-    });
 
     // Settings & Team Management (OWNER and MANAGER)
     if (userRole === "OWNER" || userRole === "MANAGER") {

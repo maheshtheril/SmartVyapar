@@ -186,15 +186,15 @@ export default function DashboardPage() {
         </Link>
 
         <Link
-          href="/scanner"
+          href="/inventory/purchase"
           className="group rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition flex items-center space-x-3 shadow-sm"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
             <Camera className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-900 group-hover:text-emerald-600">AI Bill Scanner</div>
-            <div className="text-[11px] text-slate-500">Scan paper bills with Gemini Vision</div>
+            <div className="text-xs font-bold text-slate-900 group-hover:text-emerald-600">AI Purchase Inward</div>
+            <div className="text-[11px] text-slate-500">Scan bills, match audit & inward stock</div>
           </div>
         </Link>
       </div>

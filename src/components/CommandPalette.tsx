@@ -97,7 +97,7 @@ const PALETTE_ITEMS: PaletteItem[] = [
     title: 'Scan Supplier Purchase Bill with AI',
     subtitle: 'Extract line items and taxes automatically via Gemini Vision',
     category: 'ACTIONS',
-    href: '/scanner',
+    href: '/inventory/purchase',
     icon: Sparkles,
     keywords: ['scan', 'ai', 'gemini', 'ocr', 'purchase', 'bill', 'camera', 'upload'],
     badge: 'AI Vision',
