@@ -88,7 +88,7 @@ test("Self-Serve Merchant Registration & Onboarding (/register)", async (t) => {
         businessName: "Kochi Retail Hub",
         ownerName: "Rahul Sharma",
         email: "rahul@kochihub.in",
-        phone: "12345", // Less than 10 digits
+        phone: "1234567890", // Starts with 1 instead of 6-9
         password: "securepassword",
         upiId: "shop@okaxis",
       };
@@ -98,7 +98,7 @@ test("Self-Serve Merchant Registration & Onboarding (/register)", async (t) => {
       if (!result.success) {
         assert.ok(
           result.error.issues.some((i) =>
-            i.message.includes("Must be a valid 10-digit mobile number")
+            i.message.includes("Must be a valid 10-digit Indian mobile number")
           )
         );
       }

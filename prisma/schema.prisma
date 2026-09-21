@@ -42,13 +42,13 @@ enum StockLogType {
   RETURN_IN
   MANUAL_ADJUSTMENT
   CONSUMPTION_OUT // For recipe / kitchen ingredient depletion
-  TRANSFER_OUT    // Dispatched to another warehouse
-  TRANSFER_IN     // Received from another warehouse
+  TRANSFER_OUT // Dispatched to another warehouse
+  TRANSFER_IN // Received from another warehouse
 }
 
 enum ProductType {
-  RETAIL_ITEM   // Standard retail product - direct stock deduction
-  RAW_MATERIAL  // Bulk ingredients (Chicken, Rice, Oil) - not directly sold
+  RETAIL_ITEM // Standard retail product - direct stock deduction
+  RAW_MATERIAL // Bulk ingredients (Chicken, Rice, Oil) - not directly sold
   FINISHED_GOOD // Prepared menu dish (Biryani, 65) - auto-depletes ingredients
 }
 
@@ -56,22 +56,22 @@ enum ProductType {
 // 1. TENANT / BUSINESS ENTITY (ISOLATED WORKSPACE)
 // ----------------------------------------------------
 model Tenant {
-  id               String           @id @default(uuid())
-  slug             String           @unique // e.g. "ziona-electricals"
-  businessName     String
-  legalName        String?
-  gstin            String?          // e.g. "32AAAAA0000A1Z5"
-  stateCode        String           @default("32") // e.g. "32" for Kerala, "27" for MH
-  stateName        String?          @default("Kerala")
-  upiId            String           // e.g. "mybusiness@okaxis" for dynamic QR
-  phone            String
-  email            String?
-  address          String?
-  pincode          String?          @default("682001")
-  isComposition    Boolean          @default(false)
-  currency         String           @default("INR")
-  logoUrl          String?
-  businessType     String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES"
+  id                 String           @id @default(uuid())
+  slug               String           @unique // e.g. "ziona-electricals"
+  businessName       String
+  legalName          String?
+  gstin              String? // e.g. "32AAAAA0000A1Z5"
+  stateCode          String           @default("32") // e.g. "32" for Kerala, "27" for MH
+  stateName          String?          @default("Kerala")
+  upiId              String // e.g. "mybusiness@okaxis" for dynamic QR
+  phone              String
+  email              String?
+  address            String?
+  pincode            String?          @default("682001")
+  isComposition      Boolean          @default(false)
+  currency           String           @default("INR")
+  logoUrl            String?
+  businessType       String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES"
   subscriptionTier   SubscriptionTier @default(FREE)
   subscriptionStatus String           @default("ACTIVE") // "ACTIVE", "CANCELLED", "EXPIRED", "TRIALING"
   planBillingCycle   String           @default("MONTHLY") // "MONTHLY", "ANNUAL"
@@ -80,29 +80,29 @@ model Tenant {
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
-  users                User[]
-  products             Product[]
-  stockLogs            StockLog[]
-  customers            Customer[]
-  invoices             Invoice[]
-  purchaseBills        PurchaseBill[]
-  accounts             Account[]
-  recipeItems          RecipeItem[]
-  batches              Batch[]
-  restaurantTables     RestaurantTable[]
-  kitchenOrderTickets  KitchenOrderTicket[]
-  invoiceSequences     InvoiceSequence[]
-  creditNotes          CreditNote[]
-  auditLogs            AuditLog[]
-  printTemplates       PrintTemplate[]
-  subscriptionPayments SubscriptionPayment[]
-  warehouses           Warehouse[]
-  stockTransfers       StockTransfer[]
-  journalEntries       JournalEntry[]
-  purchaseOrders       PurchaseOrder[]
-  loyaltyTransactions  LoyaltyTransaction[]
-  cashDrawerShifts     CashDrawerShift[]
-  cashDrawerPayouts    CashDrawerPayout[]
+  users                 User[]
+  products              Product[]
+  stockLogs             StockLog[]
+  customers             Customer[]
+  invoices              Invoice[]
+  purchaseBills         PurchaseBill[]
+  accounts              Account[]
+  recipeItems           RecipeItem[]
+  batches               Batch[]
+  restaurantTables      RestaurantTable[]
+  kitchenOrderTickets   KitchenOrderTicket[]
+  invoiceSequences      InvoiceSequence[]
+  creditNotes           CreditNote[]
+  auditLogs             AuditLog[]
+  printTemplates        PrintTemplate[]
+  subscriptionPayments  SubscriptionPayment[]
+  warehouses            Warehouse[]
+  stockTransfers        StockTransfer[]
+  journalEntries        JournalEntry[]
+  purchaseOrders        PurchaseOrder[]
+  loyaltyTransactions   LoyaltyTransaction[]
+  cashDrawerShifts      CashDrawerShift[]
+  cashDrawerPayouts     CashDrawerPayout[]
   gstr2bReconciliations Gstr2bReconciliation[]
   deliveryChallans      DeliveryChallan[]
   gstr3bReturns         Gstr3bReturn[]
@@ -115,19 +115,19 @@ model Tenant {
 // 2. USERS & STAFF
 // ----------------------------------------------------
 model User {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   tenantId     String
   name         String
-  email        String?   @unique
+  email        String?  @unique
   phone        String
   passwordHash String
-  role         UserRole  @default(STAFF)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role         UserRole @default(STAFF)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  auditLogs AuditLog[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditLogs           AuditLog[]
   passwordResetTokens PasswordResetToken[]
 
   @@index([tenantId])
@@ -148,7 +148,7 @@ model Product {
   productType         ProductType @default(RETAIL_ITEM) // RETAIL_ITEM, RAW_MATERIAL, FINISHED_GOOD
   baseUnit            String      @default("PCS") // Atomic unit: PCS, KG, MTR, NOS, TAB, LTR
   hasAltUnit          Boolean     @default(false)
-  altUnit             String?     // Packaging unit: BOX, CTN, BAG, STRIP, DOZ
+  altUnit             String? // Packaging unit: BOX, CTN, BAG, STRIP, DOZ
   conversionFactor    Decimal?    @default(1.0) @db.Decimal(10, 3) // 1 altUnit = X baseUnit (e.g. 1 BOX = 10 PCS)
   purchasePrice       Decimal     @db.Decimal(10, 2) // Cost per baseUnit
   purchasePricePerAlt Decimal?    @db.Decimal(10, 2) // Cost per altUnit (Box cost)
@@ -162,25 +162,25 @@ model Product {
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
-  hasBatchTracking    Boolean            @default(false)
-  batches             Batch[]
-  kotItems            KotItem[]
+  hasBatchTracking Boolean   @default(false)
+  batches          Batch[]
+  kotItems         KotItem[]
 
-  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  stockLogs         StockLog[]
-  invoiceItems      InvoiceItem[]
-  purchaseBillItems PurchaseBillItem[]
-  creditNoteItems   CreditNoteItem[]
-  warehouseStocks   WarehouseStock[]
-  transferItems     StockTransferItem[]
-  purchaseOrderItems PurchaseOrderItem[]
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stockLogs            StockLog[]
+  invoiceItems         InvoiceItem[]
+  purchaseBillItems    PurchaseBillItem[]
+  creditNoteItems      CreditNoteItem[]
+  warehouseStocks      WarehouseStock[]
+  transferItems        StockTransferItem[]
+  purchaseOrderItems   PurchaseOrderItem[]
   deliveryChallanItems DeliveryChallanItem[]
-  
+
   // Recipes: When this product is a finished dish (e.g. Chicken Biryani):
-  recipeIngredients RecipeItem[]       @relation("MenuToIngredients")
-  
+  recipeIngredients RecipeItem[] @relation("MenuToIngredients")
+
   // Recipes: When this product is used as a raw material ingredient (e.g. Raw Chicken):
-  usedInRecipes     RecipeItem[]       @relation("IngredientToMenu")
+  usedInRecipes RecipeItem[] @relation("IngredientToMenu")
 
   @@index([tenantId])
   @@index([tenantId, barcode])
@@ -193,8 +193,8 @@ model Product {
 model RecipeItem {
   id               String   @id @default(uuid())
   tenantId         String
-  menuProductId    String   // The Finished Dish (e.g. Chicken Biryani)
-  ingredientId     String   // The Raw Material (e.g. Raw Chicken, Basmati Rice)
+  menuProductId    String // The Finished Dish (e.g. Chicken Biryani)
+  ingredientId     String // The Raw Material (e.g. Raw Chicken, Basmati Rice)
   quantityRequired Decimal  @db.Decimal(12, 3) // e.g. 0.250 KG per plate
   wastePercentage  Decimal  @default(0.0) @db.Decimal(5, 2) // Cooking shrinkage / wastage
   createdAt        DateTime @default(now())
@@ -217,7 +217,7 @@ model StockLog {
   productId   String
   changeQty   Decimal      @db.Decimal(12, 3) // Positive for additions, negative for deductions
   type        StockLogType
-  referenceId String?      // Invoice number or Purchase bill number
+  referenceId String? // Invoice number or Purchase bill number
   note        String?
   createdAt   DateTime     @default(now())
 
@@ -261,13 +261,13 @@ model Customer {
 model Invoice {
   id                String        @id @default(uuid())
   tenantId          String
-  invoiceNumber     String        // e.g. "INV-2026-0001"
+  invoiceNumber     String // e.g. "INV-2026-0001"
   invoiceDate       DateTime      @default(now())
   customerId        String?
   customerName      String
   customerPhone     String
   customerGstin     String?
-  customerStateCode String        // If matches tenant.stateCode -> CGST+SGST, else IGST
+  customerStateCode String // If matches tenant.stateCode -> CGST+SGST, else IGST
   isInterState      Boolean       @default(false)
   subtotal          Decimal       @db.Decimal(10, 2)
   cgstAmount        Decimal       @default(0.0) @db.Decimal(10, 2)
@@ -279,37 +279,37 @@ model Invoice {
   dueAmount         Decimal       @default(0.0) @db.Decimal(10, 2)
   paymentStatus     PaymentStatus @default(UNPAID)
   paymentMode       PaymentMode   @default(UPI)
-  upiUri            String?       // NPCI QR Link
+  upiUri            String? // NPCI QR Link
   notes             String?
-  
+
   // E-Way Bill (GST Rule 138)
-  ewayBillNo        String?       // 12-digit statutory E-Way Bill number
-  ewayBillDate      DateTime?
-  transDistance     Int?          // Approximate distance in KM
-  transporterId     String?       // 15-character GSTIN/TRANSIN
-  transporterName   String?
-  transDocNo        String?       // LR / RR / Consignment Note / Airway Bill No
-  transDocDate      DateTime?
-  vehicleNo         String?       // e.g. KL07AB1234
-  vehicleType       String?       @default("R") // R: Regular, O: Over Dimensional Cargo
-  transportMode     String?       @default("1") // 1: Road, 2: Rail, 3: Air, 4: Ship
+  ewayBillNo      String? // 12-digit statutory E-Way Bill number
+  ewayBillDate    DateTime?
+  transDistance   Int? // Approximate distance in KM
+  transporterId   String? // 15-character GSTIN/TRANSIN
+  transporterName String?
+  transDocNo      String? // LR / RR / Consignment Note / Airway Bill No
+  transDocDate    DateTime?
+  vehicleNo       String? // e.g. KL07AB1234
+  vehicleType     String?   @default("R") // R: Regular, O: Over Dimensional Cargo
+  transportMode   String?   @default("1") // 1: Road, 2: Rail, 3: Air, 4: Ship
 
   // E-Invoice (GST Rule 48(4) - NIC / IRP Standard INV-01)
-  irn                  String?       // 64-character SHA-256 hash
-  ackNo                String?       // 15-16 digit IRP acknowledgment number
-  ackDate              DateTime?     // IRP acknowledgment timestamp
-  signedQrCode         String?       @db.Text // Statutory signed JWT QR string
-  einvoiceStatus       String?       @default("PENDING") // PENDING, GENERATED, CANCELLED, FAILED
+  irn                  String? // 64-character SHA-256 hash
+  ackNo                String? // 15-16 digit IRP acknowledgment number
+  ackDate              DateTime? // IRP acknowledgment timestamp
+  signedQrCode         String?   @db.Text // Statutory signed JWT QR string
+  einvoiceStatus       String?   @default("PENDING") // PENDING, GENERATED, CANCELLED, FAILED
   einvoiceCancelReason String?
   einvoiceCancelDate   DateTime?
 
   // Customer Loyalty Rewards
-  loyaltyPointsEarned   Int           @default(0)
-  loyaltyPointsRedeemed Int           @default(0)
-  loyaltyDiscountAmount Decimal       @default(0.0) @db.Decimal(10, 2)
+  loyaltyPointsEarned   Int     @default(0)
+  loyaltyPointsRedeemed Int     @default(0)
+  loyaltyDiscountAmount Decimal @default(0.0) @db.Decimal(10, 2)
 
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer            Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
@@ -353,15 +353,15 @@ model InvoiceItem {
 // 6B. CUSTOMER LOYALTY REWARDS TRANSACTIONS
 // ----------------------------------------------------
 model LoyaltyTransaction {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   tenantId     String
   customerId   String
   invoiceId    String?
-  pointsChange Int       // e.g. +15 (earned) or -50 (redeemed)
+  pointsChange Int // e.g. +15 (earned) or -50 (redeemed)
   balanceAfter Int
-  type         String    // "EARN", "REDEEM", "MANUAL_ADJUSTMENT"
+  type         String // "EARN", "REDEEM", "MANUAL_ADJUSTMENT"
   notes        String?
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime @default(now())
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
@@ -376,26 +376,26 @@ model LoyaltyTransaction {
 // 7. PURCHASE BILLS (AI SCANNED OR MANUAL RESTOCK)
 // ----------------------------------------------------
 model PurchaseBill {
-  id                 String   @id @default(uuid())
-  tenantId           String
-  billNumber         String   // Supplier's bill number
-  grnNumber          String?  // e.g. "GRN-2026-0001"
-  billDate           DateTime @default(now())
-  supplierName       String
-  supplierGstin      String?
-  warehouseId        String?
-  paymentTerms       String?  @default("CREDIT") // CREDIT, CASH, BANK_TRANSFER, UPI
-  notes              String?
-  totalTaxable       Decimal  @db.Decimal(10, 2)
-  cgstAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
-  sgstAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
-  igstAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
-  totalAmount        Decimal  @db.Decimal(10, 2)
-  scannedFileUrl     String?
-  aiConfidenceScore  Decimal? @db.Decimal(4, 2) // e.g. 0.95 (95% accuracy)
-  isConfirmed        Boolean  @default(false)    // True when user confirms AI extraction
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                String   @id @default(uuid())
+  tenantId          String
+  billNumber        String // Supplier's bill number
+  grnNumber         String? // e.g. "GRN-2026-0001"
+  billDate          DateTime @default(now())
+  supplierName      String
+  supplierGstin     String?
+  warehouseId       String?
+  paymentTerms      String?  @default("CREDIT") // CREDIT, CASH, BANK_TRANSFER, UPI
+  notes             String?
+  totalTaxable      Decimal  @db.Decimal(10, 2)
+  cgstAmount        Decimal  @default(0.0) @db.Decimal(10, 2)
+  sgstAmount        Decimal  @default(0.0) @db.Decimal(10, 2)
+  igstAmount        Decimal  @default(0.0) @db.Decimal(10, 2)
+  totalAmount       Decimal  @db.Decimal(10, 2)
+  scannedFileUrl    String?
+  aiConfidenceScore Decimal? @db.Decimal(4, 2) // e.g. 0.95 (95% accuracy)
+  isConfirmed       Boolean  @default(false) // True when user confirms AI extraction
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   items  PurchaseBillItem[]
@@ -405,26 +405,26 @@ model PurchaseBill {
 }
 
 model PurchaseBillItem {
-  id             String    @id @default(uuid())
-  purchaseBillId String
-  productId      String?   // Matched to catalog product (or null if new item)
-  productName    String
-  batchNumber    String?
-  mfgDate        DateTime?
-  expiryDate     DateTime?
-  hsnCode        String?
-  unit           String    @default("PCS") // Unit billed by vendor (e.g. BOX, CTN, PCS, KG)
-  quantity       Decimal   @db.Decimal(12, 3) // Quantity billed by vendor (e.g. 5 Boxes)
-  packageSize    Decimal   @default(1.0) @db.Decimal(10, 3) // E.g. 10 Pcs/Box
-  baseQuantity   Decimal   @default(0.0) @db.Decimal(12, 3) // Total base units entering stock: quantity * packageSize
-  purchasePrice  Decimal   @db.Decimal(10, 2) // Price per unit billed by vendor (e.g. ₹1,000 / Box)
-  discountPercent Decimal? @default(0.0) @db.Decimal(5, 2)
-  baseCostPrice  Decimal?  @db.Decimal(10, 2) // Cost per base unit (e.g. ₹1,000 / 10 = ₹100 / PC)
-  sellingPrice   Decimal?  @db.Decimal(10, 2) // Target selling price
-  marginPercent  Decimal?  @db.Decimal(5, 2)  // Target sales margin %
-  mrp            Decimal?  @db.Decimal(10, 2)
-  gstRate        Decimal   @db.Decimal(5, 2)
-  lineTotal      Decimal   @db.Decimal(10, 2)
+  id              String    @id @default(uuid())
+  purchaseBillId  String
+  productId       String? // Matched to catalog product (or null if new item)
+  productName     String
+  batchNumber     String?
+  mfgDate         DateTime?
+  expiryDate      DateTime?
+  hsnCode         String?
+  unit            String    @default("PCS") // Unit billed by vendor (e.g. BOX, CTN, PCS, KG)
+  quantity        Decimal   @db.Decimal(12, 3) // Quantity billed by vendor (e.g. 5 Boxes)
+  packageSize     Decimal   @default(1.0) @db.Decimal(10, 3) // E.g. 10 Pcs/Box
+  baseQuantity    Decimal   @default(0.0) @db.Decimal(12, 3) // Total base units entering stock: quantity * packageSize
+  purchasePrice   Decimal   @db.Decimal(10, 2) // Price per unit billed by vendor (e.g. ₹1,000 / Box)
+  discountPercent Decimal?  @default(0.0) @db.Decimal(5, 2)
+  baseCostPrice   Decimal?  @db.Decimal(10, 2) // Cost per base unit (e.g. ₹1,000 / 10 = ₹100 / PC)
+  sellingPrice    Decimal?  @db.Decimal(10, 2) // Target selling price
+  marginPercent   Decimal?  @db.Decimal(5, 2) // Target sales margin %
+  mrp             Decimal?  @db.Decimal(10, 2)
+  gstRate         Decimal   @db.Decimal(5, 2)
+  lineTotal       Decimal   @db.Decimal(10, 2)
 
   purchaseBill PurchaseBill @relation(fields: [purchaseBillId], references: [id], onDelete: Cascade)
   product      Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -446,7 +446,7 @@ enum PurchaseOrderStatus {
 model PurchaseOrder {
   id                   String              @id @default(uuid())
   tenantId             String
-  poNumber             String              // e.g. "PO-2026-0001"
+  poNumber             String // e.g. "PO-2026-0001"
   orderDate            DateTime            @default(now())
   expectedDeliveryDate DateTime?
   supplierName         String
@@ -470,17 +470,17 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id              String   @id @default(uuid())
-  purchaseOrderId String
-  productId       String?  // Reference to catalog product if matched
-  productName     String
-  hsnCode         String?
-  unit            String   @default("PCS")
-  orderedQuantity Decimal  @db.Decimal(12, 3)
+  id               String  @id @default(uuid())
+  purchaseOrderId  String
+  productId        String? // Reference to catalog product if matched
+  productName      String
+  hsnCode          String?
+  unit             String  @default("PCS")
+  orderedQuantity  Decimal @db.Decimal(12, 3)
   receivedQuantity Decimal @default(0.0) @db.Decimal(12, 3)
-  expectedRate    Decimal  @db.Decimal(10, 2)
-  gstRate         Decimal  @default(18.0) @db.Decimal(5, 2)
-  lineTotal       Decimal  @db.Decimal(10, 2)
+  expectedRate     Decimal @db.Decimal(10, 2)
+  gstRate          Decimal @default(18.0) @db.Decimal(5, 2)
+  lineTotal        Decimal @db.Decimal(10, 2)
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   product       Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -502,8 +502,8 @@ enum AccountClassification {
 model Account {
   id             String                @id @default(uuid())
   tenantId       String
-  code           String                // e.g. "1000", "1010", "1050", "2000", "4000"
-  name           String                // e.g. "Cash in Hand", "Accounts Receivable", "Sales Revenue"
+  code           String // e.g. "1000", "1010", "1050", "2000", "4000"
+  name           String // e.g. "Cash in Hand", "Accounts Receivable", "Sales Revenue"
   classification AccountClassification
   balance        Decimal               @default(0.0) @db.Decimal(12, 2)
   isGroup        Boolean               @default(false)
@@ -527,19 +527,19 @@ enum VoucherType {
 }
 
 model JournalEntry {
-  id            String            @id @default(uuid())
+  id            String      @id @default(uuid())
   tenantId      String
-  voucherNumber String            // e.g. "PV-2026-0001", "RV-2026-0001", "CV-2026-0001", "JV-2026-0001"
-  voucherType   VoucherType       // PAYMENT, RECEIPT, CONTRA, JOURNAL
-  date          DateTime          @default(now())
+  voucherNumber String // e.g. "PV-2026-0001", "RV-2026-0001", "CV-2026-0001", "JV-2026-0001"
+  voucherType   VoucherType // PAYMENT, RECEIPT, CONTRA, JOURNAL
+  date          DateTime    @default(now())
   narration     String
-  referenceNo   String?           // Cheque No, UTR No, Bank Ref, Voucher Ref
-  totalAmount   Decimal           @db.Decimal(12, 2)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  referenceNo   String? // Cheque No, UTR No, Bank Ref, Voucher Ref
+  totalAmount   Decimal     @db.Decimal(12, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
-  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  lines         JournalLineItem[]
+  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines  JournalLineItem[]
 
   @@unique([tenantId, voucherNumber])
   @@index([tenantId, voucherType])
@@ -548,15 +548,15 @@ model JournalEntry {
 }
 
 model JournalLineItem {
-  id             String       @id @default(uuid())
+  id             String  @id @default(uuid())
   journalEntryId String
   accountId      String
-  debit          Decimal      @default(0.0) @db.Decimal(12, 2)
-  credit         Decimal      @default(0.0) @db.Decimal(12, 2)
+  debit          Decimal @default(0.0) @db.Decimal(12, 2)
+  credit         Decimal @default(0.0) @db.Decimal(12, 2)
   narration      String?
 
-  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account        Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
 
   @@index([journalEntryId])
   @@index([accountId])
@@ -570,7 +570,7 @@ model Batch {
   id           String    @id @default(uuid())
   tenantId     String
   productId    String
-  batchNumber  String    // e.g. "B-2026-01", "LOT-992"
+  batchNumber  String // e.g. "B-2026-01", "LOT-992"
   mfgDate      DateTime?
   expiryDate   DateTime?
   costPrice    Decimal   @db.Decimal(10, 2)
@@ -603,11 +603,11 @@ enum TableStatus {
 model RestaurantTable {
   id           String      @id @default(uuid())
   tenantId     String
-  name         String      // e.g. "T-01", "AC-2", "Parcel / Takeaway"
+  name         String // e.g. "T-01", "AC-2", "Parcel / Takeaway"
   section      String      @default("Main Hall") // "Main Hall", "AC Dining", "Rooftop", "Takeaway"
   capacity     Int         @default(4)
   status       TableStatus @default(VACANT)
-  activeKotId  String?     // Link to currently open session
+  activeKotId  String? // Link to currently open session
   currentTotal Decimal     @default(0.0) @db.Decimal(10, 2)
   occupiedAt   DateTime?
   createdAt    DateTime    @default(now())
@@ -631,7 +631,7 @@ model KitchenOrderTicket {
   id          String    @id @default(uuid())
   tenantId    String
   tableId     String
-  kotNumber   String    // e.g. "KOT-101", "KOT-102"
+  kotNumber   String // e.g. "KOT-101", "KOT-102"
   guestCount  Int       @default(2)
   waiterName  String?
   status      KotStatus @default(PREPARING)
@@ -655,7 +655,7 @@ model KotItem {
   productName String
   quantity    Decimal  @db.Decimal(10, 2)
   unitPrice   Decimal  @db.Decimal(10, 2)
-  notes       String?  // e.g. "Extra spicy, no mayo"
+  notes       String? // e.g. "Extra spicy, no mayo"
   isServed    Boolean  @default(false)
   createdAt   DateTime @default(now())
 
@@ -671,7 +671,7 @@ model KotItem {
 model InvoiceSequence {
   id            String   @id @default(uuid())
   tenantId      String
-  financialYear String   // e.g. "2026-27"
+  financialYear String // e.g. "2026-27"
   prefix        String   @default("INV")
   lastNumber    Int      @default(0)
   updatedAt     DateTime @updatedAt
@@ -696,7 +696,7 @@ enum CreditNoteReason {
 model CreditNote {
   id                    String           @id @default(uuid())
   tenantId              String
-  creditNoteNumber      String           // e.g. "CN-2627-0001"
+  creditNoteNumber      String // e.g. "CN-2627-0001"
   creditNoteDate        DateTime         @default(now())
   invoiceId             String
   originalInvoiceNumber String
@@ -710,22 +710,22 @@ model CreditNote {
   reason                CreditNoteReason @default(SALES_RETURN)
   remarks               String?
 
-  subtotal              Decimal          @db.Decimal(10, 2)
-  cgstAmount            Decimal          @default(0.0) @db.Decimal(10, 2)
-  sgstAmount            Decimal          @default(0.0) @db.Decimal(10, 2)
-  igstAmount            Decimal          @default(0.0) @db.Decimal(10, 2)
-  totalTax              Decimal          @default(0.0) @db.Decimal(10, 2)
-  totalAmount           Decimal          @db.Decimal(10, 2)
+  subtotal    Decimal @db.Decimal(10, 2)
+  cgstAmount  Decimal @default(0.0) @db.Decimal(10, 2)
+  sgstAmount  Decimal @default(0.0) @db.Decimal(10, 2)
+  igstAmount  Decimal @default(0.0) @db.Decimal(10, 2)
+  totalTax    Decimal @default(0.0) @db.Decimal(10, 2)
+  totalAmount Decimal @db.Decimal(10, 2)
 
-  refundMode            PaymentMode      @default(CASH)
+  refundMode PaymentMode @default(CASH)
 
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant                Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  invoice               Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
-  customer              Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  items                 CreditNoteItem[]
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice  Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    CreditNoteItem[]
 
   @@unique([tenantId, creditNoteNumber])
   @@index([tenantId, creditNoteDate])
@@ -734,26 +734,26 @@ model CreditNote {
 }
 
 model CreditNoteItem {
-  id               String     @id @default(uuid())
+  id               String  @id @default(uuid())
   creditNoteId     String
   invoiceItemId    String?
   productId        String
   productName      String
   hsnCode          String
-  unitReturned     String     @default("PCS")
-  quantity         Decimal    @db.Decimal(12, 3)
-  conversionFactor Decimal    @default(1.0) @db.Decimal(10, 3)
-  baseQuantity     Decimal    @default(0.0) @db.Decimal(12, 3)
-  unitPrice        Decimal    @db.Decimal(10, 2)
-  gstRate          Decimal    @db.Decimal(5, 2)
-  cgstAmount       Decimal    @default(0.0) @db.Decimal(10, 2)
-  sgstAmount       Decimal    @default(0.0) @db.Decimal(10, 2)
-  igstAmount       Decimal    @default(0.0) @db.Decimal(10, 2)
-  lineTotal        Decimal    @db.Decimal(10, 2)
-  restock          Boolean    @default(true)
+  unitReturned     String  @default("PCS")
+  quantity         Decimal @db.Decimal(12, 3)
+  conversionFactor Decimal @default(1.0) @db.Decimal(10, 3)
+  baseQuantity     Decimal @default(0.0) @db.Decimal(12, 3)
+  unitPrice        Decimal @db.Decimal(10, 2)
+  gstRate          Decimal @db.Decimal(5, 2)
+  cgstAmount       Decimal @default(0.0) @db.Decimal(10, 2)
+  sgstAmount       Decimal @default(0.0) @db.Decimal(10, 2)
+  igstAmount       Decimal @default(0.0) @db.Decimal(10, 2)
+  lineTotal        Decimal @db.Decimal(10, 2)
+  restock          Boolean @default(true)
 
-  creditNote       CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
-  product          Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@map("credit_note_items")
 }
@@ -785,15 +785,15 @@ model AuditLog {
   userId     String?
   userName   String?
   action     AuditAction
-  entityType String      // "INVOICE", "CREDIT_NOTE", "PRODUCT", "EWAY_BILL", "STOCK", "CUSTOMER"
-  entityId   String      // ID or Document reference
-  details    Json?       // Metadata snapshot / change diff
+  entityType String // "INVOICE", "CREDIT_NOTE", "PRODUCT", "EWAY_BILL", "STOCK", "CUSTOMER"
+  entityId   String // ID or Document reference
+  details    Json? // Metadata snapshot / change diff
   ipAddress  String?
   userAgent  String?
   createdAt  DateTime    @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
   @@index([tenantId, entityType, entityId])
@@ -808,10 +808,10 @@ model PrintTemplate {
   tenantId   String
   name       String
   docType    String   @default("sale_bill") // "sale_bill", "pos_bill", "auto_workshop", "kot", "credit_note", "challan"
-  paperSize  String   @default("a4")        // "a4", "a5", "roll80", "roll58"
-  brand      Json     @default("{}")        // primaryColor, accentColor, headerBg, headerText, fontFamily, logoPosition, logoSize
-  sections   Json     @default("{}")        // showLogo, showTaxId, showHsn, showBankDetails, showQr, etc.
-  automation Json     @default("{}")        // autoPrint, copies, whatsappOnSave, actionAfterSave
+  paperSize  String   @default("a4") // "a4", "a5", "roll80", "roll58"
+  brand      Json     @default("{}") // primaryColor, accentColor, headerBg, headerText, fontFamily, logoPosition, logoSize
+  sections   Json     @default("{}") // showLogo, showTaxId, showHsn, showBankDetails, showQr, etc.
+  automation Json     @default("{}") // autoPrint, copies, whatsappOnSave, actionAfterSave
   isDefault  Boolean  @default(false)
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -849,14 +849,14 @@ model PasswordResetToken {
 model SubscriptionPayment {
   id           String           @id @default(uuid())
   tenantId     String
-  orderId      String           // Razorpay order id or simulated order id
-  paymentId    String?          // Razorpay payment id
-  signature    String?          // HMAC SHA256 signature
-  amount       Float            // In INR (e.g. 499 or 4999)
+  orderId      String // Razorpay order id or simulated order id
+  paymentId    String? // Razorpay payment id
+  signature    String? // HMAC SHA256 signature
+  amount       Float // In INR (e.g. 499 or 4999)
   currency     String           @default("INR")
   tier         SubscriptionTier @default(PRO)
   billingCycle String           @default("MONTHLY") // "MONTHLY", "ANNUAL"
-  status       String           @default("PAID")    // "PAID", "FAILED", "PENDING"
+  status       String           @default("PAID") // "PAID", "FAILED", "PENDING"
   createdAt    DateTime         @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -870,21 +870,21 @@ model SubscriptionPayment {
 // 18. MULTI-WAREHOUSE, GODOWNS & STOCK TRANSFERS
 // ----------------------------------------------------
 model Warehouse {
-  id         String   @id @default(uuid())
-  tenantId   String
-  name       String   // e.g. "Main Central Godown", "Retail Counter Rack", "Workshop Depot"
-  code       String   // e.g. "WH-MAIN", "WH-SHOP"
-  address    String?
-  city       String?  @default("Kochi")
-  isDefault  Boolean  @default(false)
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String // e.g. "Main Central Godown", "Retail Counter Rack", "Workshop Depot"
+  code      String // e.g. "WH-MAIN", "WH-SHOP"
+  address   String?
+  city      String?  @default("Kochi")
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   stocks            WarehouseStock[]
-  transfersSent     StockTransfer[]   @relation("FromWarehouse")
-  transfersReceived StockTransfer[]   @relation("ToWarehouse")
+  transfersSent     StockTransfer[]  @relation("FromWarehouse")
+  transfersReceived StockTransfer[]  @relation("ToWarehouse")
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -896,7 +896,7 @@ model WarehouseStock {
   warehouseId   String
   productId     String
   quantity      Decimal  @default(0.0) @db.Decimal(12, 3)
-  rackLocation  String?  // e.g. "Aisle 3, Rack B, Bin 12"
+  rackLocation  String? // e.g. "Aisle 3, Rack B, Bin 12"
   minStockAlert Decimal  @default(5.0) @db.Decimal(12, 3)
   updatedAt     DateTime @updatedAt
 
@@ -910,19 +910,19 @@ model WarehouseStock {
 }
 
 model StockTransfer {
-  id              String              @id @default(uuid())
+  id              String    @id @default(uuid())
   tenantId        String
-  transferNumber  String              // e.g. "ST-2026-0001"
+  transferNumber  String // e.g. "ST-2026-0001"
   fromWarehouseId String
   toWarehouseId   String
-  status          String              @default("DISPATCHED") // DISPATCHED, RECEIVED, CANCELLED
-  dispatchDate    DateTime            @default(now())
+  status          String    @default("DISPATCHED") // DISPATCHED, RECEIVED, CANCELLED
+  dispatchDate    DateTime  @default(now())
   receivedDate    DateTime?
   vehicleNo       String?
   driverName      String?
   notes           String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   fromWarehouse Warehouse           @relation("FromWarehouse", fields: [fromWarehouseId], references: [id], onDelete: Restrict)
@@ -937,12 +937,12 @@ model StockTransfer {
 }
 
 model StockTransferItem {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   transferId  String
   productId   String
   productName String
-  quantity    Decimal  @db.Decimal(12, 3)
-  unit        String   @default("PCS")
+  quantity    Decimal @db.Decimal(12, 3)
+  unit        String  @default("PCS")
 
   transfer StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
   product  Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -956,32 +956,32 @@ model StockTransferItem {
 // 19. CASH DRAWER SHIFT RECONCILIATION & Z-REPORT
 // ----------------------------------------------------
 model CashDrawerShift {
-  id                 String              @id @default(uuid())
-  tenantId           String
-  shiftNumber        String              // e.g. "SHIFT-2026-0001"
-  openedAt           DateTime            @default(now())
-  closedAt           DateTime?
-  openedByUserId     String
-  openedByName       String
-  closedByUserId     String?
-  closedByName       String?
-  openingFloat       Decimal             @default(0.0) @db.Decimal(10, 2)
-  cashSales          Decimal             @default(0.0) @db.Decimal(10, 2)
-  upiSales           Decimal             @default(0.0) @db.Decimal(10, 2)
-  cardSales          Decimal             @default(0.0) @db.Decimal(10, 2)
-  creditSales        Decimal             @default(0.0) @db.Decimal(10, 2)
-  cashPayouts        Decimal             @default(0.0) @db.Decimal(10, 2)
-  expectedCash       Decimal             @default(0.0) @db.Decimal(10, 2)
-  actualCashCounted  Decimal?            @db.Decimal(10, 2)
-  cashDifference     Decimal?            @db.Decimal(10, 2)
-  denominationsJson  String?             @db.Text
-  status             String              @default("OPEN") // "OPEN", "CLOSED"
-  closingNotes       String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  id                String    @id @default(uuid())
+  tenantId          String
+  shiftNumber       String // e.g. "SHIFT-2026-0001"
+  openedAt          DateTime  @default(now())
+  closedAt          DateTime?
+  openedByUserId    String
+  openedByName      String
+  closedByUserId    String?
+  closedByName      String?
+  openingFloat      Decimal   @default(0.0) @db.Decimal(10, 2)
+  cashSales         Decimal   @default(0.0) @db.Decimal(10, 2)
+  upiSales          Decimal   @default(0.0) @db.Decimal(10, 2)
+  cardSales         Decimal   @default(0.0) @db.Decimal(10, 2)
+  creditSales       Decimal   @default(0.0) @db.Decimal(10, 2)
+  cashPayouts       Decimal   @default(0.0) @db.Decimal(10, 2)
+  expectedCash      Decimal   @default(0.0) @db.Decimal(10, 2)
+  actualCashCounted Decimal?  @db.Decimal(10, 2)
+  cashDifference    Decimal?  @db.Decimal(10, 2)
+  denominationsJson String?   @db.Text
+  status            String    @default("OPEN") // "OPEN", "CLOSED"
+  closingNotes      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  payouts            CashDrawerPayout[]
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payouts CashDrawerPayout[]
 
   @@unique([tenantId, shiftNumber])
   @@index([tenantId, status])
@@ -990,17 +990,17 @@ model CashDrawerShift {
 }
 
 model CashDrawerPayout {
-  id          String          @id @default(uuid())
-  tenantId    String
-  shiftId     String
-  amount      Decimal         @db.Decimal(10, 2)
-  reason      String
-  paidTo      String?
-  approvedBy  String
-  createdAt   DateTime        @default(now())
+  id         String   @id @default(uuid())
+  tenantId   String
+  shiftId    String
+  amount     Decimal  @db.Decimal(10, 2)
+  reason     String
+  paidTo     String?
+  approvedBy String
+  createdAt  DateTime @default(now())
 
-  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shift       CashDrawerShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shift  CashDrawerShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, shiftId])
   @@map("cash_drawer_payouts")
@@ -1010,33 +1010,33 @@ model CashDrawerPayout {
 // 21. GSTR-2B ITC RECONCILIATION
 // ----------------------------------------------------
 model Gstr2bReconciliation {
-  id                  String   @id @default(uuid())
-  tenantId            String
-  returnPeriod        String   // e.g. "082026" (MMYYYY)
-  financialYear       String   @default("2026-2027")
-  fileName            String?
-  uploadedAt          DateTime @default(now())
+  id            String   @id @default(uuid())
+  tenantId      String
+  returnPeriod  String // e.g. "082026" (MMYYYY)
+  financialYear String   @default("2026-2027")
+  fileName      String?
+  uploadedAt    DateTime @default(now())
 
   // Summary Counts
-  total2bInvoices     Int      @default(0)
-  totalBooksInvoices  Int      @default(0)
-  matchedCount        Int      @default(0)
-  mismatchedCount     Int      @default(0)
-  missingIn2bCount    Int      @default(0) // In Books, missing in 2B
-  missingInBooksCount Int      @default(0) // In 2B, missing in Books
+  total2bInvoices     Int @default(0)
+  totalBooksInvoices  Int @default(0)
+  matchedCount        Int @default(0)
+  mismatchedCount     Int @default(0)
+  missingIn2bCount    Int @default(0) // In Books, missing in 2B
+  missingInBooksCount Int @default(0) // In 2B, missing in Books
 
   // ITC Totals
-  matchedItc          Decimal  @default(0.0) @db.Decimal(12, 2)
-  pendingItc          Decimal  @default(0.0) @db.Decimal(12, 2) // At risk
-  ineligibleItc       Decimal  @default(0.0) @db.Decimal(12, 2)
+  matchedItc    Decimal @default(0.0) @db.Decimal(12, 2)
+  pendingItc    Decimal @default(0.0) @db.Decimal(12, 2) // At risk
+  ineligibleItc Decimal @default(0.0) @db.Decimal(12, 2)
 
   // Full serialized audit payload
-  resultsJson         String   @db.Text
+  resultsJson String @db.Text
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, returnPeriod])
   @@index([tenantId, uploadedAt])
@@ -1055,41 +1055,41 @@ enum ChallanPurpose {
 }
 
 model DeliveryChallan {
-  id                   String          @id @default(uuid())
-  tenantId             String
-  challanNumber        String          // e.g. "DC-2026-0001"
-  challanDate          DateTime        @default(now())
-  purpose              ChallanPurpose  @default(SUPPLY_ON_APPROVAL)
-  recipientName        String
-  recipientPhone       String?
-  recipientAddress     String?
-  recipientGstin       String?
-  recipientStateCode   String          @default("32")
-  isInterState         Boolean         @default(false)
-  
-  // Transport Details
-  placeOfSupply        String?
-  transporterName      String?
-  vehicleNo            String?
-  notes                String?
+  id                 String         @id @default(uuid())
+  tenantId           String
+  challanNumber      String // e.g. "DC-2026-0001"
+  challanDate        DateTime       @default(now())
+  purpose            ChallanPurpose @default(SUPPLY_ON_APPROVAL)
+  recipientName      String
+  recipientPhone     String?
+  recipientAddress   String?
+  recipientGstin     String?
+  recipientStateCode String         @default("32")
+  isInterState       Boolean        @default(false)
 
-  subtotal             Decimal         @db.Decimal(10, 2)
-  cgstAmount           Decimal         @default(0.0) @db.Decimal(10, 2)
-  sgstAmount           Decimal         @default(0.0) @db.Decimal(10, 2)
-  igstAmount           Decimal         @default(0.0) @db.Decimal(10, 2)
-  totalTax             Decimal         @default(0.0) @db.Decimal(10, 2)
-  totalAmount          Decimal         @db.Decimal(10, 2)
+  // Transport Details
+  placeOfSupply   String?
+  transporterName String?
+  vehicleNo       String?
+  notes           String?
+
+  subtotal    Decimal @db.Decimal(10, 2)
+  cgstAmount  Decimal @default(0.0) @db.Decimal(10, 2)
+  sgstAmount  Decimal @default(0.0) @db.Decimal(10, 2)
+  igstAmount  Decimal @default(0.0) @db.Decimal(10, 2)
+  totalTax    Decimal @default(0.0) @db.Decimal(10, 2)
+  totalAmount Decimal @db.Decimal(10, 2)
 
   // Status & Conversion
-  status               String          @default("DISPATCHED") // DISPATCHED, CONVERTED_TO_INVOICE, RETURNED, CANCELLED
-  convertedInvoiceId   String?
-  convertedAt          DateTime?
+  status             String    @default("DISPATCHED") // DISPATCHED, CONVERTED_TO_INVOICE, RETURNED, CANCELLED
+  convertedInvoiceId String?
+  convertedAt        DateTime?
 
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant               Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  items                DeliveryChallanItem[]
+  tenant Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  DeliveryChallanItem[]
 
   @@unique([tenantId, challanNumber])
   @@index([tenantId, challanDate])
@@ -1097,22 +1097,22 @@ model DeliveryChallan {
 }
 
 model DeliveryChallanItem {
-  id               String          @id @default(uuid())
-  challanId        String
-  productId        String?
-  productName      String
-  hsnCode          String          @default("9983")
-  unit             String          @default("PCS")
-  quantity         Decimal         @db.Decimal(12, 3)
-  unitPrice        Decimal         @db.Decimal(10, 2)
-  gstRate          Decimal         @default(18.0) @db.Decimal(5, 2)
-  cgstAmount       Decimal         @default(0.0) @db.Decimal(10, 2)
-  sgstAmount       Decimal         @default(0.0) @db.Decimal(10, 2)
-  igstAmount       Decimal         @default(0.0) @db.Decimal(10, 2)
-  lineTotal        Decimal         @db.Decimal(10, 2)
+  id          String  @id @default(uuid())
+  challanId   String
+  productId   String?
+  productName String
+  hsnCode     String  @default("9983")
+  unit        String  @default("PCS")
+  quantity    Decimal @db.Decimal(12, 3)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  gstRate     Decimal @default(18.0) @db.Decimal(5, 2)
+  cgstAmount  Decimal @default(0.0) @db.Decimal(10, 2)
+  sgstAmount  Decimal @default(0.0) @db.Decimal(10, 2)
+  igstAmount  Decimal @default(0.0) @db.Decimal(10, 2)
+  lineTotal   Decimal @db.Decimal(10, 2)
 
-  challan          DeliveryChallan @relation(fields: [challanId], references: [id], onDelete: Cascade)
-  product          Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  challan DeliveryChallan @relation(fields: [challanId], references: [id], onDelete: Cascade)
+  product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([challanId])
   @@map("delivery_challan_items")
@@ -1122,36 +1122,36 @@ model DeliveryChallanItem {
 // 23. GSTR-3B RETURN PREPARATION & COMPUTATION
 // ----------------------------------------------------
 model Gstr3bReturn {
-  id                  String   @id @default(uuid())
-  tenantId            String
-  returnPeriod        String   // e.g. "082026" (MMYYYY)
-  financialYear       String   @default("2026-2027")
-  filingStatus        String   @default("DRAFT") // DRAFT, READY_TO_FILE, FILED
+  id            String @id @default(uuid())
+  tenantId      String
+  returnPeriod  String // e.g. "082026" (MMYYYY)
+  financialYear String @default("2026-2027")
+  filingStatus  String @default("DRAFT") // DRAFT, READY_TO_FILE, FILED
 
   // Table 3.1: Outward Supplies & Inward Liable to Reverse Charge
-  table31Taxable      Decimal  @default(0.0) @db.Decimal(12, 2)
-  table31Igst         Decimal  @default(0.0) @db.Decimal(12, 2)
-  table31Cgst         Decimal  @default(0.0) @db.Decimal(12, 2)
-  table31Sgst         Decimal  @default(0.0) @db.Decimal(12, 2)
-  table31Cess         Decimal  @default(0.0) @db.Decimal(12, 2)
+  table31Taxable Decimal @default(0.0) @db.Decimal(12, 2)
+  table31Igst    Decimal @default(0.0) @db.Decimal(12, 2)
+  table31Cgst    Decimal @default(0.0) @db.Decimal(12, 2)
+  table31Sgst    Decimal @default(0.0) @db.Decimal(12, 2)
+  table31Cess    Decimal @default(0.0) @db.Decimal(12, 2)
 
   // Table 4: Eligible ITC (Reconciled from Books & 2B)
-  table4ItcIgst       Decimal  @default(0.0) @db.Decimal(12, 2)
-  table4ItcCgst       Decimal  @default(0.0) @db.Decimal(12, 2)
-  table4ItcSgst       Decimal  @default(0.0) @db.Decimal(12, 2)
-  table4ItcCess       Decimal  @default(0.0) @db.Decimal(12, 2)
+  table4ItcIgst Decimal @default(0.0) @db.Decimal(12, 2)
+  table4ItcCgst Decimal @default(0.0) @db.Decimal(12, 2)
+  table4ItcSgst Decimal @default(0.0) @db.Decimal(12, 2)
+  table4ItcCess Decimal @default(0.0) @db.Decimal(12, 2)
 
   // Table 6.1: Net Tax Payable via Cash (after ITC Rule 88A setoff)
-  netCashIgst         Decimal  @default(0.0) @db.Decimal(12, 2)
-  netCashCgst         Decimal  @default(0.0) @db.Decimal(12, 2)
-  netCashSgst         Decimal  @default(0.0) @db.Decimal(12, 2)
-  totalCashPayable    Decimal  @default(0.0) @db.Decimal(12, 2)
+  netCashIgst      Decimal @default(0.0) @db.Decimal(12, 2)
+  netCashCgst      Decimal @default(0.0) @db.Decimal(12, 2)
+  netCashSgst      Decimal @default(0.0) @db.Decimal(12, 2)
+  totalCashPayable Decimal @default(0.0) @db.Decimal(12, 2)
 
-  payloadJson         String   @db.Text
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  payloadJson String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, returnPeriod])
   @@index([tenantId, createdAt])
@@ -1162,35 +1162,33 @@ model Gstr3bReturn {
 // 24. E-WAY BILL RECORD & AUDIT REGISTER
 // ----------------------------------------------------
 model EWayBillRecord {
-  id                  String   @id @default(uuid())
-  tenantId            String
-  invoiceId           String?
-  ewayBillNo          String   // 12-digit number
-  ewayBillDate        DateTime @default(now())
-  validUpto           DateTime
-  docNumber           String   // Invoice or Challan Number
-  docDate             DateTime
-  fromGstin           String
-  toGstin             String?
-  toTradeName         String
-  totalValue          Decimal  @db.Decimal(12, 2)
-  hsnCode             String?
-  distanceKm          Int
-  vehicleNo           String?
-  vehicleType         String   @default("R")
-  transMode           String   @default("ROAD")
-  status              String   @default("ACTIVE") // ACTIVE, CANCELLED, EXPIRED
-  cancelReason        String?
-  payloadJson         String?  @db.Text
+  id           String   @id @default(uuid())
+  tenantId     String
+  invoiceId    String?
+  ewayBillNo   String // 12-digit number
+  ewayBillDate DateTime @default(now())
+  validUpto    DateTime
+  docNumber    String // Invoice or Challan Number
+  docDate      DateTime
+  fromGstin    String
+  toGstin      String?
+  toTradeName  String
+  totalValue   Decimal  @db.Decimal(12, 2)
+  hsnCode      String?
+  distanceKm   Int
+  vehicleNo    String?
+  vehicleType  String   @default("R")
+  transMode    String   @default("ROAD")
+  status       String   @default("ACTIVE") // ACTIVE, CANCELLED, EXPIRED
+  cancelReason String?
+  payloadJson  String?  @db.Text
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, ewayBillNo])
   @@index([tenantId, ewayBillDate])
   @@map("eway_bill_records")
 }
-
-

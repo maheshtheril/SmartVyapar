@@ -71,6 +71,8 @@ export async function POST(req: NextRequest) {
           barcode: data.barcode,
           hsnCode: data.hsnCode,
           category: data.category,
+          productType: data.productType || "RETAIL_ITEM",
+          hasBatchTracking: !!data.hasBatchTracking,
           baseUnit: data.baseUnit,
           hasAltUnit: data.hasAltUnit,
           altUnit: data.hasAltUnit ? data.altUnit : null,

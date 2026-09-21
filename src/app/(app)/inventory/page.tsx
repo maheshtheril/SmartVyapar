@@ -22,7 +22,18 @@ import {
   History,
   ShieldCheck,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Sparkles,
+  Layers,
+  Calculator,
+  Percent,
+  Info,
+  ShoppingBag,
+  ChefHat,
+  Barcode,
+  HelpCircle,
+  Zap,
+  Loader2,
 } from 'lucide-react';
 import BulkImportModal from '@/components/BulkImportModal';
 
@@ -46,14 +57,28 @@ export default function InventoryPage() {
   const [stockHistoryData, setStockHistoryData] = useState<any>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Form State
+  // Form State - World Standard ERP Product Master
   const [name, setName] = useState("");
-  const [hsnCode, setHsnCode] = useState("8544");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [productType, setProductType] = useState<"RETAIL_ITEM"|"RAW_MATERIAL"|"FINISHED_GOOD">("RETAIL_ITEM");
+  const [hsnCode, setHsnCode] = useState("9983");
   const [sku, setSku] = useState("");
+  const [barcode, setBarcode] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
+  const [mrp, setMrp] = useState("");
   const [gstRate, setGstRate] = useState("18");
-  const [initialStock, setInitialStock] = useState("10");
+  const [baseUnit, setBaseUnit] = useState("PCS");
+  const [hasAltUnit, setHasAltUnit] = useState(false);
+  const [altUnit, setAltUnit] = useState("");
+  const [conversionFactor, setConversionFactor] = useState("10");
+  const [initialStock, setInitialStock] = useState("0");
+  const [minStockAlert, setMinStockAlert] = useState("5");
+  const [hasBatchTracking, setHasBatchTracking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string|null>(null);
+  const [activeTab, setActiveTab] = useState<"GENERAL" | "PRICING" | "PACKAGING" | "INVENTORY">("GENERAL");
 
   const loadProducts = async () => {
     setLoading(true);
@@ -74,41 +99,139 @@ export default function InventoryPage() {
     loadProducts();
   }, []);
 
+  // Auto-generate EAN-13 Barcode (Prefix 890 for India)
+  const generateEanBarcode = () => {
+    const prefix = "890";
+    let body = "";
+    for (let i = 0; i < 9; i++) {
+      body += Math.floor(Math.random() * 10);
+    }
+    const raw = prefix + body;
+    let sum = 0;
+    for (let i = 0; i < 12; i++) {
+      sum += parseInt(raw[i], 10) * (i % 2 === 0 ? 1 : 3);
+    }
+    const checkDigit = (10 - (sum % 10)) % 10;
+    setBarcode(`${raw}${checkDigit}`);
+  };
+
+  // Auto-generate SKU based on product name
+  const generateSkuCode = () => {
+    if (!name.trim()) return;
+    const clean = name.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const prefix = clean.slice(0, 4) || "ITEM";
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    setSku(`${prefix}-${rand}`);
+  };
+
+  // Auto-calculate selling price from cost + target margin %
+  const handleMarginChange = (marginVal: string) => {
+    const m = parseFloat(marginVal);
+    const cost = parseFloat(purchasePrice || "0");
+    if (!isNaN(m) && cost > 0 && m < 100) {
+      const calcSelling = cost / (1 - m / 100);
+      setSellingPrice(calcSelling.toFixed(2));
+    }
+  };
+
+  // Live Gross Margin & Pricing Math
+  const costNum = parseFloat(purchasePrice || "0");
+  const sellNum = parseFloat(sellingPrice || "0");
+  const mrpNum = parseFloat(mrp || "0");
+  const profitNum = sellNum - costNum;
+  const marginPct = sellNum > 0 ? ((profitNum / sellNum) * 100).toFixed(1) : "0";
+  const markupPct = costNum > 0 ? ((profitNum / costNum) * 100).toFixed(1) : "0";
+  const isSellingAboveMrp = mrpNum > 0 && sellNum > mrpNum;
+  const isLoss = costNum > 0 && sellNum > 0 && profitNum < 0;
+
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !sellingPrice) {
-      alert("Product Name and Selling Price are required");
+    setFormError(null);
+
+    if (!name.trim()) {
+      setFormError("Product Name is required");
+      setActiveTab("GENERAL");
+      return;
+    }
+    if (!sellingPrice || Number(sellingPrice) < 0) {
+      setFormError("Valid Selling Price is required");
+      setActiveTab("PRICING");
+      return;
+    }
+    if (mrp && Number(sellingPrice) > Number(mrp)) {
+      setFormError(`Selling Price (₹${sellingPrice}) cannot exceed Maximum Retail Price MRP (₹${mrp}) under Legal Metrology Act`);
+      setActiveTab("PRICING");
+      return;
+    }
+    if (hasAltUnit && (!altUnit.trim() || Number(conversionFactor) <= 1)) {
+      setFormError("When packaging unit is enabled, Packaging Unit Name and conversion factor (> 1) are required");
+      setActiveTab("PACKAGING");
       return;
     }
 
+    setSaving(true);
     try {
+      const conv = hasAltUnit ? Number(conversionFactor || 1) : 1;
+      const cost = Number(purchasePrice || 0);
+      const sell = Number(sellingPrice);
+
       const res = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
-          sku: sku || undefined,
-          hsnCode,
-          purchasePrice: Number(purchasePrice || 0),
-          sellingPrice: Number(sellingPrice),
+          name: name.trim(),
+          category: category.trim() || undefined,
+          productType,
+          sku: sku.trim() || undefined,
+          barcode: barcode.trim() || undefined,
+          hsnCode: hsnCode.trim() || "9983",
+          baseUnit,
+          hasAltUnit,
+          altUnit: hasAltUnit && altUnit.trim() ? altUnit.trim().toUpperCase() : undefined,
+          conversionFactor: conv,
+          purchasePrice: cost,
+          purchasePricePerAlt: hasAltUnit ? cost * conv : undefined,
+          sellingPrice: sell,
+          sellingPricePerAlt: hasAltUnit ? sell * conv : undefined,
+          mrp: mrp ? Number(mrp) : undefined,
           gstRate: Number(gstRate),
           initialStock: Number(initialStock || 0),
+          minStockAlert: Number(minStockAlert || 5),
+          hasBatchTracking,
         }),
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to create product");
+        throw new Error(data.message || data.error || "Failed to create product");
       }
 
       setShowModal(false);
+      // Reset form
       setName("");
+      setDescription("");
+      setCategory("");
+      setProductType("RETAIL_ITEM");
       setSku("");
+      setBarcode("");
+      setHsnCode("9983");
       setPurchasePrice("");
       setSellingPrice("");
+      setMrp("");
+      setGstRate("18");
+      setBaseUnit("PCS");
+      setHasAltUnit(false);
+      setAltUnit("");
+      setConversionFactor("10");
+      setInitialStock("0");
+      setMinStockAlert("5");
+      setHasBatchTracking(false);
+      setFormError(null);
       loadProducts();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      setFormError(err.message || "Failed to create product");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -383,117 +506,669 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Modal: Add Product */}
+      {/* World-Standard ERP Product Master Studio Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900">Add New Product to Inventory</h3>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+              <div className="flex items-center space-x-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-200">
+                  <Package className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-base font-extrabold text-slate-900">Add New Product Master</h3>
+                    <span className="rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5">
+                      ERP Master
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">Configure SKU, pricing, dual UOM packaging & statutory GST</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateProduct} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Product Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Polycab 2.5 Sq.mm Copper Wire"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-                />
+            {/* Live Financial Margin KPI Strip */}
+            <div className="bg-slate-900 px-6 py-3 text-white">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Cost Price</span>
+                  <p className="font-bold text-slate-200 text-sm mt-0.5">
+                    ₹{costNum > 0 ? costNum.toFixed(2) : '0.00'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Selling Price</span>
+                  <p className="font-bold text-white text-sm mt-0.5">
+                    ₹{sellNum > 0 ? sellNum.toFixed(2) : '0.00'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Gross Margin</span>
+                  <div className="flex items-center space-x-1 mt-0.5">
+                    <span className={`font-bold text-sm ${isLoss ? 'text-rose-400' : profitNum > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                      {profitNum >= 0 ? `+₹${profitNum.toFixed(2)}` : `-₹${Math.abs(profitNum).toFixed(2)}`}
+                    </span>
+                    {sellNum > 0 && (
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${isLoss ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                        {marginPct}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Legal Metrology</span>
+                  <div className="mt-0.5">
+                    {isSellingAboveMrp ? (
+                      <span className="text-[11px] font-bold text-rose-400 flex items-center space-x-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span>Exceeds MRP!</span>
+                      </span>
+                    ) : mrpNum > 0 ? (
+                      <span className="text-xs text-slate-300 font-semibold">MRP ₹{mrpNum.toFixed(2)}</span>
+                    ) : (
+                      <span className="text-xs text-slate-500">No MRP set</span>
+                    )}
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">SKU / Barcode</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. POL-25"
-                    value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">HSN Code</label>
-                  <input
-                    type="text"
-                    value={hsnCode}
-                    onChange={(e) => setHsnCode(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Purchase Price</label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={purchasePrice}
-                    onChange={(e) => setPurchasePrice(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Selling Price *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    placeholder="0"
-                    value={sellingPrice}
-                    onChange={(e) => setSellingPrice(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">GST (%)</label>
-                  <select
-                    value={gstRate}
-                    onChange={(e) => setGstRate(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-2 py-2 text-xs focus:border-indigo-500 focus:outline-none"
+            {/* Tab Navigation */}
+            <div className="flex border-b border-slate-200 bg-white px-6">
+              {[
+                { id: "GENERAL", label: "1. Identity & Classification", icon: ShoppingBag },
+                { id: "PRICING", label: "2. Pricing & GST", icon: Calculator },
+                { id: "PACKAGING", label: "3. Units & Packaging", icon: Layers },
+                { id: "INVENTORY", label: "4. Stock & Tracking", icon: Boxes },
+              ].map((tab) => {
+                const TabIcon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex items-center space-x-2 py-3 px-3 text-xs font-bold border-b-2 transition ${
+                      isActive
+                        ? 'border-indigo-600 text-indigo-600 bg-indigo-50/40'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                    }`}
                   >
-                    <option value="0">0%</option>
-                    <option value="5">5%</option>
-                    <option value="12">12%</option>
-                    <option value="18">18%</option>
-                    <option value="28">28%</option>
-                  </select>
+                    <TabIcon className="h-3.5 w-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Form Error Banner */}
+            {formError && (
+              <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            {/* Modal Body / Tab Content */}
+            <form onSubmit={handleCreateProduct} className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
+              {/* TAB 1: Identity & Classification */}
+              {activeTab === "GENERAL" && (
+                <div className="space-y-4">
+                  {/* Product Classification Pills */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Product Classification / Industry Type *
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {[
+                        { type: "RETAIL_ITEM", title: "Retail Goods", desc: "Direct sale item, auto stock reduction" },
+                        { type: "RAW_MATERIAL", title: "Raw Material", desc: "Bulk ingredient / not sold directly" },
+                        { type: "FINISHED_GOOD", title: "Finished Recipe", desc: "Prepared dish / auto ingredient depletion" },
+                      ].map((item) => (
+                        <button
+                          key={item.type}
+                          type="button"
+                          onClick={() => setProductType(item.type as any)}
+                          className={`p-3 rounded-xl border text-left transition ${
+                            productType === item.type
+                              ? 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-600/20'
+                              : 'border-slate-200 bg-white hover:bg-slate-50'
+                          }`}
+                        >
+                          <p className={`text-xs font-bold ${productType === item.type ? 'text-indigo-900' : 'text-slate-800'}`}>
+                            {item.title}
+                          </p>
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{item.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Product Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Product / Item Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Polycab 2.5 Sq.mm Copper Wire (90m Roll) or Amul Gold Milk 500ml"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:border-indigo-600 focus:bg-white focus:outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Category & Description */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Category / Brand
+                      </label>
+                      <input
+                        type="text"
+                        list="category-suggestions"
+                        placeholder="e.g. Electricals, Groceries, Auto Parts"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
+                      />
+                      <datalist id="category-suggestions">
+                        <option value="Electrical & Lighting" />
+                        <option value="Automobile Parts & Lubricants" />
+                        <option value="Groceries & Packaged Foods" />
+                        <option value="Beverages & Dairy" />
+                        <option value="Hardware & Sanitary" />
+                        <option value="Pharmaceuticals & Wellness" />
+                        <option value="Textiles & Garments" />
+                        <option value="Electronics & Accessories" />
+                      </datalist>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Item Subtitle / Short Description
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. High heat resistant FR grade wire"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* SKU, Barcode, HSN */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    {/* SKU */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-slate-700">SKU Code</label>
+                        <button
+                          type="button"
+                          onClick={generateSkuCode}
+                          className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-0.5"
+                        >
+                          <Zap className="h-2.5 w-2.5" />
+                          <span>Generate</span>
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="e.g. POL-25-01"
+                        value={sku}
+                        onChange={(e) => setSku(e.target.value.toUpperCase())}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-indigo-600 focus:outline-none uppercase"
+                      />
+                    </div>
+
+                    {/* Barcode */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-slate-700">Barcode / EAN-13</label>
+                        <button
+                          type="button"
+                          onClick={generateEanBarcode}
+                          className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-0.5"
+                        >
+                          <Barcode className="h-2.5 w-2.5" />
+                          <span>Generate EAN</span>
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="e.g. 8901234567890"
+                        value={barcode}
+                        onChange={(e) => setBarcode(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* HSN Code */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        HSN / SAC Code *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. 8544 or 8708"
+                        value={hsnCode}
+                        onChange={(e) => setHsnCode(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Common HSN quick selector badges */}
+                  <div className="flex items-center space-x-1.5 flex-wrap pt-1 text-[10px]">
+                    <span className="text-slate-400 font-semibold">Common HSNs:</span>
+                    {[
+                      { code: "8544", name: "Cables/Wires" },
+                      { code: "8708", name: "Auto Parts" },
+                      { code: "9983", name: "Services" },
+                      { code: "2106", name: "Food Prep" },
+                      { code: "3004", name: "Medicines" },
+                      { code: "8471", name: "IT Hardware" },
+                    ].map((hsn) => (
+                      <button
+                        key={hsn.code}
+                        type="button"
+                        onClick={() => setHsnCode(hsn.code)}
+                        className={`rounded-md px-1.5 py-0.5 font-bold transition ${
+                          hsnCode === hsn.code
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {hsn.code} ({hsn.name})
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Opening Stock Quantity</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={initialStock}
-                  onChange={(e) => setInitialStock(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
+              {/* TAB 2: Pricing & GST */}
+              {activeTab === "PRICING" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Purchase Price */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Purchase Cost Price (₹)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs font-bold">₹</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={purchasePrice}
+                          onChange={(e) => setPurchasePrice(e.target.value)}
+                          className="w-full rounded-xl border border-slate-300 pl-7 pr-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Cost per atomic unit excl. GST</p>
+                    </div>
 
-              <div className="pt-2 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
-                >
-                  Save to Database
-                </button>
+                    {/* Target Margin % */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Target Margin (%)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs font-bold">%</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="99"
+                          placeholder="e.g. 25"
+                          onChange={(e) => handleMarginChange(e.target.value)}
+                          className="w-full rounded-xl border border-slate-300 pl-7 pr-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+                        />
+                      </div>
+                      <p className="text-[10px] text-indigo-600 mt-1 font-medium">Auto-calculates selling price</p>
+                    </div>
+
+                    {/* Selling Price */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Selling Price (₹) *
+                      </label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-indigo-600 text-xs font-bold">₹</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          required
+                          placeholder="0.00"
+                          value={sellingPrice}
+                          onChange={(e) => setSellingPrice(e.target.value)}
+                          className="w-full rounded-xl border border-indigo-400 pl-7 pr-3 py-2 text-xs font-mono font-black text-indigo-900 focus:border-indigo-600 focus:outline-none bg-indigo-50/20"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Base price charged to customers</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {/* MRP */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        MRP (Maximum Retail Price ₹)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs font-bold">₹</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Printed packet MRP"
+                          value={mrp}
+                          onChange={(e) => setMrp(e.target.value)}
+                          className={`w-full rounded-xl border pl-7 pr-3 py-2 text-xs font-mono font-bold focus:outline-none ${
+                            isSellingAboveMrp ? 'border-rose-400 bg-rose-50 text-rose-900' : 'border-slate-300 text-slate-900 focus:border-indigo-600'
+                          }`}
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Legal Metrology Act: Selling price cannot exceed MRP</p>
+                    </div>
+
+                    {/* GST Rate */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        GST Tax Rate (%)
+                      </label>
+                      <select
+                        value={gstRate}
+                        onChange={(e) => setGstRate(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                      >
+                        <option value="0">0% - Nil Rated / Exempt Goods</option>
+                        <option value="5">5% - Essential Goods (Food/Medicines)</option>
+                        <option value="12">12% - Standard Concessional</option>
+                        <option value="18">18% - Standard GST Rate</option>
+                        <option value="28">28% - Luxury & Automobile Parts</option>
+                      </select>
+                      <p className="text-[10px] text-slate-400 mt-1">CGST + SGST split 50/50 automatically</p>
+                    </div>
+                  </div>
+
+                  {/* Live Tax Computation Card */}
+                  {sellNum > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                      <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                        Live Statutory Invoice Breakdown (at {gstRate}% GST)
+                      </p>
+                      <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-sans">Taxable Value:</span>
+                          <p className="font-bold text-slate-800">₹{sellNum.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-sans">GST Amount:</span>
+                          <p className="font-bold text-indigo-600">+₹{(sellNum * (Number(gstRate) / 100)).toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-sans">Final Invoice Total:</span>
+                          <p className="font-black text-slate-900">₹{(sellNum * (1 + Number(gstRate) / 100)).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: Units & Packaging */}
+              {activeTab === "PACKAGING" && (
+                <div className="space-y-4">
+                  {/* Base Atomic Unit */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Base Atomic Unit (Stock Tracking Unit) *
+                    </label>
+                    <select
+                      value={baseUnit}
+                      onChange={(e) => setBaseUnit(e.target.value)}
+                      className="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                    >
+                      <option value="PCS">PCS - Pieces / Units</option>
+                      <option value="KG">KG - Kilograms</option>
+                      <option value="GMS">GMS - Grams</option>
+                      <option value="LTR">LTR - Litres</option>
+                      <option value="ML">ML - Millilitres</option>
+                      <option value="MTR">MTR - Metres</option>
+                      <option value="BOX">BOX - Box</option>
+                      <option value="NOS">NOS - Numbers</option>
+                      <option value="CAN">CAN - Cans</option>
+                      <option value="BTL">BTL - Bottles</option>
+                      <option value="PKT">PKT - Packets</option>
+                      <option value="DOZ">DOZ - Dozens</option>
+                      <option value="SET">SET - Sets</option>
+                      <option value="ROLL">ROLL - Rolls</option>
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Every internal stock deduction and accounting entry will strictly track in this unit.
+                    </p>
+                  </div>
+
+                  {/* Dual Packaging Toggle */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">
+                          Enable Dual UOM / Bulk Packaging
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Allow buying and selling in wholesale boxes, cartons, or strips with automatic piece conversion.
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={hasAltUnit}
+                          onChange={(e) => setHasAltUnit(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                      </label>
+                    </div>
+
+                    {hasAltUnit && (
+                      <div className="pt-2 border-t border-slate-200 space-y-3 animate-in fade-in">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                              Packaging Unit Name (e.g. BOX, CASE, STRIP) *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. BOX"
+                              value={altUnit}
+                              onChange={(e) => setAltUnit(e.target.value.toUpperCase())}
+                              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold uppercase text-slate-900 focus:border-indigo-600 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                              Conversion Factor (1 {altUnit || 'BOX'} = ? {baseUnit}) *
+                            </label>
+                            <input
+                              type="number"
+                              min="2"
+                              step="1"
+                              placeholder="e.g. 10"
+                              value={conversionFactor}
+                              onChange={(e) => setConversionFactor(e.target.value)}
+                              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-900 focus:border-indigo-600 focus:outline-none font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Packaging Economics Preview */}
+                        <div className="p-3 rounded-xl bg-white border border-indigo-100 flex items-center justify-between text-xs font-mono">
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-sans">1 {altUnit || 'BOX'} Cost:</span>
+                            <p className="font-bold text-slate-800">
+                              ₹{(costNum * Number(conversionFactor || 1)).toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-sans">1 {altUnit || 'BOX'} Sell Price:</span>
+                            <p className="font-bold text-indigo-700">
+                              ₹{(sellNum * Number(conversionFactor || 1)).toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-sans">Unit Multiplier:</span>
+                            <p className="font-bold text-slate-700">
+                              {conversionFactor}x {baseUnit}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: Stock & Tracking */}
+              {activeTab === "INVENTORY" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Opening Stock */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Opening Stock Quantity (in {baseUnit})
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        placeholder="0"
+                        value={initialStock}
+                        onChange={(e) => setInitialStock(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Initial physical count at setup. Creates immutable INITIAL stock ledger log.
+                      </p>
+                    </div>
+
+                    {/* Min Stock Alert */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Minimum Stock Alert Threshold (Re-Order Point)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="5"
+                        value={minStockAlert}
+                        onChange={(e) => setMinStockAlert(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Alert badge appears on dashboard when inventory falls to or below this level.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Batch Tracking Checkbox */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex items-start space-x-3">
+                      <input
+                        type="checkbox"
+                        id="batch-tracking-checkbox"
+                        checked={hasBatchTracking}
+                        onChange={(e) => setHasBatchTracking(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <label htmlFor="batch-tracking-checkbox" className="cursor-pointer">
+                        <p className="text-xs font-bold text-slate-800">
+                          Enable Batch & Expiry Date Tracking (FIFO / FEFO)
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                          Recommended for pharmaceuticals, perishable goods, chemicals, and cosmetics. Requires entering Batch Number, Mfd Date, and Exp Date during GRN purchase inward.
+                        </p>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sticky Modal Action Footer */}
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  {activeTab !== "GENERAL" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeTab === "INVENTORY") setActiveTab("PACKAGING");
+                        else if (activeTab === "PACKAGING") setActiveTab("PRICING");
+                        else if (activeTab === "PRICING") setActiveTab("GENERAL");
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+                    >
+                      ← Previous
+                    </button>
+                  )}
+
+                  {activeTab !== "INVENTORY" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeTab === "GENERAL") setActiveTab("PRICING");
+                        else if (activeTab === "PRICING") setActiveTab("PACKAGING");
+                        else if (activeTab === "PACKAGING") setActiveTab("INVENTORY");
+                      }}
+                      className="rounded-xl bg-slate-900 hover:bg-slate-800 px-4 py-2.5 text-xs font-bold text-white transition"
+                    >
+                      Next Step →
+                    </button>
+                  ) : null}
+
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center space-x-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-200 transition cursor-pointer"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Saving Product...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Save Product & Sync Inventory</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
