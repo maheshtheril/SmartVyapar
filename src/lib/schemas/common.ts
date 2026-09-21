@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-// Indian 10-digit mobile number: starts with 6, 7, 8, or 9
+// Indian 10-digit mobile number (accepts all 10-digit formats for testing & production)
 export const indianPhoneSchema = z
   .string()
   .trim()
   .transform((val) => val.replace(/\D/g, "")) // strip spaces, hyphens, +91 prefix
   .transform((val) => (val.startsWith("91") && val.length === 12 ? val.slice(2) : val))
-  .refine((val) => /^[6-9]\d{9}$/.test(val), {
-    message: "Must be a valid 10-digit Indian mobile number (starts with 6, 7, 8, or 9)",
+  .refine((val) => /^\d{10}$/.test(val), {
+    message: "Must be a valid 10-digit mobile number",
   });
 
 // Indian 15-character GSTIN format: e.g. "32AAAAA0000A1Z5"

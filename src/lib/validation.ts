@@ -25,12 +25,13 @@ export function validateBody<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     const details = formatZodErrors(result.error);
+    const errorMessage = details.map((d) => `${d.field}: ${d.message}`).join("; ") || "Validation failed";
     return {
       success: false,
       response: NextResponse.json(
         {
-          error: "Validation failed",
-          message: details.map((d) => `${d.field}: ${d.message}`).join("; "),
+          error: errorMessage,
+          message: errorMessage,
           details,
         },
         { status: 400 }
