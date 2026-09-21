@@ -34,6 +34,9 @@ import {
   HelpCircle,
   Zap,
   Loader2,
+  Image as ImageIcon,
+  Trash2,
+  Camera,
 } from 'lucide-react';
 import BulkImportModal from '@/components/BulkImportModal';
 
@@ -76,9 +79,34 @@ export default function InventoryPage() {
   const [initialStock, setInitialStock] = useState("0");
   const [minStockAlert, setMinStockAlert] = useState("5");
   const [hasBatchTracking, setHasBatchTracking] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string|null>(null);
   const [activeTab, setActiveTab] = useState<"GENERAL" | "PRICING" | "PACKAGING" | "INVENTORY">("GENERAL");
+
+  // Handle local image file upload & conversion to Data URL
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setFormError("Product image file size must be under 2MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setImageUrl(result);
+      setImagePreview(result);
+      setFormError(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImageUrl("");
+    setImagePreview(null);
+  };
 
   const loadProducts = async () => {
     setLoading(true);
@@ -198,6 +226,7 @@ export default function InventoryPage() {
           initialStock: Number(initialStock || 0),
           minStockAlert: Number(minStockAlert || 5),
           hasBatchTracking,
+          imageUrl: imageUrl.trim() || undefined,
         }),
       });
 
@@ -211,6 +240,8 @@ export default function InventoryPage() {
       setName("");
       setDescription("");
       setCategory("");
+      setImageUrl("");
+      setImagePreview(null);
       setProductType("RETAIL_ITEM");
       setSku("");
       setBarcode("");
@@ -424,10 +455,26 @@ export default function InventoryPage() {
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/50">
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900">{item.name}</div>
-                        <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
-                          {item.sku && <span>SKU: {item.sku}</span>}
-                          {item.barcode && <span>• Barcode: {item.barcode}</span>}
+                        <div className="flex items-center space-x-3">
+                          <div className="h-10 w-10 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="h-full w-full object-cover"
+                                onError={(e: any) => { e.target.style.display = 'none'; }}
+                              />
+                            ) : (
+                              <Package className="h-5 w-5 text-slate-400" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-900">{item.name}</div>
+                            <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
+                              {item.sku && <span>SKU: {item.sku}</span>}
+                              {item.barcode && <span>• Barcode: {item.barcode}</span>}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-slate-500">{item.hsnCode}</td>
@@ -649,6 +696,88 @@ export default function InventoryPage() {
                           <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{item.desc}</p>
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Product Image / Photo Upload Zone */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
+                      <span className="flex items-center space-x-1.5">
+                        <ImageIcon className="h-4 w-4 text-indigo-600" />
+                        <span>Product Photo / Image (Optional)</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-normal">PNG, JPG, WebP up to 2MB or Public URL</span>
+                    </label>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                      {/* Thumbnail Preview Box */}
+                      <div className="relative h-20 w-20 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs group">
+                        {imagePreview || imageUrl ? (
+                          <>
+                            <img
+                              src={imagePreview || imageUrl}
+                              alt="Product Preview"
+                              className="h-full w-full object-cover"
+                              onError={() => setImagePreview(null)}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleRemoveImage}
+                              className="absolute inset-0 bg-black/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-2xl cursor-pointer"
+                              title="Remove image"
+                            >
+                              <Trash2 className="h-4 w-4 mb-0.5 text-rose-300" />
+                              <span className="text-[9px] font-bold">Remove</span>
+                            </button>
+                          </>
+                        ) : (
+                          <label htmlFor="product-image-file" className="cursor-pointer text-center p-2 flex flex-col items-center justify-center hover:bg-slate-50 w-full h-full transition">
+                            <Camera className="h-5 w-5 text-slate-400 mb-0.5" />
+                            <span className="text-[9px] font-bold text-indigo-600">Add Photo</span>
+                          </label>
+                        )}
+                      </div>
+
+                      {/* Controls: Choose file + URL input */}
+                      <div className="flex-1 w-full space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <label
+                            htmlFor="product-image-file"
+                            className="cursor-pointer inline-flex items-center space-x-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
+                          >
+                            <UploadCloud className="h-3.5 w-3.5 text-indigo-600" />
+                            <span>Browse from Computer / Device</span>
+                          </label>
+                          <input
+                            id="product-image-file"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageFileChange}
+                            className="hidden"
+                          />
+                          {(imagePreview || imageUrl) && (
+                            <button
+                              type="button"
+                              onClick={handleRemoveImage}
+                              className="inline-flex items-center space-x-1 text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Clear Image</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <input
+                          type="url"
+                          placeholder="Or paste web image link (e.g. https://example.com/product.jpg)"
+                          value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                          onChange={(e) => {
+                            setImageUrl(e.target.value);
+                            setImagePreview(e.target.value ? e.target.value : null);
+                          }}
+                          className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
+                        />
+                      </div>
                     </div>
                   </div>
 

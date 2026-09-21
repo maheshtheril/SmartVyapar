@@ -145,6 +145,7 @@ model Product {
   barcode             String?
   hsnCode             String      @default("9983")
   category            String?
+  imageUrl            String?     @db.Text
   productType         ProductType @default(RETAIL_ITEM) // RETAIL_ITEM, RAW_MATERIAL, FINISHED_GOOD
   baseUnit            String      @default("PCS") // Atomic unit: PCS, KG, MTR, NOS, TAB, LTR
   hasAltUnit          Boolean     @default(false)
