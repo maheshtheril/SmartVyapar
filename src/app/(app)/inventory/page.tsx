@@ -37,6 +37,8 @@ import {
   Image as ImageIcon,
   Trash2,
   Camera,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import BulkImportModal from '@/components/BulkImportModal';
 
@@ -62,7 +64,6 @@ export default function InventoryPage() {
 
   // Form State - World Standard ERP Product Master
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState<"RETAIL_ITEM"|"RAW_MATERIAL"|"FINISHED_GOOD">("RETAIL_ITEM");
   const [hsnCode, setHsnCode] = useState("9983");
@@ -84,13 +85,16 @@ export default function InventoryPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string|null>(null);
   const [activeTab, setActiveTab] = useState<"GENERAL" | "PRICING" | "PACKAGING" | "INVENTORY">("GENERAL");
+  const [isMaximized, setIsMaximized] = useState(true);
 
   // Handle local image file upload & conversion to Data URL
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      setFormError("Product image file size must be under 2MB");
+    // 1MB limit: a 1MB file becomes ~1.35MB base64 — safely under Next.js 4MB body limit
+    // (a 2MB file would become ~2.7MB base64 and risk silent 413 failures)
+    if (file.size > 1 * 1024 * 1024) {
+      setFormError("Product image file size must be under 1MB. Tip: compress the image before uploading.");
       return;
     }
     const reader = new FileReader();
@@ -230,7 +234,11 @@ export default function InventoryPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      // Handle 413 Payload Too Large — typically caused by a large base64 image
+      if (res.status === 413) {
+        throw new Error("Request too large — the product image is too big. Please use an image under 1MB.");
+      }
       if (!res.ok || !data.success) {
         throw new Error(data.message || data.error || "Failed to create product");
       }
@@ -238,7 +246,6 @@ export default function InventoryPage() {
       setShowModal(false);
       // Reset form
       setName("");
-      setDescription("");
       setCategory("");
       setImageUrl("");
       setImagePreview(null);
@@ -555,10 +562,14 @@ export default function InventoryPage() {
 
       {/* World-Standard ERP Product Master Studio Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs ${isMaximized ? 'p-0 sm:p-2' : 'p-3 sm:p-6'} overflow-hidden`}>
+          <div className={`w-full bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col transition-all duration-200 ${
+            isMaximized
+              ? 'h-full sm:h-[97vh] max-w-[98vw] sm:rounded-2xl'
+              : 'max-w-4xl max-h-[90vh] rounded-3xl my-auto'
+          }`}>
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+            <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 bg-slate-50/80 shrink-0">
               <div className="flex items-center space-x-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-200">
                   <Package className="h-5 w-5" />
@@ -573,13 +584,24 @@ export default function InventoryPage() {
                   <p className="text-xs text-slate-500">Configure SKU, pricing, dual UOM packaging & statutory GST</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center space-x-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsMaximized(!isMaximized)}
+                  className="rounded-xl p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition cursor-pointer"
+                  title={isMaximized ? "Restore window size" : "Maximize window (Full Screen)"}
+                >
+                  {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
+                  title="Close (Esc)"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Live Financial Margin KPI Strip */}
@@ -796,44 +818,29 @@ export default function InventoryPage() {
                     />
                   </div>
 
-                  {/* Category & Description */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Category / Brand
-                      </label>
-                      <input
-                        type="text"
-                        list="category-suggestions"
-                        placeholder="e.g. Electricals, Groceries, Auto Parts"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
-                      />
-                      <datalist id="category-suggestions">
-                        <option value="Electrical & Lighting" />
-                        <option value="Automobile Parts & Lubricants" />
-                        <option value="Groceries & Packaged Foods" />
-                        <option value="Beverages & Dairy" />
-                        <option value="Hardware & Sanitary" />
-                        <option value="Pharmaceuticals & Wellness" />
-                        <option value="Textiles & Garments" />
-                        <option value="Electronics & Accessories" />
-                      </datalist>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Item Subtitle / Short Description
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. High heat resistant FR grade wire"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
-                      />
-                    </div>
+                  {/* Category & Brand */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Category / Brand
+                    </label>
+                    <input
+                      type="text"
+                      list="category-suggestions"
+                      placeholder="e.g. Electricals, Groceries, Auto Parts"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
+                    />
+                    <datalist id="category-suggestions">
+                      <option value="Electrical & Lighting" />
+                      <option value="Automobile Parts & Lubricants" />
+                      <option value="Groceries & Packaged Foods" />
+                      <option value="Beverages & Dairy" />
+                      <option value="Hardware & Sanitary" />
+                      <option value="Pharmaceuticals & Wellness" />
+                      <option value="Textiles & Garments" />
+                      <option value="Electronics & Accessories" />
+                    </datalist>
                   </div>
 
                   {/* SKU, Barcode, HSN */}

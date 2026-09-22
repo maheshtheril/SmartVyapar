@@ -185,6 +185,9 @@ model Product {
 
   @@index([tenantId])
   @@index([tenantId, barcode])
+  // Prevent duplicate SKU or barcode per tenant (NULLs are allowed multiple times by PostgreSQL)
+  @@unique([tenantId, sku])
+  @@unique([tenantId, barcode])
   @@map("products")
 }
 
