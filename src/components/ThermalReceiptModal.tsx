@@ -566,7 +566,7 @@ export default function ThermalReceiptModal({
                         {item.quantity} {item.unit || ''}
                       </div>
                       <div className="col-span-2 text-right">
-                        {item.price.toFixed(0)}
+                        {item.price.toFixed(2)}
                       </div>
                       <div className="col-span-2 text-right font-bold">
                         {item.total.toFixed(2)}
@@ -574,7 +574,7 @@ export default function ThermalReceiptModal({
                     </div>
                     {item.hsn && (
                       <div className="text-[9px] text-slate-600">
-                        HSN: {item.hsn} {item.gstRate ? `(${item.gstRate}%)` : ''}
+                        HSN: {item.hsn} {item.gstRate ? `(GST ${item.gstRate}%)` : ''}
                       </div>
                     )}
                   </div>
@@ -587,7 +587,7 @@ export default function ThermalReceiptModal({
               {/* Totals Section */}
               <div className="space-y-1 text-[10px]">
                 <div className="flex justify-between">
-                  <span>Subtotal (Gross):</span>
+                  <span>Subtotal:</span>
                   <span>₹{(data.taxableAmount || data.subTotal).toFixed(2)}</span>
                 </div>
 
@@ -598,26 +598,51 @@ export default function ThermalReceiptModal({
                   </div>
                 )}
 
-                {data.cgstAmount !== undefined && data.cgstAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span>CGST:</span>
-                    <span>₹{data.cgstAmount.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {data.sgstAmount !== undefined && data.sgstAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span>SGST:</span>
-                    <span>₹{data.sgstAmount.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {data.igstAmount !== undefined && data.igstAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span>IGST:</span>
-                    <span>₹{data.igstAmount.toFixed(2)}</span>
-                  </div>
-                )}
+                {/* GST Slab-wise Summary Table (Tally/Zoho style) */}
+                {(data.cgstAmount || data.sgstAmount || data.igstAmount) ? (() => {
+                  // Group items by GST rate slab
+                  const slabMap: Record<number, { taxable: number; cgst: number; sgst: number; igst: number }> = {};
+                  const isIgst = (data.igstAmount || 0) > 0 && !(data.cgstAmount && data.cgstAmount > 0);
+                  data.items.forEach((item) => {
+                    const rate = item.gstRate || 0;
+                    if (rate === 0) return;
+                    if (!slabMap[rate]) slabMap[rate] = { taxable: 0, cgst: 0, sgst: 0, igst: 0 };
+                    slabMap[rate].taxable += item.total;
+                    const tax = (item.total * rate) / (100 + rate); // back-calculate from inclusive
+                    if (isIgst) {
+                      slabMap[rate].igst += tax;
+                    } else {
+                      slabMap[rate].cgst += tax / 2;
+                      slabMap[rate].sgst += tax / 2;
+                    }
+                  });
+                  const slabs = Object.entries(slabMap).filter(([, v]) => v.taxable > 0);
+                  if (slabs.length === 0) return null;
+                  return (
+                    <div className="border border-dashed border-slate-400 rounded p-1 my-1">
+                      <div className={`grid font-bold text-[8px] border-b border-dashed border-slate-400 pb-0.5 mb-0.5 ${isIgst ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                        <span>Rate</span>
+                        <span className="text-right">Taxable</span>
+                        {!isIgst && <span className="text-right">CGST</span>}
+                        <span className="text-right">{isIgst ? 'IGST' : 'SGST'}</span>
+                      </div>
+                      {slabs.map(([rate, v]) => (
+                        <div key={rate} className={`grid text-[8px] ${isIgst ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                          <span>{rate}%</span>
+                          <span className="text-right">₹{(v.taxable - (isIgst ? v.igst : v.cgst + v.sgst)).toFixed(2)}</span>
+                          {!isIgst && <span className="text-right">₹{v.cgst.toFixed(2)}</span>}
+                          <span className="text-right">₹{(isIgst ? v.igst : v.sgst).toFixed(2)}</span>
+                        </div>
+                      ))}
+                      <div className={`grid text-[8px] font-bold border-t border-dashed border-slate-400 pt-0.5 mt-0.5 ${isIgst ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                        <span>Total</span>
+                        <span className="text-right">₹{(data.taxableAmount || data.subTotal).toFixed(2)}</span>
+                        {!isIgst && <span className="text-right">₹{(data.cgstAmount || 0).toFixed(2)}</span>}
+                        <span className="text-right">₹{(isIgst ? (data.igstAmount || 0) : (data.sgstAmount || 0)).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  );
+                })() : null}
 
                 {/* Grand Total Highlight */}
                 <div className="border-y-2 border-black py-1 my-1 flex justify-between items-center text-sm font-black">
