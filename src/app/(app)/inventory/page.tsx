@@ -687,160 +687,119 @@ export default function InventoryPage() {
             )}
 
             {/* Modal Body / Tab Content */}
-            <form onSubmit={handleCreateProduct} className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
+            <form onSubmit={handleCreateProduct} className="px-5 py-3 space-y-3 flex-1 overflow-y-auto">
               {/* TAB 1: Identity & Classification */}
               {activeTab === "GENERAL" && (
-                <div className="space-y-4">
-                  {/* Product Classification Pills */}
+                <div className="space-y-3">
+                  {/* Product Classification — compact inline pills */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Product Classification / Industry Type *
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                      Product Type *
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="flex items-center gap-2">
                       {[
-                        { type: "RETAIL_ITEM", title: "Retail Goods", desc: "Direct sale item, auto stock reduction" },
-                        { type: "RAW_MATERIAL", title: "Raw Material", desc: "Bulk ingredient / not sold directly" },
-                        { type: "FINISHED_GOOD", title: "Finished Recipe", desc: "Prepared dish / auto ingredient depletion" },
+                        { type: "RETAIL_ITEM", title: "Retail Goods", icon: "🛒" },
+                        { type: "RAW_MATERIAL", title: "Raw Material", icon: "🧱" },
+                        { type: "FINISHED_GOOD", title: "Finished Recipe", icon: "🍽️" },
                       ].map((item) => (
                         <button
                           key={item.type}
                           type="button"
                           onClick={() => setProductType(item.type as any)}
-                          className={`p-3 rounded-xl border text-left transition ${
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition ${
                             productType === item.type
-                              ? 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-600/20'
-                              : 'border-slate-200 bg-white hover:bg-slate-50'
+                              ? 'border-indigo-600 bg-indigo-600 text-white'
+                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                           }`}
                         >
-                          <p className={`text-xs font-bold ${productType === item.type ? 'text-indigo-900' : 'text-slate-800'}`}>
-                            {item.title}
-                          </p>
-                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{item.desc}</p>
+                          <span>{item.icon}</span>
+                          <span>{item.title}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Product Image / Photo Upload Zone */}
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                    <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
-                      <span className="flex items-center space-x-1.5">
-                        <ImageIcon className="h-4 w-4 text-indigo-600" />
-                        <span>Product Photo / Image (Optional)</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-normal">PNG, JPG, WebP up to 2MB or Public URL</span>
-                    </label>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-4">
-                      {/* Thumbnail Preview Box */}
-                      <div className="relative h-20 w-20 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs group">
-                        {imagePreview || imageUrl ? (
-                          <>
-                            <img
-                              src={imagePreview || imageUrl}
-                              alt="Product Preview"
-                              className="h-full w-full object-cover"
-                              onError={() => setImagePreview(null)}
-                            />
-                            <button
-                              type="button"
-                              onClick={handleRemoveImage}
-                              className="absolute inset-0 bg-black/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-2xl cursor-pointer"
-                              title="Remove image"
-                            >
-                              <Trash2 className="h-4 w-4 mb-0.5 text-rose-300" />
-                              <span className="text-[9px] font-bold">Remove</span>
-                            </button>
-                          </>
-                        ) : (
-                          <label htmlFor="product-image-file" className="cursor-pointer text-center p-2 flex flex-col items-center justify-center hover:bg-slate-50 w-full h-full transition">
-                            <Camera className="h-5 w-5 text-slate-400 mb-0.5" />
-                            <span className="text-[9px] font-bold text-indigo-600">Add Photo</span>
-                          </label>
+                  {/* Product Image — compact inline row */}
+                  <div className="flex items-center gap-3">
+                    {/* Small thumbnail */}
+                    <div className="relative h-13 w-13 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0 group" style={{height:'52px',width:'52px'}}>
+                      {imagePreview || imageUrl ? (
+                        <>
+                          <img src={imagePreview || imageUrl} alt="Product" className="h-full w-full object-cover" onError={() => setImagePreview(null)} />
+                          <button type="button" onClick={handleRemoveImage} className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-xl">
+                            <Trash2 className="h-3.5 w-3.5 text-rose-300" />
+                          </button>
+                        </>
+                      ) : (
+                        <label htmlFor="product-image-file" className="cursor-pointer flex flex-col items-center justify-center w-full h-full hover:bg-slate-100 transition rounded-xl">
+                          <Camera className="h-4 w-4 text-slate-400" />
+                          <span className="text-[8px] font-bold text-indigo-500 mt-0.5">Photo</span>
+                        </label>
+                      )}
+                    </div>
+                    {/* Upload + URL input */}
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <label htmlFor="product-image-file" className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shrink-0">
+                          <UploadCloud className="h-3 w-3 text-indigo-500" />
+                          <span>Browse from Computer / Device</span>
+                        </label>
+                        <input id="product-image-file" type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
+                        <span className="text-[10px] text-slate-400">PNG/JPG ≤ 1MB</span>
+                        {(imagePreview || imageUrl) && (
+                          <button type="button" onClick={handleRemoveImage} className="inline-flex items-center gap-1 text-[10px] text-rose-500 hover:text-rose-700 font-semibold">
+                            <Trash2 className="h-3 w-3" /><span>Clear</span>
+                          </button>
                         )}
                       </div>
-
-                      {/* Controls: Choose file + URL input */}
-                      <div className="flex-1 w-full space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <label
-                            htmlFor="product-image-file"
-                            className="cursor-pointer inline-flex items-center space-x-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
-                          >
-                            <UploadCloud className="h-3.5 w-3.5 text-indigo-600" />
-                            <span>Browse from Computer / Device</span>
-                          </label>
-                          <input
-                            id="product-image-file"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageFileChange}
-                            className="hidden"
-                          />
-                          {(imagePreview || imageUrl) && (
-                            <button
-                              type="button"
-                              onClick={handleRemoveImage}
-                              className="inline-flex items-center space-x-1 text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              <span>Clear Image</span>
-                            </button>
-                          )}
-                        </div>
-
-                        <input
-                          type="url"
-                          placeholder="Or paste web image link (e.g. https://example.com/product.jpg)"
-                          value={imageUrl.startsWith('data:') ? '' : imageUrl}
-                          onChange={(e) => {
-                            setImageUrl(e.target.value);
-                            setImagePreview(e.target.value ? e.target.value : null);
-                          }}
-                          className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
-                        />
-                      </div>
+                      <input
+                        type="url"
+                        placeholder="Or paste image URL (https://...)"
+                        value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                        onChange={(e) => { setImageUrl(e.target.value); setImagePreview(e.target.value || null); }}
+                        className="w-full rounded-lg border border-slate-300 px-2.5 py-1 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
+                      />
                     </div>
                   </div>
 
-                  {/* Product Name */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Product / Item Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Polycab 2.5 Sq.mm Copper Wire (90m Roll) or Amul Gold Milk 500ml"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:border-indigo-600 focus:bg-white focus:outline-none shadow-2xs"
-                    />
-                  </div>
-
-                  {/* Category & Brand */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Category / Brand
-                    </label>
-                    <input
-                      type="text"
-                      list="category-suggestions"
-                      placeholder="e.g. Electricals, Groceries, Auto Parts"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
-                    />
-                    <datalist id="category-suggestions">
-                      <option value="Electrical & Lighting" />
-                      <option value="Automobile Parts & Lubricants" />
-                      <option value="Groceries & Packaged Foods" />
-                      <option value="Beverages & Dairy" />
-                      <option value="Hardware & Sanitary" />
-                      <option value="Pharmaceuticals & Wellness" />
-                      <option value="Textiles & Garments" />
-                      <option value="Electronics & Accessories" />
-                    </datalist>
+                  {/* Product Name + Category — same row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        Product / Item Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Amul Gold Milk 500ml"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 font-medium focus:border-indigo-600 focus:bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        Category / Brand
+                      </label>
+                      <input
+                        type="text"
+                        list="category-suggestions"
+                        placeholder="e.g. Electricals, Groceries"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
+                      />
+                      <datalist id="category-suggestions">
+                        <option value="Electrical & Lighting" />
+                        <option value="Automobile Parts & Lubricants" />
+                        <option value="Groceries & Packaged Foods" />
+                        <option value="Beverages & Dairy" />
+                        <option value="Hardware & Sanitary" />
+                        <option value="Pharmaceuticals & Wellness" />
+                        <option value="Textiles & Garments" />
+                        <option value="Electronics & Accessories" />
+                      </datalist>
+                    </div>
                   </div>
 
                   {/* SKU, Barcode, HSN */}
