@@ -164,6 +164,7 @@ export default function NewInvoicePage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerState, setCustomerState] = useState("32");
+  const [billType, setBillType] = useState<"TAX_INVOICE" | "ESTIMATE">("TAX_INVOICE");
   const [paymentStatus, setPaymentStatus] = useState<"PAID" | "UNPAID">("PAID");
   const [paymentMode, setPaymentMode] = useState<"UPI" | "CASH" | "CARD" | "SPLIT" | "CREDIT">("CASH");
 
@@ -385,7 +386,8 @@ export default function NewInvoicePage() {
       const lineBase = item.price * item.quantity;
       const lineDisc = (lineBase * Math.min(100, Math.max(0, item.discountPercent || 0))) / 100;
       const itemTaxable = (lineBase - lineDisc) * discountRatio;
-      const itemTax = (itemTaxable * item.gst) / 100;
+      const effectiveGst = billType === "TAX_INVOICE" ? item.gst : 0;
+      const itemTax = (itemTaxable * effectiveGst) / 100;
       if (isIntraState) {
         totalCgst += itemTax / 2;
         totalSgst += itemTax / 2;
@@ -396,7 +398,9 @@ export default function NewInvoicePage() {
   });
 
   const totalTaxable = netTaxable;
-  const baseGrandTotal = netTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst);
+  const baseGrandTotal = billType === "TAX_INVOICE"
+    ? netTaxable + (isIntraState ? totalCgst + totalSgst : totalIgst)
+    : netTaxable;
   const effectiveLoyaltyDiscount = Math.min(loyaltyPointsToRedeem, customerLoyaltyPoints, Math.floor(baseGrandTotal));
   const grandTotal = Math.max(0, baseGrandTotal - effectiveLoyaltyDiscount);
   const currentUpiUri = `upi://pay?pa=${encodeURIComponent(business.upiId || "zionabusiness@icici")}&pn=${encodeURIComponent(business.name)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=Invoice%20for%20${encodeURIComponent(customerName || "Customer")}`;
@@ -593,6 +597,77 @@ export default function NewInvoicePage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [billItems, customerName, customerPhone, customerState, grandTotal, totalTaxable, isSubmitting, heldBills, paymentMode, cashReceived, splitCash, splitUpi, splitCard, splitCredit, isPaymentModalOpen, changeDueState, payments, activePaymentAmount, isStreamBalanced, isStreamDeficit, showHeldModal, showBatchModal, showReceiptModal]);
+
+  // Sound cue for instant barcode scan gun
+  const playScanBeep = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1760, ctx.currentTime); // A6 high crisp beep
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.09);
+    } catch {
+      // Audio cue fallback
+    }
+  };
+
+  // Instant Barcode Gun auto-add or quantity increment
+  const handleFastBarcodeScan = (product: ProductOption) => {
+    playScanBeep();
+
+    setBillItems((prev) => {
+      // Check if this product is already in the cart
+      const existingIdx = prev.findIndex((i) => i.productId === product.id);
+
+      if (existingIdx !== -1) {
+        // Increment quantity of existing item
+        const updated = [...prev];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity: updated[existingIdx].quantity + 1,
+        };
+        return updated;
+      }
+
+      // Check if there's an empty row waiting to be filled
+      const emptyIdx = prev.findIndex((i) => !i.productId);
+      if (emptyIdx !== -1) {
+        const updated = [...prev];
+        updated[emptyIdx] = {
+          ...updated[emptyIdx],
+          productId: product.id,
+          name: product.name,
+          hsn: product.hsnCode || "8504",
+          quantity: 1,
+          price: Number(product.sellingPrice) || 0,
+          gst: Number(product.gstRate) || 18,
+        };
+        return updated;
+      }
+
+      // Add a fresh row
+      return [
+        ...prev,
+        {
+          id: `row-${Date.now()}`,
+          productId: product.id,
+          name: product.name,
+          hsn: product.hsnCode || "8504",
+          quantity: 1,
+          price: Number(product.sellingPrice) || 0,
+          gst: Number(product.gstRate) || 18,
+        },
+      ];
+    });
+  };
 
   // Multi-Item Handlers
   const handleAddItem = () => {
@@ -963,6 +1038,7 @@ export default function NewInvoicePage() {
         customerPhone: customerPhone,
         customerState: customerState,
         cashierName: "Counter 1 (Offline)",
+        docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : "Tax Invoice",
         items: receiptItems,
         subTotal: Number(grossSubtotal),
         taxableAmount: Number(totalTaxable),
@@ -1006,6 +1082,7 @@ export default function NewInvoicePage() {
         customerPhone: customerPhone,
         customerState: customerState,
         cashierName: "Counter 1",
+        docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : "Tax Invoice",
         items: receiptItems,
         subTotal: Number(data.invoice.subTotal || grossSubtotal),
         taxableAmount: Number(totalTaxable),
@@ -1040,6 +1117,7 @@ export default function NewInvoicePage() {
             customerPhone: customerPhone,
             customerState: customerState,
             cashierName: "Counter 1 (Offline)",
+            docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : "Tax Invoice",
             items: receiptItems,
             subTotal: Number(totalTaxable),
             taxableAmount: Number(totalTaxable),
@@ -1121,8 +1199,34 @@ export default function NewInvoicePage() {
           <span><kbd className="bg-white border border-slate-300 text-slate-700 px-1 py-0.5 rounded font-bold">Esc</kbd> Exit</span>
         </div>
 
-        {/* Right: Actions, Fullscreen Toggle, and Exit POS */}
+        {/* Right: Actions, Bill Type Toggle, Fullscreen Toggle, and Exit POS */}
         <div className="flex items-center space-x-2 shrink-0">
+          {/* 1-Click Bill Type Toggle: Tax Invoice vs Estimate / Cash Memo */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setBillType("TAX_INVOICE")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                billType === "TAX_INVOICE"
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Tax Invoice (GST)
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillType("ESTIMATE")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                billType === "ESTIMATE"
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Cash Memo / Estimate
+            </button>
+          </div>
+
           <OfflineStatusPill />
 
           {/* Cash Drawer Shift Management */}
@@ -1226,24 +1330,13 @@ export default function NewInvoicePage() {
               selectedProductId=""
               onSelect={(product) => {
                 if (!product) return;
-                const emptyIdx = billItems.findIndex((i) => !i.productId);
-                if (emptyIdx !== -1) {
-                  handleProductSelect(emptyIdx, product);
-                } else {
-                  setBillItems((prev) => [
-                    ...prev,
-                    {
-                      id: `row-${Date.now()}`,
-                      productId: product.id,
-                      name: product.name,
-                      hsn: product.hsnCode || "8504",
-                      quantity: 1,
-                      price: Number(product.sellingPrice) || 0,
-                      gst: Number(product.gstRate) || 18,
-                    },
-                  ]);
-                }
+                handleFastBarcodeScan(product);
               }}
+              onBarcodeScan={(product) => {
+                handleFastBarcodeScan(product);
+              }}
+              autoClearOnSelect={true}
+              placeholder="Scan barcode gun or search product name / SKU (F1)..."
             />
           </div>
 

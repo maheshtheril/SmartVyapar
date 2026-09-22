@@ -43,6 +43,7 @@ export interface ThermalReceiptData {
   customerPhone?: string;
   customerState?: string;
   cashierName?: string;
+  docTitle?: string;
   items: ThermalReceiptItem[];
   subTotal: number;
   taxableAmount?: number;
@@ -520,7 +521,7 @@ export default function ThermalReceiptModal({
                   </p>
                 )}
                 <div className="text-[9px] font-bold uppercase tracking-wider py-0.5 border-y border-dashed border-black my-1">
-                  Tax Invoice / Cash Memo
+                  {data.docTitle || "Tax Invoice / Cash Memo"}
                 </div>
               </div>
 

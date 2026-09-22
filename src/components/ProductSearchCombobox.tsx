@@ -20,17 +20,23 @@ interface ProductSearchComboboxProps {
   selectedProductId: string;
   onSelect: (product: ProductOption | null) => void;
   placeholder?: string;
+  onBarcodeScan?: (product: ProductOption) => void;
+  autoClearOnSelect?: boolean;
 }
 
 export default function ProductSearchCombobox({
   products,
   selectedProductId,
   onSelect,
-  placeholder = "Search product name, SKU, or barcode...",
+  placeholder = "Search product name, SKU, or barcode (F1)...",
+  onBarcodeScan,
+  autoClearOnSelect = false,
 }: ProductSearchComboboxProps) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
 
@@ -58,12 +64,72 @@ export default function ProductSearchCombobox({
         );
       }).slice(0, 50);
 
+  // Reset highlight index when filter changes
+  useEffect(() => {
+    setHighlightIndex(0);
+  }, [query]);
+
+  // Handle immediate selection (used for scan or click)
+  const commitSelect = (prod: ProductOption) => {
+    if (onBarcodeScan) {
+      onBarcodeScan(prod);
+    } else {
+      onSelect(prod);
+    }
+    if (autoClearOnSelect) {
+      setQuery("");
+    }
+    setIsOpen(false);
+  };
+
+  // Keyboard navigation & Barcode Gun Enter handling
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setIsOpen(true);
+      setHighlightIndex((prev) => (prev + 1 < filtered.length ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setIsOpen(true);
+      setHighlightIndex((prev) => (prev > 0 ? prev - 1 : filtered.length - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      // 1. Check exact barcode match first (barcode scanner gun fires text + Enter)
+      const trimmed = query.trim();
+      if (trimmed) {
+        const exactBarcode = products.find(
+          (p) => p.barcode && p.barcode.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (exactBarcode) {
+          commitSelect(exactBarcode);
+          return;
+        }
+
+        const exactSku = products.find(
+          (p) => p.sku && p.sku.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (exactSku) {
+          commitSelect(exactSku);
+          return;
+        }
+      }
+
+      // 2. Select currently highlighted item
+      if (filtered.length > 0 && highlightIndex >= 0 && highlightIndex < filtered.length) {
+        commitSelect(filtered[highlightIndex]);
+      }
+    } else if (e.key === "Escape") {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div ref={containerRef} className="relative w-full">
       {/* Search Input Box */}
       <div className="relative flex items-center">
         <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
         <input
+          ref={inputRef}
           type="text"
           value={isOpen ? query : (selectedProduct ? `${selectedProduct.name} (Stock: ${selectedProduct.currentStock})` : "")}
           placeholder={selectedProduct ? selectedProduct.name : placeholder}
@@ -75,6 +141,7 @@ export default function ProductSearchCombobox({
             setQuery(e.target.value);
             setIsOpen(true);
           }}
+          onKeyDown={handleKeyDown}
           className={`w-full rounded-lg border pl-8 pr-14 py-1.5 text-xs font-medium focus:border-indigo-500 focus:outline-none transition ${
             selectedProduct ? 'bg-white border-slate-300 text-slate-900 font-semibold' : 'bg-white border-slate-200 text-slate-500'
           }`}
@@ -105,39 +172,45 @@ export default function ProductSearchCombobox({
               No products found matching &quot;{query}&quot;
             </div>
           ) : (
-            filtered.map((prod) => {
+            filtered.map((prod, idx) => {
               const isSelected = prod.id === selectedProductId;
+              const isHighlighted = idx === highlightIndex;
               const isLow = prod.currentStock <= prod.minStockAlert;
               return (
                 <div
                   key={prod.id}
-                  onClick={() => {
-                    onSelect(prod);
-                    setIsOpen(false);
-                    setQuery("");
-                  }}
+                  onClick={() => commitSelect(prod)}
+                  onMouseEnter={() => setHighlightIndex(idx)}
                   className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-xs cursor-pointer transition ${
-                    isSelected ? 'bg-indigo-50 text-indigo-900 font-bold' : 'hover:bg-slate-50 text-slate-800'
+                    isHighlighted
+                      ? 'bg-indigo-600 text-white font-medium'
+                      : isSelected
+                      ? 'bg-indigo-50 text-indigo-900 font-bold'
+                      : 'hover:bg-slate-50 text-slate-800'
                   }`}
                 >
                   <div className="flex-1 min-w-0 pr-2">
-                    <div className="truncate font-semibold text-slate-900 flex items-center space-x-1.5">
+                    <div className={`truncate font-semibold flex items-center space-x-1.5 ${isHighlighted ? 'text-white' : 'text-slate-900'}`}>
                       <span>{prod.name}</span>
                       {isLow && (
-                        <span className="rounded bg-rose-50 px-1.5 py-0.2 text-[9px] font-bold text-rose-600 inline-flex items-center space-x-0.5">
+                        <span className={`rounded px-1.5 py-0.2 text-[9px] font-bold inline-flex items-center space-x-0.5 ${
+                          isHighlighted ? 'bg-rose-500 text-white' : 'bg-rose-50 text-rose-600'
+                        }`}>
                           <AlertTriangle className="h-2.5 w-2.5" />
                           <span>{prod.currentStock} left</span>
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className={`text-[10px] ${isHighlighted ? 'text-indigo-100' : 'text-slate-400'}`}>
                       HSN: {prod.hsnCode} • Stock: {prod.currentStock} • GST: {prod.gstRate}%
                     </div>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-bold text-slate-900">₹{Number(prod.sellingPrice).toFixed(2)}</div>
-                    {isSelected && <Check className="h-3.5 w-3.5 text-indigo-600 ml-auto" />}
+                    <div className={`font-bold ${isHighlighted ? 'text-white' : 'text-slate-900'}`}>
+                      ₹{Number(prod.sellingPrice).toFixed(2)}
+                    </div>
+                    {isSelected && !isHighlighted && <Check className="h-3.5 w-3.5 text-indigo-600 ml-auto" />}
                   </div>
                 </div>
               );
