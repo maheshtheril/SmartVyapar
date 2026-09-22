@@ -414,6 +414,60 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      {/* Low Stock Alert Banner */}
+      {(() => {
+        const lowStockItems = products.filter(
+          (p) => Number(p.currentStock) <= Number(p.minStockAlert)
+        );
+        if (lowStockItems.length === 0) return null;
+        return (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 shadow-xs">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-xl bg-rose-600 flex items-center justify-center shrink-0 shadow-sm">
+                  <AlertTriangle className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-rose-800">
+                    ⚠️ {lowStockItems.length} Product{lowStockItems.length > 1 ? 's' : ''} Below Reorder Level
+                  </p>
+                  <p className="text-[11px] text-rose-600 font-medium">
+                    Restock these items before they run out completely
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/inventory/barcode-generator"
+                className="shrink-0 flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-white border border-rose-200 px-2.5 py-1.5 rounded-xl hover:bg-rose-100 transition shadow-xs"
+              >
+                <Tag className="h-3.5 w-3.5" />
+                Print Restock Labels
+              </Link>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {lowStockItems.slice(0, 12).map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-1.5 bg-white border border-rose-200 rounded-xl px-2.5 py-1.5 text-[11px] shadow-xs"
+                >
+                  <Package className="h-3 w-3 text-rose-400 shrink-0" />
+                  <span className="font-bold text-slate-800 truncate max-w-[140px]">{item.name}</span>
+                  <span className="text-rose-600 font-black whitespace-nowrap">
+                    {Number(item.currentStock)}{item.baseUnit || 'PCS'}
+                    <span className="text-slate-400 font-normal"> / min {Number(item.minStockAlert)}</span>
+                  </span>
+                </div>
+              ))}
+              {lowStockItems.length > 12 && (
+                <div className="flex items-center px-2.5 py-1.5 text-[11px] font-bold text-rose-600">
+                  +{lowStockItems.length - 12} more...
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Table */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         {loading ? (
