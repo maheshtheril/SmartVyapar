@@ -113,13 +113,16 @@ export default function PurchaseInwardPage() {
 
   const saveCustomApiKey = () => {
     if (typeof window !== 'undefined') {
-      if (customApiKeyInput.trim()) {
-        localStorage.setItem('smartvyapar_gemini_api_key', customApiKeyInput.trim());
+      const trimmed = customApiKeyInput.trim();
+      if (trimmed && trimmed.startsWith('AIzaSy')) {
+        localStorage.setItem('smartvyapar_gemini_api_key', trimmed);
         setKeySavedBanner(true);
         setTimeout(() => setKeySavedBanner(false), 4000);
         setScanError(null);
       } else {
         localStorage.removeItem('smartvyapar_gemini_api_key');
+        setCustomApiKeyInput('');
+        setScanError(null);
       }
     }
   };
@@ -435,7 +438,7 @@ export default function PurchaseInwardPage() {
 
       const customApiKey = typeof window !== 'undefined' ? localStorage.getItem('smartvyapar_gemini_api_key') : null;
       const headers: Record<string, string> = {};
-      if (customApiKey) {
+      if (customApiKey && customApiKey.startsWith('AIzaSy')) {
         headers['x-gemini-api-key'] = customApiKey;
       }
 
@@ -1115,7 +1118,10 @@ export default function PurchaseInwardPage() {
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <input
-                        type="password"
+                        type="text"
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         placeholder="Paste your Google Gemini API Key (e.g. AIzaSy...)"
                         value={customApiKeyInput}
                         onChange={(e) => setCustomApiKeyInput(e.target.value)}
@@ -1128,6 +1134,22 @@ export default function PurchaseInwardPage() {
                       >
                         Save API Key
                       </button>
+                      {customApiKeyInput && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomApiKeyInput('');
+                            if (typeof window !== 'undefined') {
+                              localStorage.removeItem('smartvyapar_gemini_api_key');
+                            }
+                            setScanError(null);
+                          }}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 font-semibold rounded text-xs transition cursor-pointer shrink-0 border border-slate-200"
+                          title="Clear key and reset to system default"
+                        >
+                          Clear
+                        </button>
+                      )}
                       <a
                         href="https://aistudio.google.com/app/apikey"
                         target="_blank"

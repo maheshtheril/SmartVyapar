@@ -770,7 +770,7 @@ export default function ThermalReceiptModal({
                   Goods once sold can be exchanged within 7 days.
                 </p>
                 <p className="text-[8px] text-slate-500">
-                  Powered by Ziona POS
+                  Powered by Ziona POS &bull; zaayasoft.com
                 </p>
               </div>
             </div>

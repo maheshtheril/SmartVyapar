@@ -88,11 +88,12 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[11px]">Entity Information</span>
-                  <p className="font-bold text-slate-800">Mahesh Theril / Ziona POS Technologies</p>
+                  <p className="font-bold text-slate-800">ZaayaSoft (zaayasoft.com)</p>
+                  <p className="text-indigo-600 font-semibold text-[11px]">Parent Entity for Ziona POS &amp; Ziona HMS</p>
                   <p className="text-slate-600 mt-1">
-                    Kerala, India
+                    Operated by: Mahesh Theril
                     <br />
-                    PIN: 682001
+                    Kerala, India • PIN: 682001
                   </p>
                 </div>
               </div>

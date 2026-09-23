@@ -258,8 +258,11 @@ export default function Sidebar() {
             ZP
           </div>
           <div>
-            <span className="text-base font-bold text-slate-900">Ziona <span className="text-indigo-600">POS</span></span>
-            <span className="ml-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">ERP</span>
+            <div className="flex items-center">
+              <span className="text-base font-bold text-slate-900">Ziona <span className="text-indigo-600">POS</span></span>
+              <span className="ml-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">ERP</span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium leading-none mt-0.5">by ZaayaSoft</p>
           </div>
         </div>
         <button
@@ -292,8 +295,11 @@ export default function Sidebar() {
               ZP
             </div>
             <div>
-              <span className="text-base font-bold text-slate-900">Ziona <span className="text-indigo-600">POS</span></span>
-              <span className="ml-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">ERP</span>
+              <div className="flex items-center">
+                <span className="text-base font-bold text-slate-900">Ziona <span className="text-indigo-600">POS</span></span>
+                <span className="ml-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">ERP</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium leading-none mt-0.5">by ZaayaSoft</p>
             </div>
           </div>
           <button

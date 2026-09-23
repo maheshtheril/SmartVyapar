@@ -45,7 +45,7 @@ export default function TermsPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">2. Description of Service</h2>
             <p>
-              Ziona POS provides a cloud-based multi-tenant Software-as-a-Service (SaaS) platform for Indian Goods and Services Tax (GST) invoicing, point-of-sale billing, inventory control, thermal printing, and statutory reporting.
+              Ziona POS (a product of ZaayaSoft &bull; zaayasoft.com) provides a cloud-based multi-tenant Software-as-a-Service (SaaS) platform for Indian Goods and Services Tax (GST) invoicing, point-of-sale billing, inventory control, thermal printing, and statutory reporting.
             </p>
           </section>
 

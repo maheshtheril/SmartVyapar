@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">1. Overview & Commitment</h2>
             <p>
-              Ziona POS (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) respects your privacy and is committed to protecting your personal and business data in compliance with the Digital Personal Data Protection Act, 2023 (DPDPA) and Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011.
+              Ziona POS (a product of ZaayaSoft &bull; zaayasoft.com; &ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) respects your privacy and is committed to protecting your personal and business data in compliance with the Digital Personal Data Protection Act, 2023 (DPDPA) and Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011.
             </p>
           </section>
 

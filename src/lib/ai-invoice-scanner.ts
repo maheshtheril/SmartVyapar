@@ -78,7 +78,8 @@ export async function scanPurchaseInvoiceWithGemini(
   mimeType: string,
   apiKey?: string
 ): Promise<ScannedInvoiceResult> {
-  const finalApiKey = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  const validCustomKey = apiKey && apiKey.trim().startsWith("AIzaSy") ? apiKey.trim() : undefined;
+  const finalApiKey = validCustomKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!finalApiKey || finalApiKey.trim() === "") {
     throw new Error(
       "Google Gemini API key is not configured. Please paste your Gemini API key below to scan invoices, or enter the bill items manually."

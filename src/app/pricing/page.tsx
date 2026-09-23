@@ -171,7 +171,10 @@ export default function PricingPage() {
           <Link href="/contact" className="hover:text-indigo-600">Contact Us</Link>
         </div>
         <p className="text-[11px] text-slate-400">
-          &copy; {new Date().getFullYear()} Ziona POS. Payments securely processed by Razorpay.
+          &copy; {new Date().getFullYear()} Ziona POS • A Product of{" "}
+          <a href="https://zaayasoft.com" target="_blank" rel="noreferrer" className="text-slate-500 hover:text-indigo-600 font-medium underline">
+            ZaayaSoft
+          </a>. Payments securely processed by Razorpay.
         </p>
       </footer>
     </div>

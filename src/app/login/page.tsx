@@ -54,7 +54,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Ziona <span className="text-indigo-600">POS</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">Indian GST ERP & Billing — Sign in to your account</p>
+          <p className="text-xs text-slate-500 mt-1">Retail Billing & GST ERP • by ZaayaSoft</p>
         </div>
 
         {/* Login Card */}
@@ -152,7 +152,10 @@ export default function LoginPage() {
 
         <div className="text-center mt-6 space-y-2">
           <p className="text-[11px] text-slate-400">
-            Ziona POS ERP • Indian GST Compliant
+            Ziona POS • A Product of{" "}
+            <a href="https://zaayasoft.com" target="_blank" rel="noreferrer" className="text-slate-500 hover:text-indigo-600 font-medium underline">
+              ZaayaSoft
+            </a>
           </p>
           <div className="flex items-center justify-center space-x-3 text-[10px] text-slate-400">
             <Link href="/terms" className="hover:text-indigo-600 underline">Terms</Link>
