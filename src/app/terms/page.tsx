@@ -82,7 +82,7 @@ export default function TermsPage() {
             <p>
               For legal inquiries or questions regarding these terms, please contact:
               <br />
-              <strong>Email:</strong> support@smartvyapar.app | maheshtheril25@gmail.com
+              <strong>Email:</strong> support@zaayasoft.com | maheshtheril25@gmail.com
               <br />
               <strong>Phone:</strong> +91 6238 539510
             </p>

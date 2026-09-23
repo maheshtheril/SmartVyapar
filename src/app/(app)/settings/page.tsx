@@ -1767,7 +1767,7 @@ function SettingsContent() {
                 <div>
                   <span className="text-slate-500 block text-[11px]">Callback URL (POST / GET):</span>
                   <code className="font-mono text-indigo-700 bg-white px-2.5 py-1 rounded border border-slate-200 block text-[11px] truncate">
-                    https://smartvyapar.vercel.app/api/whatsapp/webhook
+                    https://www.zionapos.store/api/whatsapp/webhook
                   </code>
                 </div>
                 <div>
@@ -2096,7 +2096,7 @@ function SettingsContent() {
                   </div>
                   <div className="flex justify-between items-center font-mono text-[11px]">
                     <span className="text-slate-500">Authorized Domain:</span>
-                    <span className="text-blue-600 font-semibold">https://smartvyapar.vercel.app</span>
+                    <span className="text-blue-600 font-semibold">https://www.zionapos.store</span>
                   </div>
                 </div>
 
@@ -2125,7 +2125,7 @@ function SettingsContent() {
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-xs text-slate-700 break-all select-all">
-                https://smartvyapar.vercel.app/api/webhooks/whatsapp
+                https://www.zionapos.store/api/webhooks/whatsapp
               </div>
             </div>
 

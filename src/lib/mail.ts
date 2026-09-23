@@ -29,7 +29,7 @@ export async function sendEmail({
   html,
   text,
 }: SendEmailOptions): Promise<SendEmailResult> {
-  const from = process.env.MAIL_FROM || "SmartVyapar <notifications@smartvyapar.app>";
+  const from = process.env.MAIL_FROM || "Ziona POS <support@zaayasoft.com>";
 
   // 1. Check Resend REST API
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -42,7 +42,7 @@ export async function sendEmail({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: process.env.MAIL_FROM || "SmartVyapar <onboarding@resend.dev>",
+          from: process.env.MAIL_FROM || "Ziona POS <onboarding@resend.dev>",
           to: [to],
           subject,
           html,

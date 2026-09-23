@@ -40,7 +40,7 @@ export default function RefundPolicyPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">1. SaaS Subscription Cancellation</h2>
             <p>
-              Merchants can cancel their <strong>Ziona POS Pro</strong> subscription at any time directly through their account under <strong>Settings &rarr; Plans &amp; Billing</strong>, or by emailing our support team at <code>support@smartvyapar.app</code>.
+              Merchants can cancel their <strong>Ziona POS Pro</strong> subscription at any time directly through their account under <strong>Settings &rarr; Plans &amp; Billing</strong>, or by emailing our support team at <code>support@zaayasoft.com</code>.
             </p>
             <p>
               Upon cancellation, your subscription remains fully active until the end of your prepaid billing period (monthly or annual). You will not be billed for subsequent renewal cycles.
@@ -66,7 +66,7 @@ export default function RefundPolicyPage() {
             <p>
               To initiate a refund, please send an email to:
               <br />
-              <strong>Email:</strong> support@smartvyapar.app or maheshtheril25@gmail.com
+              <strong>Email:</strong> support@zaayasoft.com or maheshtheril25@gmail.com
               <br />
               <strong>Subject:</strong> Refund Request - [Your Business Name]
               <br />

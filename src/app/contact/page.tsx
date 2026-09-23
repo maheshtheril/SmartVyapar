@@ -59,10 +59,10 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[11px]">Support Email</span>
-                  <a href="mailto:maheshtheril25@gmail.com" className="font-bold text-slate-800 hover:text-indigo-600">
-                    maheshtheril25@gmail.com
+                  <a href="mailto:support@zaayasoft.com" className="font-bold text-slate-800 hover:text-indigo-600">
+                    support@zaayasoft.com
                   </a>
-                  <span className="text-slate-400 block text-[10px]">support@smartvyapar.app</span>
+                  <span className="text-slate-400 block text-[10px]">maheshtheril25@gmail.com</span>
                 </div>
               </div>
 

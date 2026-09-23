@@ -75,7 +75,7 @@ export default function PrivacyPage() {
               <br />
               <strong>Grievance Officer:</strong> Mahesh Theril
               <br />
-              <strong>Email:</strong> maheshtheril25@gmail.com | support@smartvyapar.app
+              <strong>Email:</strong> support@zaayasoft.com | maheshtheril25@gmail.com
               <br />
               <strong>Contact:</strong> +91 6238 539510
             </p>
