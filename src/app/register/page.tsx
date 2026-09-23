@@ -123,8 +123,8 @@ export default function RegisterPage() {
       <div className="w-full max-w-xl">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-200 mb-3">
-            <Building2 className="h-7 w-7 text-white" />
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-950 p-1.5 shadow-xl shadow-indigo-500/20 mb-3 overflow-hidden border border-slate-800">
+            <img src="/ziona.png" alt="Ziona POS" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Register Your Business on Ziona <span className="text-indigo-600">POS</span>

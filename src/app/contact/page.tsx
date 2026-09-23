@@ -8,8 +8,8 @@ export default function ContactPage() {
       <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/login" className="flex items-center space-x-2">
-            <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black">
-              ZP
+            <div className="h-9 w-9 rounded-xl bg-slate-950 p-1 flex items-center justify-center shadow-md shadow-indigo-500/20 overflow-hidden border border-slate-800 shrink-0">
+              <img src="/ziona.png" alt="Ziona POS" className="w-full h-full object-contain" />
             </div>
             <span className="font-extrabold text-lg text-slate-900">
               Ziona <span className="text-indigo-600">POS</span>

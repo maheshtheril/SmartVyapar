@@ -48,8 +48,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-200 mb-4">
-            <Building2 className="h-7 w-7 text-white" />
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-950 p-1.5 shadow-xl shadow-indigo-500/20 mb-4 overflow-hidden border border-slate-800">
+            <img src="/ziona.png" alt="Ziona POS" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Ziona <span className="text-indigo-600">POS</span>
