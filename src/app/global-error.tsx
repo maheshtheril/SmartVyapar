@@ -25,7 +25,7 @@ export default function GlobalError({
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Unexpected Application Error</h2>
           <p className="text-slate-400 text-sm mb-4 leading-relaxed">
-            SmartVyapar encountered an unexpected issue. Our engineering team has been automatically alerted via Sentry crash telemetry.
+            Ziona POS encountered an unexpected issue. Our engineering team has been automatically alerted via Sentry crash telemetry.
           </p>
           {error?.message && (
             <div className="text-left bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4 text-xs font-mono text-rose-400 max-h-32 overflow-auto">

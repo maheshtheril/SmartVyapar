@@ -10,12 +10,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SmartVyapar - Multi-Tenant SaaS ERP",
+  title: "Ziona POS - Multi-Tenant SaaS ERP & Billing",
   description: "Next-Gen Invoicing, Inventory & Indian GST Platform",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "SmartVyapar",
+    title: "Ziona POS",
   },
   icons: {
     icon: "/icon.svg",

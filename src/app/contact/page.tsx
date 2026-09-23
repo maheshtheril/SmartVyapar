@@ -9,10 +9,10 @@ export default function ContactPage() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/login" className="flex items-center space-x-2">
             <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black">
-              SV
+              ZP
             </div>
             <span className="font-extrabold text-lg text-slate-900">
-              Smart<span className="text-indigo-600">Vyapar</span>
+              Ziona <span className="text-indigo-600">POS</span>
             </span>
           </Link>
           <Link
@@ -88,7 +88,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[11px]">Entity Information</span>
-                  <p className="font-bold text-slate-800">Mahesh Theril / SmartVyapar Technologies</p>
+                  <p className="font-bold text-slate-800">Mahesh Theril / Ziona POS Technologies</p>
                   <p className="text-slate-600 mt-1">
                     Kerala, India
                     <br />

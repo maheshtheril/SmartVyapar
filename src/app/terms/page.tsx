@@ -9,10 +9,10 @@ export default function TermsPage() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/login" className="flex items-center space-x-2">
             <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black">
-              SV
+              ZP
             </div>
             <span className="font-extrabold text-lg text-slate-900">
-              Smart<span className="text-indigo-600">Vyapar</span>
+              Ziona <span className="text-indigo-600">POS</span>
             </span>
           </Link>
           <Link
@@ -38,35 +38,35 @@ export default function TermsPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">1. Acceptance of Terms</h2>
             <p>
-              By creating an account, accessing, or using <strong>SmartVyapar</strong> (&ldquo;Service&rdquo;), you agree to be bound by these Terms and Conditions. If you are entering into this agreement on behalf of a company or legal business entity, you represent that you have the authority to bind such entity.
+              By creating an account, accessing, or using <strong>Ziona POS</strong> (&ldquo;Service&rdquo;), you agree to be bound by these Terms and Conditions. If you are entering into this agreement on behalf of a company or legal business entity, you represent that you have the authority to bind such entity.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">2. Description of Service</h2>
             <p>
-              SmartVyapar provides a cloud-based multi-tenant Software-as-a-Service (SaaS) platform for Indian Goods and Services Tax (GST) invoicing, point-of-sale billing, inventory control, thermal printing, and statutory reporting.
+              Ziona POS provides a cloud-based multi-tenant Software-as-a-Service (SaaS) platform for Indian Goods and Services Tax (GST) invoicing, point-of-sale billing, inventory control, thermal printing, and statutory reporting.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">3. User Accounts & Security</h2>
             <p>
-              You are responsible for maintaining the confidentiality of your login credentials and are fully responsible for all activities that occur under your account. You agree to immediately notify SmartVyapar of any unauthorized use of your account.
+              You are responsible for maintaining the confidentiality of your login credentials and are fully responsible for all activities that occur under your account. You agree to immediately notify Ziona POS of any unauthorized use of your account.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">4. Subscription Plans & Payments</h2>
             <p>
-              SmartVyapar offers a <strong>Starter Free</strong> tier (up to 100 invoices/month) and a <strong>SmartVyapar Pro</strong> tier (₹499/month or ₹4,999/year). Payments for paid subscriptions are processed securely via our payment gateway partner, <strong>Razorpay</strong>. All fees are in Indian Rupees (INR) and are subject to applicable GST.
+              Ziona POS offers a <strong>Starter Free</strong> tier (up to 100 invoices/month) and a <strong>Ziona POS Pro</strong> tier (₹499/month or ₹4,999/year). Payments for paid subscriptions are processed securely via our payment gateway partner, <strong>Razorpay</strong>. All fees are in Indian Rupees (INR) and are subject to applicable GST.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">5. Statutory GST Compliance Disclaimer</h2>
             <p>
-              While SmartVyapar incorporates calculation logic adhering to Indian GST Rules (Intra-state CGST+SGST, Inter-state IGST, Rule 53 Credit Notes, and Rule 138 E-Way Bills), the merchant remains solely responsible for the accuracy of their tax rates, HSN codes, and filings on the GSTN portal.
+              While Ziona POS incorporates calculation logic adhering to Indian GST Rules (Intra-state CGST+SGST, Inter-state IGST, Rule 53 Credit Notes, and Rule 138 E-Way Bills), the merchant remains solely responsible for the accuracy of their tax rates, HSN codes, and filings on the GSTN portal.
             </p>
           </section>
 

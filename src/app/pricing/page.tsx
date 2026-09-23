@@ -9,10 +9,10 @@ export default function PricingPage() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/login" className="flex items-center space-x-2">
             <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black">
-              SV
+              ZP
             </div>
             <span className="font-extrabold text-lg text-slate-900">
-              Smart<span className="text-indigo-600">Vyapar</span>
+              Ziona <span className="text-indigo-600">POS</span>
             </span>
           </Link>
           <div className="flex items-center space-x-3">
@@ -93,7 +93,7 @@ export default function PricingPage() {
             </Link>
           </div>
 
-          {/* SmartVyapar Pro */}
+          {/* Ziona POS Pro */}
           <div className="bg-white rounded-3xl border-2 border-indigo-600 p-8 shadow-lg relative flex flex-col justify-between space-y-6">
             <div className="absolute -top-3 right-8 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[10px] font-extrabold uppercase px-3.5 py-1 rounded-full shadow flex items-center space-x-1">
               <Sparkles className="h-3 w-3" />
@@ -103,7 +103,7 @@ export default function PricingPage() {
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 flex items-center space-x-1.5">
-                  <span>SmartVyapar Pro</span>
+                  <span>Ziona POS Pro</span>
                   <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
@@ -171,7 +171,7 @@ export default function PricingPage() {
           <Link href="/contact" className="hover:text-indigo-600">Contact Us</Link>
         </div>
         <p className="text-[11px] text-slate-400">
-          &copy; {new Date().getFullYear()} SmartVyapar. Payments securely processed by Razorpay.
+          &copy; {new Date().getFullYear()} Ziona POS. Payments securely processed by Razorpay.
         </p>
       </footer>
     </div>

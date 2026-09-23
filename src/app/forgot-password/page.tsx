@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
             <Building2 className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Smart<span className="text-indigo-600">Vyapar</span>
+            Ziona <span className="text-indigo-600">POS</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">Account Security & Password Recovery</p>
         </div>

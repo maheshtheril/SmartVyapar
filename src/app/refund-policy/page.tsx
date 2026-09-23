@@ -9,10 +9,10 @@ export default function RefundPolicyPage() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/login" className="flex items-center space-x-2">
             <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black">
-              SV
+              ZP
             </div>
             <span className="font-extrabold text-lg text-slate-900">
-              Smart<span className="text-indigo-600">Vyapar</span>
+              Ziona <span className="text-indigo-600">POS</span>
             </span>
           </Link>
           <Link
@@ -40,7 +40,7 @@ export default function RefundPolicyPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">1. SaaS Subscription Cancellation</h2>
             <p>
-              Merchants can cancel their <strong>SmartVyapar Pro</strong> subscription at any time directly through their account under <strong>Settings &rarr; Plans &amp; Billing</strong>, or by emailing our support team at <code>support@smartvyapar.app</code>.
+              Merchants can cancel their <strong>Ziona POS Pro</strong> subscription at any time directly through their account under <strong>Settings &rarr; Plans &amp; Billing</strong>, or by emailing our support team at <code>support@smartvyapar.app</code>.
             </p>
             <p>
               Upon cancellation, your subscription remains fully active until the end of your prepaid billing period (monthly or annual). You will not be billed for subsequent renewal cycles.
@@ -50,7 +50,7 @@ export default function RefundPolicyPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">2. 7-Day Money-Back Guarantee</h2>
             <p>
-              We believe in the value SmartVyapar brings to your retail business. If you are unsatisfied with SmartVyapar Pro for any reason, you are entitled to a <strong>100% full refund within 7 days</strong> of your initial Pro subscription purchase.
+              We believe in the value Ziona POS brings to your retail business. If you are unsatisfied with Ziona POS Pro for any reason, you are entitled to a <strong>100% full refund within 7 days</strong> of your initial Pro subscription purchase.
             </p>
           </section>
 

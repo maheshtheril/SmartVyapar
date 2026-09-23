@@ -52,9 +52,9 @@ export default function LoginPage() {
             <Building2 className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Smart<span className="text-indigo-600">Vyapar</span>
+            Ziona <span className="text-indigo-600">POS</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">Indian GST ERP — Sign in to your account</p>
+          <p className="text-xs text-slate-500 mt-1">Indian GST ERP & Billing — Sign in to your account</p>
         </div>
 
         {/* Login Card */}
@@ -142,7 +142,7 @@ export default function LoginPage() {
 
           <div className="text-center pt-3 border-t border-slate-100">
             <p className="text-xs text-slate-500">
-              New to SmartVyapar?{" "}
+              New to Ziona POS?{" "}
               <Link href="/register" className="font-bold text-indigo-600 hover:text-indigo-800">
                 Register your business
               </Link>
@@ -152,7 +152,7 @@ export default function LoginPage() {
 
         <div className="text-center mt-6 space-y-2">
           <p className="text-[11px] text-slate-400">
-            SmartVyapar ERP • Indian GST Compliant
+            Ziona POS ERP • Indian GST Compliant
           </p>
           <div className="flex items-center justify-center space-x-3 text-[10px] text-slate-400">
             <Link href="/terms" className="hover:text-indigo-600 underline">Terms</Link>

@@ -56,12 +56,12 @@ export async function POST(req: NextRequest) {
         expiresInMinutes: RESET_TOKEN_EXPIRY_MINUTES,
       });
 
-      const text = `Hello ${result.user.name},\n\nYou requested a password reset for SmartVyapar.\nReset your password here: ${resetUrl}\n\nThis link is valid for ${RESET_TOKEN_EXPIRY_MINUTES} minutes.\nIf you did not request this, please ignore this email.`;
+      const text = `Hello ${result.user.name},\n\nYou requested a password reset for Ziona POS.\nReset your password here: ${resetUrl}\n\nThis link is valid for ${RESET_TOKEN_EXPIRY_MINUTES} minutes.\nIf you did not request this, please ignore this email.`;
 
       // Dispatch email asynchronously
       await sendEmail({
         to: email,
-        subject: "Reset your SmartVyapar password",
+        subject: "Reset your Ziona POS password",
         html,
         text,
       });

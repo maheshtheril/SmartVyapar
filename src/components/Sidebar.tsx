@@ -255,10 +255,10 @@ export default function Sidebar() {
       <div className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:hidden">
         <div className="flex items-center space-x-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 font-bold text-white shadow-sm shadow-indigo-200">
-            SV
+            ZP
           </div>
           <div>
-            <span className="text-base font-bold text-slate-900">Smart<span className="text-indigo-600">Vyapar</span></span>
+            <span className="text-base font-bold text-slate-900">Ziona <span className="text-indigo-600">POS</span></span>
             <span className="ml-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">ERP</span>
           </div>
         </div>
@@ -289,10 +289,10 @@ export default function Sidebar() {
         <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5 shrink-0">
           <div className="flex items-center space-x-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 font-bold text-white shadow-sm shadow-indigo-200">
-              SV
+              ZP
             </div>
             <div>
-              <span className="text-base font-bold text-slate-900">Smart<span className="text-indigo-600">Vyapar</span></span>
+              <span className="text-base font-bold text-slate-900">Ziona <span className="text-indigo-600">POS</span></span>
               <span className="ml-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">ERP</span>
             </div>
           </div>
@@ -322,9 +322,9 @@ export default function Sidebar() {
                   </div>
                   {tenant.subscriptionTier === 'FREE' ? (
                     <button
-                      onClick={() => setProModalFeature({ name: "SmartVyapar PRO Plan", href: "/settings?tab=billing" })}
+                      onClick={() => setProModalFeature({ name: "Ziona POS PRO Plan", href: "/settings?tab=billing" })}
                       className="inline-flex items-center space-x-0.5 rounded-md bg-amber-500 hover:bg-amber-600 px-1.5 py-0.5 text-[9px] font-extrabold text-white shadow-2xs transition cursor-pointer"
-                      title="Upgrade to SmartVyapar PRO"
+                      title="Upgrade to Ziona POS PRO"
                     >
                       <Zap className="h-2.5 w-2.5" />
                       <span>UPGRADE</span>

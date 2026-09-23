@@ -213,7 +213,7 @@ export async function createDatabaseSnapshot(options: {
 
   const timestamp = new Date().toISOString();
   const timestampFile = timestamp.replace(/[:.]/g, "-");
-  const prefix = options.filenamePrefix || "smartvyapar_backup";
+  const prefix = options.filenamePrefix || "zionapos_backup";
   const ext = options.encryptionKey ? "json.gz.enc" : "json.gz";
   const archiveFilename = `${prefix}_${timestampFile}.${ext}`;
 
@@ -221,7 +221,7 @@ export async function createDatabaseSnapshot(options: {
   let payloadBuffer = compressData({
     metadata: {
       exportedAt: timestamp,
-      generator: "SmartVyapar Disaster Recovery v1.0",
+      generator: "Ziona POS Disaster Recovery v1.0",
       totalRecords,
       tables: recordCounts,
     },

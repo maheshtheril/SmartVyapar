@@ -114,7 +114,7 @@ function ResetPasswordContent() {
             <Building2 className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Smart<span className="text-indigo-600">Vyapar</span>
+            Ziona <span className="text-indigo-600">POS</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">Set a New Password</p>
         </div>
@@ -162,7 +162,7 @@ function ResetPasswordContent() {
               <div>
                 <h2 className="text-lg font-bold text-slate-900">Password Updated!</h2>
                 <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  Your credentials have been securely updated. You can now log into SmartVyapar using your new password.
+                  Your credentials have been securely updated. You can now log into Ziona POS using your new password.
                 </p>
               </div>
 
@@ -171,7 +171,7 @@ function ResetPasswordContent() {
                   onClick={() => router.push("/login")}
                   className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition"
                 >
-                  Sign In to SmartVyapar
+                  Sign In to Ziona POS
                 </button>
               </div>
             </div>

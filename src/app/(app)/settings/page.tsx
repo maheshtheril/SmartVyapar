@@ -119,7 +119,7 @@ function SettingsContent() {
   >([
     {
       sender: 'BOT',
-      text: "🙏 *Namaste! Welcome to SmartVyapar WhatsApp Assistant.*\n\nSend *BILL* for your latest invoice, *BALANCE* for your Khata balance, or *PAY* for an instant UPI link.",
+      text: "🙏 *Namaste! Welcome to Ziona POS WhatsApp Assistant.*\n\nSend *BILL* for your latest invoice, *BALANCE* for your Khata balance, or *PAY* for an instant UPI link.",
       intent: 'GREETING',
       time: 'Just now',
     },
@@ -305,8 +305,8 @@ function SettingsContent() {
         key: order.keyId,
         amount: order.amount,
         currency: order.currency,
-        name: 'SmartVyapar ERP',
-        description: `Upgrade to SmartVyapar Pro (${cycle})`,
+        name: 'Ziona POS',
+        description: `Upgrade to Ziona POS Pro (${cycle})`,
         order_id: order.id,
         handler: async function (response: any) {
           try {
@@ -1181,7 +1181,7 @@ function SettingsContent() {
                 </span>
                 <div className="flex items-center space-x-2 mt-1">
                   <h2 className="text-xl font-extrabold text-slate-900">
-                    {subData?.planDetails?.name || (profile.subscriptionTier === 'PRO' ? 'SmartVyapar Pro' : 'Starter Free')}
+                    {subData?.planDetails?.name || (profile.subscriptionTier === 'PRO' ? 'Ziona POS Pro' : 'Starter Free')}
                   </h2>
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${
@@ -1395,7 +1395,7 @@ function SettingsContent() {
                 </div>
               </div>
 
-              {/* Plan 2: SmartVyapar Pro */}
+              {/* Plan 2: Ziona POS Pro */}
               <div className="rounded-2xl border-2 border-indigo-600 bg-white p-6 shadow-md relative flex flex-col justify-between">
                 <div className="absolute -top-3 right-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full shadow-sm flex items-center space-x-1">
                   <Sparkles className="h-3 w-3" />
@@ -1405,7 +1405,7 @@ function SettingsContent() {
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-base font-bold text-slate-900 flex items-center space-x-1.5">
-                      <span>SmartVyapar Pro</span>
+                      <span>Ziona POS Pro</span>
                       <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
                     </h4>
                     <p className="text-xs text-slate-500 mt-0.5">

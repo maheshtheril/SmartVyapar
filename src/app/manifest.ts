@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'SmartVyapar ERP',
-    short_name: 'SmartVyapar',
+    name: 'Ziona POS',
+    short_name: 'Ziona POS',
     description: 'Multi-Tenant Indian GST Billing & Inventory POS Software',
     start_url: '/',
     display: 'standalone',

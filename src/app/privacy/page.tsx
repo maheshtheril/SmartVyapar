@@ -9,10 +9,10 @@ export default function PrivacyPage() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/login" className="flex items-center space-x-2">
             <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black">
-              SV
+              ZP
             </div>
             <span className="font-extrabold text-lg text-slate-900">
-              Smart<span className="text-indigo-600">Vyapar</span>
+              Ziona <span className="text-indigo-600">POS</span>
             </span>
           </Link>
           <Link
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">1. Overview & Commitment</h2>
             <p>
-              SmartVyapar (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) respects your privacy and is committed to protecting your personal and business data in compliance with the Digital Personal Data Protection Act, 2023 (DPDPA) and Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011.
+              Ziona POS (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) respects your privacy and is committed to protecting your personal and business data in compliance with the Digital Personal Data Protection Act, 2023 (DPDPA) and Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011.
             </p>
           </section>
 
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-bold text-slate-900">4. Data Security & Storage</h2>
             <p>
-              All data transmitted to and from SmartVyapar is encrypted in transit via Transport Layer Security (TLS 1.3 / SSL) and encrypted at rest with industry-standard cryptographic algorithms. Passwords are irreversibly hashed using bcrypt.
+              All data transmitted to and from Ziona POS is encrypted in transit via Transport Layer Security (TLS 1.3 / SSL) and encrypted at rest with industry-standard cryptographic algorithms. Passwords are irreversibly hashed using bcrypt.
             </p>
           </section>
 
