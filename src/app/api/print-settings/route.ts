@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireSession, requireRole } from "@/lib/auth";
 import { BUILT_IN_PRESETS, PrintDocType } from "@/lib/print/template-presets";
 
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
           isActive: true,
         },
       });
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({
       success: true,

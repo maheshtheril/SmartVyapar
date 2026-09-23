@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireSession, requireRole } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
 import { CreateProductSchema } from "@/lib/schemas/product";
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       );
 
       return p;
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({ success: true, product });
   } catch (error: any) {

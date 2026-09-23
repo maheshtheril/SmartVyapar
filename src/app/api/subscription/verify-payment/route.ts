@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, requireRole } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { SUBSCRIPTION_PLANS } from "@/lib/subscription-plans";
 import { verifyRazorpayPaymentSignature } from "@/lib/razorpay";
 import { recordAuditLog } from "@/lib/audit";
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       });
 
       return { updatedTenant, paymentRecord, newExpiresAt };
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     // Record statutory audit log
     try {

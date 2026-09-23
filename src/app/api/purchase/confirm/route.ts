@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { StockLogType } from "@prisma/client";
 
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
       }
 
       return bill;
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({
       success: true,

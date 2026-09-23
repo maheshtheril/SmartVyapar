@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +45,7 @@ export async function PATCH(
           ...(isDefault !== undefined ? { isDefault: Boolean(isDefault) } : {}),
         },
       });
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -114,7 +114,7 @@ export async function POST(
       });
 
       return { cust, trans };
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({
       success: true,

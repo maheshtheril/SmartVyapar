@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireSession, AuthError } from "@/lib/auth";
 import { generateNextInvoiceNumber } from "@/lib/invoice-sequence";
 import { PaymentStatus, PaymentMode, StockLogType, AuditAction } from "@prisma/client";
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       });
 
       return newInv;
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     // Record audit log
     await recordAuditLog({

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
 import { CreateCreditNoteSchema } from "@/lib/schemas/credit-note";
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
       );
 
       return createdNote;
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json(
       {

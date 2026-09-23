@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { StockLogType, AuditAction } from "@prisma/client";
 import { recordAuditLog } from "@/lib/audit";
 import { CreateStockTransferInput } from "@/lib/schemas/warehouse";
@@ -194,7 +194,7 @@ export async function dispatchStockTransfer(
     });
 
     return transfer;
-  });
+  }, DEFAULT_TX_OPTIONS);
 }
 
 /**
@@ -290,7 +290,7 @@ export async function receiveStockTransfer(
     });
 
     return updated;
-  });
+  }, DEFAULT_TX_OPTIONS);
 }
 
 /**
@@ -386,5 +386,5 @@ export async function cancelStockTransfer(
     });
 
     return updated;
-  });
+  }, DEFAULT_TX_OPTIONS);
 }

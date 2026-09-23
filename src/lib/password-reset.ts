@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { recordAuditLog } from "@/lib/audit";
 
 export const RESET_TOKEN_EXPIRY_MINUTES = 15;
@@ -162,7 +162,7 @@ export async function consumeResetToken(token: string, newPassword: string) {
       where: { token },
       data: { usedAt: new Date() },
     });
-  });
+  }, DEFAULT_TX_OPTIONS);
 
   // Record audit log for security & MCA compliance
   try {

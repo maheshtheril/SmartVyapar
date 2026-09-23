@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
           }
         }
       },
-      { timeout: 30000 } // 30-second timeout for large batches
+      { maxWait: 15000, timeout: 60000 } // 60s timeout & 15s maxWait for large CSV batches
     );
 
     // Record statutory audit log

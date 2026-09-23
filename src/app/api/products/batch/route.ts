@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireRole, AuthError, ForbiddenError } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
 import { recordAuditLog } from "@/lib/audit";
@@ -105,6 +105,9 @@ export async function POST(req: NextRequest) {
       }
 
       return results;
+    }, {
+      maxWait: 15000,
+      timeout: 60000,
     });
 
     return NextResponse.json({

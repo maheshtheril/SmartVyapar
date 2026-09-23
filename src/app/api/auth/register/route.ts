@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { validateBody } from "@/lib/validation";
 import {
   RegisterTenantSchema,
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       });
 
       return { tenant: createdTenant, user: createdUser };
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     // Generate authenticated JWT session
     const token = await signToken({

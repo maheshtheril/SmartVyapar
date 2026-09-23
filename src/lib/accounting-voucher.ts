@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { CreateVoucherSchema, CreateVoucherInput } from "@/lib/schemas/voucher";
 import { VoucherType, AccountClassification } from "@prisma/client";
 
@@ -163,7 +163,7 @@ export async function createVoucherTransaction(
     });
 
     return journalEntry;
-  });
+  }, DEFAULT_TX_OPTIONS);
 }
 
 /**

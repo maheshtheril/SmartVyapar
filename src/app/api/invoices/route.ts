@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { GstCalculator } from "@/lib/gst";
 import { UpiService } from "@/lib/upi";
 import { PaymentStatus, PaymentMode, StockLogType } from "@prisma/client";
@@ -401,7 +401,7 @@ export async function POST(req: NextRequest) {
           currentBalance: customer.loyaltyPoints,
         },
       };
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({ success: true, invoice: result });
   } catch (error: any) {

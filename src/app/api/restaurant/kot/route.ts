@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
 import { KotStatus, TableStatus, StockLogType } from "@prisma/client";
 import { GstCalculator } from "@/lib/gst";
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       });
 
       return kot;
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({
       success: true,

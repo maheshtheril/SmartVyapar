@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { requireSession, AuthError } from "@/lib/auth";
 import { recordAuditLog } from "@/lib/audit";
 import { AuditAction } from "@prisma/client";
@@ -111,7 +111,7 @@ export async function POST(
         },
         tx
       );
-    });
+    }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({
       success: true,
