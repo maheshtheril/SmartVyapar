@@ -249,6 +249,9 @@ export async function POST(
         order: updatedOrder,
         grnNumber,
       };
+    }, {
+      maxWait: 10000,
+      timeout: 30000,
     });
 
     return NextResponse.json({

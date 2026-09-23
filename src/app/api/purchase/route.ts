@@ -446,27 +446,20 @@ export async function POST(req: NextRequest) {
       }
 
       // 3. Double-Entry Ledger Impact on Chart of Accounts
-      const inventoryAcc = await tx.account.findUnique({
-        where: { tenantId_code: { tenantId, code: "1200" } },
+      const accounts = await tx.account.findMany({
+        where: {
+          tenantId,
+          code: { in: ["1200", "1410", "1420", "1430", "2000", "1000", "1010"] },
+        },
       });
-      const cgstAcc = await tx.account.findUnique({
-        where: { tenantId_code: { tenantId, code: "1410" } },
-      });
-      const sgstAcc = await tx.account.findUnique({
-        where: { tenantId_code: { tenantId, code: "1420" } },
-      });
-      const igstAcc = await tx.account.findUnique({
-        where: { tenantId_code: { tenantId, code: "1430" } },
-      });
-      const apAcc = await tx.account.findUnique({
-        where: { tenantId_code: { tenantId, code: "2000" } },
-      });
-      const cashAcc = await tx.account.findUnique({
-        where: { tenantId_code: { tenantId, code: "1000" } },
-      });
-      const bankAcc = await tx.account.findUnique({
-        where: { tenantId_code: { tenantId, code: "1010" } },
-      });
+      const accountMap = new Map(accounts.map((a) => [a.code, a]));
+      const inventoryAcc = accountMap.get("1200");
+      const cgstAcc = accountMap.get("1410");
+      const sgstAcc = accountMap.get("1420");
+      const igstAcc = accountMap.get("1430");
+      const apAcc = accountMap.get("2000");
+      const cashAcc = accountMap.get("1000");
+      const bankAcc = accountMap.get("1010");
 
       // Debit Inventory Asset
       if (inventoryAcc) {
@@ -534,6 +527,9 @@ export async function POST(req: NextRequest) {
       });
 
       return bill;
+    }, {
+      maxWait: 10000,
+      timeout: 30000,
     });
 
     return NextResponse.json({
