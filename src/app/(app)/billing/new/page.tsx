@@ -140,6 +140,19 @@ export default function NewInvoicePage() {
   const [catalog, setCatalog] = useState<ProductOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   // Business config
   const [business, setBusiness] = useState<{
@@ -1314,7 +1327,7 @@ export default function NewInvoicePage() {
               Barcode Scanner / Fast Product Lookup
             </label>
             <ProductSearchCombobox
-              products={catalog}
+              products={isOnline ? undefined : catalog}
               selectedProductId=""
               onSelect={(product) => {
                 if (!product) return;
@@ -1353,7 +1366,7 @@ export default function NewInvoicePage() {
                   {/* Product Picker */}
                   <div className="flex-1 min-w-[200px] w-full">
                     <ProductSearchCombobox
-                      products={catalog}
+                      products={isOnline ? undefined : catalog}
                       selectedProductId={item.productId}
                       onSelect={(prod) => handleProductSelect(idx, prod)}
                     />

@@ -54,17 +54,18 @@ export async function POST(req: NextRequest) {
         n10 * 10 +
         coins;
 
-      // Query sales between openedAt and now
       const now = new Date();
+      // Use isReconciled instead of temporal queries to guarantee no orphaned or double-counted invoices
       const invoices = await tx.invoice.findMany({
         where: {
           tenantId,
+          isReconciled: false,
           createdAt: {
             gte: activeShift.openedAt,
-            lte: now,
-          },
+          }
         },
         select: {
+          id: true,
           totalAmount: true,
           paidAmount: true,
           dueAmount: true,
@@ -72,6 +73,16 @@ export async function POST(req: NextRequest) {
           paymentStatus: true,
         },
       });
+
+      if (invoices.length > 0) {
+        await tx.invoice.updateMany({
+          where: { id: { in: invoices.map(i => i.id) } },
+          data: { 
+            isReconciled: true,
+            shiftId: activeShift.id
+          }
+        });
+      }
 
       let cashSales = 0;
       let upiSales = 0;

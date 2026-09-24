@@ -417,6 +417,9 @@ model Invoice {
   upiUri            String? // NPCI QR Link
   notes             String?
 
+  shiftId           String? // Links the invoice to a specific cash drawer shift
+  isReconciled      Boolean       @default(false) // True when Z-Report is generated
+
   // E-Way Bill (GST Rule 138)
   ewayBillNo      String? // 12-digit statutory E-Way Bill number
   ewayBillDate    DateTime?

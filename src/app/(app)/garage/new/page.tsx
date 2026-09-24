@@ -44,7 +44,6 @@ export default function NewJobCard() {
 
   useEffect(() => {
     fetchCustomers();
-    fetchInventory();
   }, []);
 
   useEffect(() => {
@@ -276,13 +275,7 @@ export default function NewJobCard() {
                   />
                 ) : (
                   <ProductSearchCombobox
-                    products={inventory.map(p => ({
-                      ...p,
-                      sellingPrice: Number(p.sellingPrice),
-                      gstRate: Number(p.gstRate),
-                      currentStock: Number(p.currentStock),
-                      minStockAlert: Number(p.minStockAlert)
-                    }))}
+                    /* Use server-side search automatically since products prop is omitted */
                     selectedProductId={selectedProductId}
                     onSelect={(prod) => {
                       if (prod) {

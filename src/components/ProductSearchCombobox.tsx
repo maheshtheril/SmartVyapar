@@ -16,7 +16,7 @@ export interface ProductOption {
 }
 
 interface ProductSearchComboboxProps {
-  products: ProductOption[];
+  products?: ProductOption[];
   selectedProductId: string;
   onSelect: (product: ProductOption | null) => void;
   placeholder?: string;
@@ -35,10 +35,17 @@ export default function ProductSearchCombobox({
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const [serverResults, setServerResults] = useState<ProductOption[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selectedProduct = products.find((p) => p.id === selectedProductId);
+  // If we have local products (offline mode), use them to find the selected product.
+  // Otherwise, if we rely on server search, we might need a way to display the selected product name,
+  // but usually the selected product's name is retained in the input value until cleared.
+  const selectedProduct = products?.find((p) => p.id === selectedProductId) || 
+                          serverResults.find((p) => p.id === selectedProductId);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -51,23 +58,53 @@ export default function ProductSearchCombobox({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Filter 100s or 1000s of products by name, barcode, sku, or hsn
-  const filtered = query.trim() === ""
-    ? products.slice(0, 50) // Show first 50 when empty
-    : products.filter((p) => {
-        const q = query.toLowerCase();
-        return (
-          (p.name && p.name.toLowerCase().includes(q)) ||
-          (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-          (p.sku && p.sku.toLowerCase().includes(q)) ||
-          (p.hsnCode && p.hsnCode.includes(q))
-        );
-      }).slice(0, 50);
+  // Server-side debounced search (only if `products` array isn't provided/used for local search)
+  useEffect(() => {
+    if (products) return; // Skip if using local catalog
+    const trimmed = query.trim();
+    
+    const fetchSearch = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/products/search?q=${encodeURIComponent(trimmed)}`);
+        const data = await res.json();
+        if (data.success) {
+          setServerResults(data.products.map((p: any) => ({
+            ...p,
+            currentStock: Number(p.currentStock),
+            minStockAlert: Number(p.minStockAlert)
+          })));
+        }
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const delay = setTimeout(fetchSearch, 200);
+    return () => clearTimeout(delay);
+  }, [query, products]);
+
+  // Determine filtered list based on mode (Local vs Server)
+  const filtered = products 
+    ? (query.trim() === ""
+      ? products.slice(0, 50)
+      : products.filter((p) => {
+          const q = query.toLowerCase();
+          return (
+            (p.name && p.name.toLowerCase().includes(q)) ||
+            (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+            (p.sku && p.sku.toLowerCase().includes(q)) ||
+            (p.hsnCode && p.hsnCode.includes(q))
+          );
+        }).slice(0, 50))
+    : serverResults;
 
   // Reset highlight index when filter changes
   useEffect(() => {
     setHighlightIndex(0);
-  }, [query]);
+  }, [filtered]);
 
   // Handle immediate selection (used for scan or click)
   const commitSelect = (prod: ProductOption) => {
@@ -97,7 +134,8 @@ export default function ProductSearchCombobox({
       // 1. Check exact barcode match first (barcode scanner gun fires text + Enter)
       const trimmed = query.trim();
       if (trimmed) {
-        const exactBarcode = products.find(
+        // Search in the currently available list (local or server fetched)
+        const exactBarcode = filtered.find(
           (p) => p.barcode && p.barcode.toLowerCase() === trimmed.toLowerCase()
         );
         if (exactBarcode) {
@@ -105,7 +143,7 @@ export default function ProductSearchCombobox({
           return;
         }
 
-        const exactSku = products.find(
+        const exactSku = filtered.find(
           (p) => p.sku && p.sku.toLowerCase() === trimmed.toLowerCase()
         );
         if (exactSku) {
