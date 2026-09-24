@@ -44,28 +44,35 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    // Compute live metrics from real database
-    const allInvoices = await prisma.invoice.findMany({
-      where: { tenantId },
-    });
-
+    // Compute live metrics using database aggregations (OOM safe)
     const todayStr = new Date().toISOString().split("T")[0];
-    let todaySales = 0;
-    let totalUdhar = 0;
-    let totalOutputCgst = 0;
-    let totalOutputSgst = 0;
-    let totalOutputIgst = 0;
+    const todayStart = new Date(`${todayStr}T00:00:00.000Z`);
+    const todayEnd = new Date(`${todayStr}T23:59:59.999Z`);
 
-    for (const inv of allInvoices) {
-      const invDateStr = inv.invoiceDate.toISOString().split("T")[0];
-      if (invDateStr === todayStr) {
-        todaySales += Number(inv.totalAmount);
-      }
-      totalUdhar += Number(inv.dueAmount);
-      totalOutputCgst += Number(inv.cgstAmount);
-      totalOutputSgst += Number(inv.sgstAmount);
-      totalOutputIgst += Number(inv.igstAmount);
-    }
+    const [invAll, invToday, cnAll, cnToday] = await Promise.all([
+      prisma.invoice.aggregate({
+        where: { tenantId, einvoiceStatus: { not: "CANCELLED" } },
+        _sum: { dueAmount: true, cgstAmount: true, sgstAmount: true, igstAmount: true },
+      }),
+      prisma.invoice.aggregate({
+        where: { tenantId, einvoiceStatus: { not: "CANCELLED" }, invoiceDate: { gte: todayStart, lte: todayEnd } },
+        _sum: { totalAmount: true },
+      }),
+      prisma.creditNote.aggregate({
+        where: { tenantId },
+        _sum: { cgstAmount: true, sgstAmount: true, igstAmount: true },
+      }),
+      prisma.creditNote.aggregate({
+        where: { tenantId, creditNoteDate: { gte: todayStart, lte: todayEnd } },
+        _sum: { totalAmount: true },
+      })
+    ]);
+
+    const todaySales = Number(invToday._sum.totalAmount || 0) - Number(cnToday._sum.totalAmount || 0);
+    const totalUdhar = Number(invAll._sum.dueAmount || 0);
+    const totalOutputCgst = Number(invAll._sum.cgstAmount || 0) - Number(cnAll._sum.cgstAmount || 0);
+    const totalOutputSgst = Number(invAll._sum.sgstAmount || 0) - Number(cnAll._sum.sgstAmount || 0);
+    const totalOutputIgst = Number(invAll._sum.igstAmount || 0) - Number(cnAll._sum.igstAmount || 0);
 
     const lowStockCount = await prisma.product.count({
       where: {
@@ -298,21 +305,15 @@ export async function POST(req: NextRequest) {
       const pointsEarned = Math.floor(totalAmount / 100);
 
       // Net point adjustment on customer: -redeemed + earned
-      let currentPoints = customer.loyaltyPoints || 0;
-      if (pointsToRedeem > 0) {
-        currentPoints -= pointsToRedeem;
-      }
-      if (pointsEarned > 0) {
-        currentPoints += pointsEarned;
-      }
+      const netPointsChange = pointsEarned - pointsToRedeem;
 
-      // Update customer outstanding balance and loyalty points
+      // Update customer outstanding balance and loyalty points atomically
       const customerUpdateData: any = {};
       if (dueAmount > 0) {
         customerUpdateData.outstandingBalance = { increment: dueAmount };
       }
-      if (pointsToRedeem > 0 || pointsEarned > 0) {
-        customerUpdateData.loyaltyPoints = currentPoints;
+      if (netPointsChange !== 0) {
+        customerUpdateData.loyaltyPoints = { increment: netPointsChange };
       }
       if (Object.keys(customerUpdateData).length > 0) {
         customer = await tx.customer.update({

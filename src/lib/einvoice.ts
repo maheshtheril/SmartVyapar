@@ -105,9 +105,14 @@ export function generateSignedQrPayload(params: {
   const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
   
+  const irpSecret = process.env.IRP_SECRET;
+  if (!irpSecret) {
+    throw new Error("IRP_SECRET is not configured");
+  }
+
   // Create simulated cryptographic signature over Header.Payload
   const hmac = crypto
-    .createHmac("sha256", process.env.IRP_SECRET || "SmartVyapar_IRP_Private_Signing_Key_2026")
+    .createHmac("sha256", irpSecret)
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest("base64url");
 

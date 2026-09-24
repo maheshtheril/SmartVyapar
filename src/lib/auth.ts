@@ -82,22 +82,9 @@ export async function requireRole(
 /**
  * Use inside API route handlers.
  * Returns the session payload, or throws an AuthError.
- * Reads from verified JWT cookie or middleware-validated headers.
+ * Reads from verified JWT cookie.
  */
 export async function requireSession(req: NextRequest): Promise<SessionPayload> {
-  // 1. Check if verified by middleware
-  const headerTenantId = req.headers.get("x-tenant-id");
-  if (headerTenantId) {
-    return {
-      userId: req.headers.get("x-user-id") || "",
-      tenantId: headerTenantId,
-      tenantSlug: req.headers.get("x-tenant-slug") || "",
-      name: req.headers.get("x-user-name") || "",
-      role: req.headers.get("x-user-role") || "",
-    };
-  }
-
-  // 2. Direct cookie verification fallback
   const session = await getSessionFromRequest(req);
   if (!session) {
     throw new AuthError("Unauthorized");

@@ -2,15 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signToken, buildSessionCookie, clearSessionCookie } from "@/lib/auth";
 import bcrypt from "bcryptjs";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
 // POST /api/auth/login  — Login
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown-ip";
+    
+    // Rate limit: 10 login attempts per 5 minutes per IP
+    const rateLimit = checkRateLimit(`login-ip:${ip}`, 10, 5 * 60 * 1000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rateLimit.resetInSeconds) } }
+      );
+    }
+
     const body = await req.json();
     const { email, password } = body;
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
+    }
+
+    // Rate limit per email as well to prevent distributed brute force
+    const emailRateLimit = checkRateLimit(`login-email:${email}`, 10, 5 * 60 * 1000);
+    if (!emailRateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many login attempts for this account. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(emailRateLimit.resetInSeconds) } }
+      );
     }
 
     // Look up user (email is unique across all tenants)

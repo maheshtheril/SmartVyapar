@@ -6,7 +6,7 @@ import { checkRateLimit } from "@/lib/rate-limiter";
 const ResetPasswordSchema = z
   .object({
     token: z.string().min(32, "Invalid token format."),
-    password: z.string().min(6, "Password must be at least 6 characters."),
+    password: z.string().min(12, "Password must be at least 12 characters."),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {

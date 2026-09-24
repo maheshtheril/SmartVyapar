@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { cleanHumanReadableAiError } from "@/lib/ai-invoice-scanner";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
 export async function POST(req: NextRequest) {
   try {
     const session = await requireSession(req);
+    
+    // Rate limit: 5 tests per 5 minutes per tenant
+    const rateLimit = checkRateLimit(`ai-test:${session.tenantId}`, 5, 5 * 60 * 1000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many AI key tests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rateLimit.resetInSeconds) } }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const keyToTest = body.apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 

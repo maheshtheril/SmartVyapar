@@ -9,10 +9,22 @@ import {
 import { signToken, buildSessionCookie } from "@/lib/auth";
 import { getIndianFinancialYear } from "@/lib/invoice-sequence";
 import bcrypt from "bcryptjs";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
 // POST /api/auth/register - Self-serve merchant registration
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown-ip";
+    
+    // Rate limit: 3 registrations per hour per IP to prevent abuse
+    const rateLimit = checkRateLimit(`register-ip:${ip}`, 3, 60 * 60 * 1000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rateLimit.resetInSeconds) } }
+      );
+    }
+
     const body = await req.json();
     const validation = validateBody(RegisterTenantSchema, body);
     if (!validation.success) {

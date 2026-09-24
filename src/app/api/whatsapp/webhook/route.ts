@@ -9,8 +9,11 @@ export async function GET(req: NextRequest) {
     const token = searchParams.get("hub.verify_token");
     const challenge = searchParams.get("hub.challenge");
 
-    const expectedToken =
-      process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "smartvyapar_webhook_secret_2026";
+    const expectedToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+    if (!expectedToken) {
+      console.error("Missing WHATSAPP_WEBHOOK_VERIFY_TOKEN");
+      return new Response("Internal Server Error", { status: 500 });
+    }
 
     if (mode === "subscribe" && token === expectedToken) {
       console.log("✅ [WhatsApp Webhook] Meta verification successful!");

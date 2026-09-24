@@ -50,15 +50,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Forward tenant context as request headers so API routes don't need a DB lookup
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-tenant-id", session.tenantId);
-  requestHeaders.set("x-tenant-slug", session.tenantSlug);
-  requestHeaders.set("x-user-id", session.userId);
-  requestHeaders.set("x-user-role", session.role);
-  requestHeaders.set("x-user-name", session.name);
-
-  return NextResponse.next({ request: { headers: requestHeaders } });
+  return NextResponse.next();
 }
 
 export const config = {

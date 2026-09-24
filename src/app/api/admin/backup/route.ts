@@ -42,15 +42,19 @@ export async function POST(req: NextRequest) {
     const tenantId = searchParams.get("tenantId") || undefined;
     const encryptionKey = process.env.BACKUP_ENCRYPTION_KEY || undefined;
 
-    const { manifest } = await createDatabaseSnapshot({
+    const { manifest, archiveBuffer } = await createDatabaseSnapshot({
       tenantId,
       encryptionKey,
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Database backup snapshot generated successfully",
-      manifest,
+    // Return the binary archive as a file download, with metadata in headers
+    return new NextResponse(archiveBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${manifest.archiveFile}"`,
+        "X-Backup-Manifest": JSON.stringify(manifest),
+      },
     });
   } catch (err: any) {
     return NextResponse.json(

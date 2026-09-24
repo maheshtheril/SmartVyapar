@@ -90,7 +90,7 @@ export const RegisterTenantSchema = z.object({
   phone: indianPhoneSchema,
   password: z
     .string()
-    .min(6, "Password must be at least 6 characters long"),
+    .min(12, "Password must be at least 12 characters long"),
   gstin: gstinSchema,
   stateCode: stateCodeSchema.default("32"),
   stateName: z.string().optional().default("Kerala"),
