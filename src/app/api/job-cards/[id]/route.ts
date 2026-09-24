@@ -56,6 +56,29 @@ export async function PATCH(
 
     const dataToUpdate: any = {};
     if (status && Object.values(JobCardStatus).includes(status)) {
+      // Validate transition
+      const validTransitions: Record<string, string[]> = {
+        OPEN: ['RECEPTION', 'CANCELLED'],
+        RECEPTION: ['INSPECTION', 'CANCELLED'],
+        INSPECTION: ['ESTIMATION', 'CANCELLED'],
+        ESTIMATION: ['APPROVAL_PENDING', 'CANCELLED'],
+        APPROVAL_PENDING: ['WORK_IN_PROGRESS', 'CANCELLED'],
+        WORK_IN_PROGRESS: ['QUALITY_CHECK', 'CANCELLED'],
+        QUALITY_CHECK: ['READY_FOR_DELIVERY', 'CANCELLED'],
+        READY_FOR_DELIVERY: ['DELIVERED', 'COMPLETED', 'CANCELLED'],
+        COMPLETED: ['DELIVERED', 'INVOICED'],
+        DELIVERED: ['INVOICED'],
+        CANCELLED: [],
+        INVOICED: []
+      };
+
+      const allowedNext = validTransitions[existingJobCard.status] || [];
+      // Also support legacy loose transitions if needed, but strict is better. 
+      // For now, strict! But allow going to same state (no-op).
+      if (status !== existingJobCard.status && !allowedNext.includes(status) && status !== 'INVOICED') {
+         return NextResponse.json({ error: `Invalid transition from ${existingJobCard.status} to ${status}` }, { status: 400 });
+      }
+
       dataToUpdate.status = status;
     }
     
@@ -73,10 +96,27 @@ export async function PATCH(
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const jc = await tx.jobCard.update({
-        where: { id: params.id },
+      // Atomic conditional update
+      const jc = await tx.jobCard.updateMany({
+        where: { 
+          id: params.id, 
+          tenantId,
+          status: existingJobCard.status // Ensure it hasn't changed since we read it
+        },
         data: dataToUpdate
       });
+
+      if (jc.count === 0) {
+        throw new Error("Job card status was modified by another request. Please try again.");
+      }
+
+      // We need the updated record
+      const fullJc = await tx.jobCard.findFirst({
+        where: { id: params.id },
+        include: { items: true }
+      });
+
+      if (!fullJc) throw new Error("Job card not found after update");
 
       // Update vehicle's service history if completed
       if (status === JobCardStatus.COMPLETED || status === JobCardStatus.DELIVERED) {
@@ -84,7 +124,7 @@ export async function PATCH(
           where: { id: existingJobCard.vehicleId },
           data: {
             lastServiceDate: new Date(),
-            lastServiceKm: jc.odometerReading ?? existingJobCard.odometerReading ?? undefined,
+            lastServiceKm: fullJc.odometerReading ?? existingJobCard.odometerReading ?? undefined,
           }
         });
       }
@@ -138,7 +178,7 @@ export async function PATCH(
                   productId: item.productId,
                   type: 'CONSUMPTION_OUT',
                   changeQty: -Number(item.quantity),
-                  referenceId: jc.jobCardNumber,
+                  referenceId: fullJc.jobCardNumber,
                   note: `Consumed on Job Card approval`,
                 }
               });
@@ -147,7 +187,7 @@ export async function PATCH(
         }
       }
 
-      return jc;
+      return fullJc;
     });
 
     return NextResponse.json({ success: true, jobCard: updated });

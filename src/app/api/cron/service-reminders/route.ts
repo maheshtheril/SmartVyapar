@@ -63,21 +63,29 @@ export async function GET(req: NextRequest) {
       let statusStr = daysUntil < 0 ? "OVERDUE" : (daysUntil === 0 ? "TODAY" : "UPCOMING");
       
       const message = `Hello ${vehicle.customer.name}, your ${vehicle.make || ''} ${vehicle.model || ''} (${vehicle.licensePlate}) is due for service ${statusStr === 'OVERDUE' ? 'since ' + Math.abs(daysUntil) + ' days ago' : 'in ' + daysUntil + ' days'}. Please visit ${vehicle.tenant.businessName} or call to book an appointment!`;
+      
+      const idempotencyKey = `${vehicle.id}-${today.toISOString().split('T')[0]}`;
 
-      // Persist to database
-      const reminder = await prisma.serviceReminder.create({
-        data: {
-          tenantId: vehicle.tenantId,
-          customerId: vehicle.customerId,
-          vehicleId: vehicle.id,
-          reminderDate: today,
-          reminderType: "AUTOMATED_SMS",
-          message,
-          status: "PENDING"
-        }
-      });
-
-      newlyCreated.push(reminder);
+      try {
+        // Persist to database atomically
+        const reminder = await prisma.serviceReminder.create({
+          data: {
+            tenantId: vehicle.tenantId,
+            customerId: vehicle.customerId,
+            vehicleId: vehicle.id,
+            reminderDate: today,
+            reminderType: "AUTOMATED_SMS",
+            message,
+            status: "PENDING",
+            idempotencyKey
+          }
+        });
+        newlyCreated.push(reminder);
+      } catch (err: any) {
+        // If P2002 (Unique constraint failed), another cron execution just created it. Safe to ignore.
+        if (err.code === 'P2002') continue;
+        throw err;
+      }
     }
 
     return NextResponse.json({ 
