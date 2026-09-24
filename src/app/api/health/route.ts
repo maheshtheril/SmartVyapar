@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const startTime = Date.now();
 
   try {
@@ -11,12 +11,18 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1 as ping`;
     const dbLatencyMs = Date.now() - startTime;
 
-    const memory = process.memoryUsage();
+    const authHeader = request.headers.get("authorization");
+    const isInternal = authHeader === `Bearer ${process.env.CRON_SECRET || process.env.JWT_SECRET}`;
 
-    return NextResponse.json(
-      {
-        status: "healthy",
-        timestamp: new Date().toISOString(),
+    let payload: any = {
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+    };
+
+    if (isInternal) {
+      const memory = process.memoryUsage();
+      payload = {
+        ...payload,
         uptimeSeconds: Math.floor(process.uptime()),
         database: {
           status: "connected",
@@ -28,7 +34,11 @@ export async function GET() {
           rssMb: Math.round((memory.rss / 1024 / 1024) * 100) / 100,
         },
         environment: process.env.NODE_ENV || "development",
-      },
+      };
+    }
+
+    return NextResponse.json(
+      payload,
       {
         status: 200,
         headers: {
@@ -40,15 +50,20 @@ export async function GET() {
     const dbLatencyMs = Date.now() - startTime;
     console.error("Health check failure:", error);
 
+    const authHeader = request.headers.get("authorization");
+    const isInternal = authHeader === `Bearer ${process.env.CRON_SECRET || process.env.JWT_SECRET}`;
+
     return NextResponse.json(
       {
         status: "unhealthy",
         timestamp: new Date().toISOString(),
-        database: {
-          status: "disconnected",
-          latencyMs: dbLatencyMs,
-          error: error.message || "Database connection error",
-        },
+        ...(isInternal && {
+          database: {
+            status: "disconnected",
+            latencyMs: dbLatencyMs,
+            error: error.message || "Database connection error",
+          },
+        }),
       },
       {
         status: 503,
