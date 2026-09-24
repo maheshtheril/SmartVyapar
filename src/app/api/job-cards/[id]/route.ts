@@ -73,9 +73,12 @@ export async function PATCH(
       };
 
       const allowedNext = validTransitions[existingJobCard.status] || [];
-      // Also support legacy loose transitions if needed, but strict is better. 
-      // For now, strict! But allow going to same state (no-op).
-      if (status !== existingJobCard.status && !allowedNext.includes(status) && status !== 'INVOICED') {
+      // Block INVOICED transition via this endpoint entirely. Must use /convert endpoint.
+      if (status === 'INVOICED') {
+         return NextResponse.json({ error: `Cannot transition to INVOICED via this endpoint. Use /convert instead.` }, { status: 400 });
+      }
+
+      if (status !== existingJobCard.status && !allowedNext.includes(status)) {
          return NextResponse.json({ error: `Invalid transition from ${existingJobCard.status} to ${status}` }, { status: 400 });
       }
 
@@ -153,13 +156,14 @@ export async function PATCH(
 
               if (item.batchId) {
                 const batch = await tx.batch.findFirst({ where: { id: item.batchId, tenantId, productId: item.productId } });
-                if (batch) {
-                  const updatedBatch = await tx.batch.update({
-                    where: { id: item.batchId },
-                    data: { currentStock: { decrement: Number(item.quantity) } }
-                  });
-                  if (Number(updatedBatch.currentStock) < 0) throw new Error(`Insufficient stock in batch`);
+                if (!batch) {
+                  throw new Error(`Requested batch ${item.batchId} not found for product ${product.name}`);
                 }
+                const updatedBatch = await tx.batch.update({
+                  where: { id: item.batchId },
+                  data: { currentStock: { decrement: Number(item.quantity) } }
+                });
+                if (Number(updatedBatch.currentStock) < 0) throw new Error(`Insufficient stock in batch`);
               }
 
               // Verify strict Sub-Ledger vs Main Ledger consistency (tenant scoped)

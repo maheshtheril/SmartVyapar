@@ -62,6 +62,20 @@ export async function POST(request: NextRequest) {
         prefix: "JC",
       });
 
+      // Pre-flight tenant validation for products and batches
+      if (items && items.length > 0) {
+        for (const item of items) {
+          if (item.productId) {
+            const product = await tx.product.findFirst({ where: { id: item.productId, tenantId } });
+            if (!product) throw new Error(`Product ${item.productId} not found or access denied`);
+          }
+          if (item.batchId) {
+            const batch = await tx.batch.findFirst({ where: { id: item.batchId, tenantId, productId: item.productId } });
+            if (!batch) throw new Error(`Batch ${item.batchId} not found, does not belong to the product, or access denied`);
+          }
+        }
+      }
+
       const jobCard = await tx.jobCard.create({
         data: {
           tenantId,

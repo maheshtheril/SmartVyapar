@@ -10,7 +10,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const jobCard = await prisma.jobCard.findFirst({
       where: { id: params.id, tenantId: session.tenantId },
-      include: { items: true, vehicle: { include: { customer: true } } }
+      include: { 
+        items: { include: { product: true } }, 
+        vehicle: { include: { customer: true } },
+        tenant: true
+      }
     });
 
     if (!jobCard) {
@@ -21,12 +25,51 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: "Job card is already invoiced", invoiceId: jobCard.invoiceId }, { status: 400 });
     }
 
+    // P0: Enforce that we can only convert from READY_FOR_DELIVERY or COMPLETED
+    if (jobCard.status !== JobCardStatus.READY_FOR_DELIVERY && jobCard.status !== JobCardStatus.COMPLETED) {
+       return NextResponse.json({ error: `Cannot invoice Job Card from status ${jobCard.status}. Must be READY_FOR_DELIVERY or COMPLETED.` }, { status: 400 });
+    }
+
     const { paymentMethod, amountPaid } = await request.json();
 
-    // Calculate totals
-    const subtotal = jobCard.items.reduce((sum, item) => sum + Number(item.lineTotal), 0);
-    const taxAmount = Number(subtotal) * 0.18; // 18% dummy tax calculation
-    const totalAmount = Number(subtotal) + taxAmount;
+    const isInterState = jobCard.vehicle.customer.stateCode && jobCard.vehicle.customer.stateCode !== jobCard.tenant.stateCode;
+
+    let subtotal = 0;
+    let totalTaxAmount = 0;
+
+    const itemsToCreate = jobCard.items.map((item) => {
+      const product = item.product;
+      const gstRate = product ? Number(product.gstRate) : 18;
+      const hsnCode = product ? product.hsnCode : (item.itemType === 'LABOUR' ? "998714" : "8708");
+
+      if (item.itemType !== 'LABOUR' && !product) {
+        throw new Error(`Product missing for Job Card item ${item.name}`);
+      }
+      if (!hsnCode) {
+        throw new Error(`HSN code missing for item ${item.name}`);
+      }
+
+      const lineVal = Number(item.lineTotal);
+      const tax = lineVal * (gstRate / 100);
+      
+      subtotal += lineVal;
+      totalTaxAmount += tax;
+
+      return {
+        productId: item.productId,
+        productName: item.name,
+        hsnCode,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        gstRate,
+        cgstAmount: isInterState ? 0 : tax / 2,
+        sgstAmount: isInterState ? 0 : tax / 2,
+        igstAmount: isInterState ? tax : 0,
+        lineTotal: lineVal + tax
+      };
+    });
+
+    const totalAmount = subtotal + totalTaxAmount;
     
     // Default to unpaid if not fully provided
     const paid = amountPaid ? Number(amountPaid) : 0;
@@ -59,10 +102,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           customerGstin: jobCard.vehicle.customer.gstin,
           customerStateCode: jobCard.vehicle.customer.stateCode || "32",
           subtotal,
-          cgstAmount: taxAmount / 2,
-          sgstAmount: taxAmount / 2,
-          igstAmount: 0,
-          totalTax: taxAmount,
+          cgstAmount: isInterState ? 0 : totalTaxAmount / 2,
+          sgstAmount: isInterState ? 0 : totalTaxAmount / 2,
+          igstAmount: isInterState ? totalTaxAmount : 0,
+          totalTax: totalTaxAmount,
           totalAmount,
           paidAmount: paid,
           dueAmount,
@@ -70,21 +113,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           paymentMode: paymentMethod || "CASH",
           notes: `Generated from Job Card: ${jobCard.jobCardNumber} (Vehicle: ${jobCard.vehicle.licensePlate})`,
           items: {
-            create: jobCard.items.map((item) => {
-              const tax = Number(item.lineTotal) * 0.09;
-              return {
-                productId: item.productId,
-                productName: item.name,
-                hsnCode: item.itemType === 'LABOUR' ? "998714" : "8708", // basic fallback
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                gstRate: 18,
-                cgstAmount: tax,
-                sgstAmount: tax,
-                igstAmount: 0,
-                lineTotal: Number(item.lineTotal) * 1.18
-              };
-            })
+            create: itemsToCreate
           }
         }
       });
