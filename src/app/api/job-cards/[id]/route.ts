@@ -148,12 +148,16 @@ export async function PATCH(
               const product = await tx.product.findFirst({ where: { id: item.productId, tenantId } });
               if (!product) throw new Error(`Product ${item.productId} not found`);
 
-              const updatedProduct = await tx.product.update({
-                where: { id: item.productId },
+              // Atomic conditional decrement for product
+              const updatedProductResult = await tx.product.updateMany({
+                where: { 
+                  id: item.productId,
+                  currentStock: { gte: Number(item.quantity) }
+                },
                 data: { currentStock: { decrement: Number(item.quantity) } }
               });
 
-              if (Number(updatedProduct.currentStock) < 0) {
+              if (updatedProductResult.count === 0) {
                 throw new Error(`Insufficient stock for ${product.name}`);
               }
 
@@ -162,16 +166,26 @@ export async function PATCH(
                 if (!batch) {
                   throw new Error(`Requested batch ${item.batchId} not found for product ${product.name}`);
                 }
-                const updatedBatch = await tx.batch.update({
-                  where: { id: item.batchId },
+                
+                // Atomic conditional decrement for batch
+                const updatedBatchResult = await tx.batch.updateMany({
+                  where: { 
+                    id: item.batchId,
+                    currentStock: { gte: Number(item.quantity) }
+                  },
                   data: { currentStock: { decrement: Number(item.quantity) } }
                 });
-                if (Number(updatedBatch.currentStock) < 0) throw new Error(`Insufficient stock in batch`);
+                
+                if (updatedBatchResult.count === 0) {
+                  throw new Error(`Insufficient stock in batch ${batch.batchNumber}`);
+                }
               }
 
               // Verify strict Sub-Ledger vs Main Ledger consistency (tenant scoped)
+              // Read the updated product to check consistency
+              const updatedProduct = await tx.product.findUnique({ where: { id: item.productId } });
               const allBatches = await tx.batch.findMany({ where: { tenantId, productId: item.productId } });
-              if (allBatches.length > 0) {
+              if (allBatches.length > 0 && updatedProduct) {
                 const sumOfBatches = allBatches.reduce((acc, b) => acc + Number(b.currentStock), 0);
                 if (Math.abs(sumOfBatches - Number(updatedProduct.currentStock)) > 0.01) {
                    throw new Error(`Inventory corruption detected: Product ${product.name} total stock (${updatedProduct.currentStock}) does not match the sum of its batches (${sumOfBatches}).`);
@@ -191,7 +205,8 @@ export async function PATCH(
                   productId: item.productId,
                   type: 'CONSUMPTION_OUT',
                   changeQty: -Number(item.quantity),
-                  referenceId: `JC:${fullJc.jobCardNumber}:ITEM:${item.id}`,
+                  referenceId: fullJc.jobCardNumber,
+                  idempotencyKey: `JC:${fullJc.jobCardNumber}:ITEM:${item.id}`,
                   note: `Consumed on Job Card approval`,
                 }
               });

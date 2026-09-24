@@ -25,9 +25,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: "Job card is already invoiced", invoiceId: jobCard.invoiceId }, { status: 400 });
     }
 
-    // P0: Enforce that we can only convert from READY_FOR_DELIVERY or COMPLETED
-    if (jobCard.status !== JobCardStatus.READY_FOR_DELIVERY && jobCard.status !== JobCardStatus.COMPLETED) {
-       return NextResponse.json({ error: `Cannot invoice Job Card from status ${jobCard.status}. Must be READY_FOR_DELIVERY or COMPLETED.` }, { status: 400 });
+    // P0: Enforce that we can only convert from READY_FOR_DELIVERY or DELIVERED or COMPLETED
+    if (jobCard.status !== JobCardStatus.READY_FOR_DELIVERY && jobCard.status !== JobCardStatus.DELIVERED && jobCard.status !== JobCardStatus.COMPLETED) {
+       return NextResponse.json({ error: `Cannot invoice Job Card from status ${jobCard.status}. Must be READY_FOR_DELIVERY or DELIVERED.` }, { status: 400 });
     }
 
     const { paymentMethod, amountPaid } = await request.json();

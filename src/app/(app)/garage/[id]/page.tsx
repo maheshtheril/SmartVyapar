@@ -54,7 +54,7 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
       if (newStatus === 'READY_FOR_DELIVERY') {
         payload.inspectionDetails = inspectionDetails;
       }
-      if (newStatus === 'COMPLETED') {
+      if (newStatus === 'COMPLETED' || newStatus === 'DELIVERED') {
         payload.deliveryDetails = deliveryDetails;
       }
       
@@ -232,16 +232,16 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
                   </label>
 
                   <button 
-                    onClick={() => handleStatusUpdate('COMPLETED')}
+                    onClick={() => handleStatusUpdate('DELIVERED')}
                     disabled={updating}
                     className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
                   >
-                    <CheckCircle className="h-4 w-4" /> Complete & Deliver Vehicle
+                    <CheckCircle className="h-4 w-4" /> Deliver Vehicle
                   </button>
                 </div>
               ) : null}
 
-              {jobCard.status === 'COMPLETED' || jobCard.status === 'DELIVERED' ? (
+              {jobCard.status === 'DELIVERED' ? (
                 <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl text-sm font-medium border border-emerald-100 flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-emerald-500" />
                   Vehicle Delivered successfully.
