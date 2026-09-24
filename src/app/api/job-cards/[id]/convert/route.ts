@@ -55,16 +55,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           paymentMethod: paymentMethod || "CASH",
           notes: `Generated from Job Card: ${jobCard.jobCardNumber} (Vehicle: ${jobCard.vehicle.licensePlate})`,
           items: {
-            create: jobCard.items.map((item) => ({
-              productId: item.productId,
-              name: item.name,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              subtotal: item.lineTotal,
-              taxRate: 18,
-              taxAmount: Number(item.lineTotal) * 0.18,
-              total: Number(item.lineTotal) * 1.18
-            }))
+            create: jobCard.items.map((item) => {
+              const tax = Number(item.lineTotal) * 0.09;
+              return {
+                productId: item.productId,
+                productName: item.name,
+                hsnCode: item.itemType === 'LABOUR' ? "998714" : "8708", // basic fallback
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                gstRate: 18,
+                cgstAmount: tax,
+                sgstAmount: tax,
+                igstAmount: 0,
+                lineTotal: Number(item.lineTotal) * 1.18
+              };
+            })
           }
         }
       });
