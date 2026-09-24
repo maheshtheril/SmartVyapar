@@ -44,6 +44,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           invoiceNumber,
           customerId: jobCard.customerId,
           customerName: jobCard.vehicle.customer.name,
+          customerPhone: jobCard.vehicle.customer.phone || "0000000000",
           customerGstin: jobCard.vehicle.customer.gstin,
           customerStateCode: jobCard.vehicle.customer.stateCode || "32",
           subtotal,
