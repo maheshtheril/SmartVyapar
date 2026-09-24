@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
               data: {
                 tenantId,
                 productId: item.productId,
-                type: StockLogType.SALE,
+                type: StockLogType.CONSUMPTION_OUT,
                 changeQty: -Number(item.quantity),
                 referenceId: jobCardNumber,
                 note: `Consumed in Job Card ${jobCardNumber} for vehicle ${vehicle.licensePlate}`,
