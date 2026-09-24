@@ -14,6 +14,10 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
   const [updating, setUpdating] = useState(false);
   const [approvedEstimate, setApprovedEstimate] = useState<string>('');
   
+  // New structured payload states
+  const [inspectionDetails, setInspectionDetails] = useState({ brakeTest: false, roadTest: false, finalChecklist: false, mechanicSignature: '' });
+  const [deliveryDetails, setDeliveryDetails] = useState({ deliveredTo: '', customerSignature: '', paymentConfirmed: false });
+  
   useEffect(() => {
     fetchJobCard();
   }, [params.id]);
@@ -25,6 +29,13 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
         const data = await res.json();
         setJobCard(data);
         setApprovedEstimate(data.approvedEstimate?.toString() || data.estimatedTotal?.toString() || '0');
+        
+        if (data.inspectionDetails) {
+          setInspectionDetails(data.inspectionDetails);
+        }
+        if (data.deliveryDetails) {
+          setDeliveryDetails(data.deliveryDetails);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -39,6 +50,12 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
       const payload: any = { status: newStatus };
       if (newStatus === 'IN_PROGRESS' || newStatus === 'WORK_IN_PROGRESS') {
         payload.approvedEstimate = Number(approvedEstimate);
+      }
+      if (newStatus === 'READY_FOR_DELIVERY') {
+        payload.inspectionDetails = inspectionDetails;
+      }
+      if (newStatus === 'COMPLETED') {
+        payload.deliveryDetails = deliveryDetails;
       }
       
       const res = await fetch(`/api/job-cards/${params.id}`, {
@@ -162,23 +179,66 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
               ) : null}
 
               {jobCard.status === 'QUALITY_CHECK' ? (
-                <button 
-                  onClick={() => handleStatusUpdate('READY_FOR_DELIVERY')}
-                  disabled={updating}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-sm transition-colors"
-                >
-                  Mark Ready for Delivery
-                </button>
+                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 space-y-3">
+                  <h4 className="text-sm font-bold text-purple-900">Quality Check / Inspection</h4>
+                  
+                  <label className="flex items-center space-x-2 text-sm text-purple-800">
+                    <input type="checkbox" checked={inspectionDetails.brakeTest} onChange={(e) => setInspectionDetails({...inspectionDetails, brakeTest: e.target.checked})} className="rounded text-purple-600 focus:ring-purple-500" />
+                    <span>Brake & Suspension Test Passed</span>
+                  </label>
+                  
+                  <label className="flex items-center space-x-2 text-sm text-purple-800">
+                    <input type="checkbox" checked={inspectionDetails.roadTest} onChange={(e) => setInspectionDetails({...inspectionDetails, roadTest: e.target.checked})} className="rounded text-purple-600 focus:ring-purple-500" />
+                    <span>Road Test Completed</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2 text-sm text-purple-800">
+                    <input type="checkbox" checked={inspectionDetails.finalChecklist} onChange={(e) => setInspectionDetails({...inspectionDetails, finalChecklist: e.target.checked})} className="rounded text-purple-600 focus:ring-purple-500" />
+                    <span>Final QC Checklist Verified</span>
+                  </label>
+
+                  <div className="pt-2">
+                    <label className="block text-xs font-bold text-purple-800 mb-1">Mechanic Signature / Initials</label>
+                    <input type="text" value={inspectionDetails.mechanicSignature} onChange={(e) => setInspectionDetails({...inspectionDetails, mechanicSignature: e.target.value})} className="w-full rounded-lg border-purple-200 px-3 py-2 text-sm focus:ring-purple-500 focus:border-purple-500" placeholder="e.g. John D." />
+                  </div>
+
+                  <button 
+                    onClick={() => handleStatusUpdate('READY_FOR_DELIVERY')}
+                    disabled={updating}
+                    className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg text-sm transition-colors"
+                  >
+                    Approve QC & Mark Ready
+                  </button>
+                </div>
               ) : null}
 
               {jobCard.status === 'READY_FOR_DELIVERY' ? (
-                <button 
-                  onClick={() => handleStatusUpdate('COMPLETED')}
-                  disabled={updating}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors"
-                >
-                  <CheckCircle className="h-4 w-4" /> Complete & Deliver Vehicle
-                </button>
+                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 space-y-3">
+                  <h4 className="text-sm font-bold text-emerald-900">Vehicle Handover</h4>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-emerald-800">Delivered To</label>
+                    <input type="text" value={deliveryDetails.deliveredTo} onChange={(e) => setDeliveryDetails({...deliveryDetails, deliveredTo: e.target.value})} className="w-full rounded-lg border-emerald-200 px-3 py-2 text-sm focus:ring-emerald-500 focus:border-emerald-500" placeholder="Name of person receiving vehicle" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-emerald-800">Customer Signature</label>
+                    <input type="text" value={deliveryDetails.customerSignature} onChange={(e) => setDeliveryDetails({...deliveryDetails, customerSignature: e.target.value})} className="w-full rounded-lg border-emerald-200 px-3 py-2 text-sm focus:ring-emerald-500 focus:border-emerald-500" placeholder="Type name to sign" />
+                  </div>
+
+                  <label className="flex items-center space-x-2 text-sm text-emerald-800 pt-1">
+                    <input type="checkbox" checked={deliveryDetails.paymentConfirmed} onChange={(e) => setDeliveryDetails({...deliveryDetails, paymentConfirmed: e.target.checked})} className="rounded text-emerald-600 focus:ring-emerald-500" />
+                    <span>Payment / Gate Pass Confirmed</span>
+                  </label>
+
+                  <button 
+                    onClick={() => handleStatusUpdate('COMPLETED')}
+                    disabled={updating}
+                    className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <CheckCircle className="h-4 w-4" /> Complete & Deliver Vehicle
+                  </button>
+                </div>
               ) : null}
 
               {jobCard.status === 'COMPLETED' || jobCard.status === 'DELIVERED' ? (
