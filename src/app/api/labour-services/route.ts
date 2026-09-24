@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { requireSession } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
-    const auth = await requireAuth();
+    const auth = await requireSession();
     if (!auth?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const labourServices = await prisma.labourService.findMany({
@@ -18,3 +18,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to fetch labour services' }, { status: 500 });
   }
 }
+
