@@ -132,8 +132,8 @@ export default function ProductSearchCombobox({
           ref={inputRef}
           type="text"
           autoFocus
-          value={isOpen ? query : (selectedProduct ? `${selectedProduct.name} (Stock: ${selectedProduct.currentStock})` : "")}
-          placeholder={selectedProduct ? selectedProduct.name : placeholder}
+          value={isOpen ? query : (selectedProduct ? `[${selectedProduct.sku || 'No SKU'}] ${selectedProduct.name} (Qty: ${selectedProduct.currentStock})` : "")}
+          placeholder={selectedProduct ? `[${selectedProduct.sku}] ${selectedProduct.name}` : placeholder}
           onFocus={() => {
             setIsOpen(true);
             setQuery("");
@@ -191,7 +191,14 @@ export default function ProductSearchCombobox({
                   }`}
                 >
                   <div className="flex-1 min-w-0 pr-2">
-                    <div className={`truncate font-semibold flex items-center space-x-1.5 ${isHighlighted ? 'text-white' : 'text-slate-900'}`}>
+                    <div className={`truncate font-semibold flex flex-wrap items-center gap-1.5 ${isHighlighted ? 'text-white' : 'text-slate-900'}`}>
+                      {prod.sku && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold tracking-tight border ${
+                          isHighlighted ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-slate-50 border-slate-200 text-indigo-700'
+                        }`}>
+                          {prod.sku}
+                        </span>
+                      )}
                       <span>{prod.name}</span>
                       {isLow && (
                         <span className={`rounded px-1.5 py-0.2 text-[9px] font-bold inline-flex items-center space-x-0.5 ${
@@ -202,8 +209,15 @@ export default function ProductSearchCombobox({
                         </span>
                       )}
                     </div>
-                    <div className={`text-[10px] ${isHighlighted ? 'text-indigo-100' : 'text-slate-400'}`}>
-                      HSN: {prod.hsnCode} • Stock: {prod.currentStock} • GST: {prod.gstRate}%
+                    <div className={`text-[10px] mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 ${isHighlighted ? 'text-indigo-100' : 'text-slate-500'}`}>
+                      {prod.barcode && (
+                        <span className="font-mono tracking-wider flex items-center gap-1">
+                          <span className="opacity-70">BC:</span> {prod.barcode}
+                        </span>
+                      )}
+                      <span>HSN: {prod.hsnCode}</span>
+                      <span>Stock: {prod.currentStock}</span>
+                      <span>GST: {prod.gstRate}%</span>
                     </div>
                   </div>
 
