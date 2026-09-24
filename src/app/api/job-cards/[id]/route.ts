@@ -65,8 +65,7 @@ export async function PATCH(
         APPROVAL_PENDING: ['WORK_IN_PROGRESS', 'CANCELLED'],
         WORK_IN_PROGRESS: ['QUALITY_CHECK', 'CANCELLED'],
         QUALITY_CHECK: ['READY_FOR_DELIVERY', 'CANCELLED'],
-        READY_FOR_DELIVERY: ['DELIVERED', 'COMPLETED', 'CANCELLED'],
-        COMPLETED: ['DELIVERED', 'INVOICED'],
+        READY_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
         DELIVERED: ['INVOICED'],
         CANCELLED: [],
         INVOICED: []
@@ -93,10 +92,7 @@ export async function PATCH(
     if (deliveryDetails !== undefined) dataToUpdate.deliveryDetails = deliveryDetails;
     if (approvalDetails !== undefined) dataToUpdate.approvalDetails = approvalDetails;
 
-    // If status moves to COMPLETED or DELIVERED, record completedAt / deliveredAt 
-    if (status === JobCardStatus.COMPLETED && !existingJobCard.completedAt) {
-      dataToUpdate.completedAt = new Date();
-    }
+    // If status moves to DELIVERED, record deliveredAt
     if (status === JobCardStatus.DELIVERED && !existingJobCard.deliveredAt) {
       dataToUpdate.deliveredAt = new Date();
     }
@@ -178,12 +174,6 @@ export async function PATCH(
         
         if (fullJc && fullJc.items) {
           for (const item of fullJc.items) {
-            // Mark as consumed
-            await tx.jobCardItem.update({
-              where: { id: item.id },
-              data: { isConsumed: item.itemType === "PART" ? true : item.isConsumed }
-            });
-
             // Check explicit idempotency marker
             if (item.itemType === "PART" && item.productId && !item.isConsumed) {
               const product = await tx.product.findFirst({ where: { id: item.productId, tenantId } });
@@ -260,6 +250,10 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
+
+
 
 
 

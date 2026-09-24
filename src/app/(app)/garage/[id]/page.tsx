@@ -62,7 +62,7 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
       if (newStatus === 'READY_FOR_DELIVERY') {
         payload.inspectionDetails = inspectionDetails;
       }
-      if (newStatus === 'COMPLETED' || newStatus === 'DELIVERED') {
+      if (newStatus === 'DELIVERED') {
         payload.deliveryDetails = deliveryDetails;
       }
       
@@ -249,4 +249,5 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
     </div>
   );
 }
+
 

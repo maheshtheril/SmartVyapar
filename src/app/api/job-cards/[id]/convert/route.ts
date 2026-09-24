@@ -45,8 +45,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
       const product = item.product;
       // Use frozen tax snapshot from Job Card approval, fallback to product/default
-      const gstRate = item.gstRateSnapshot !== null ? Number(item.gstRateSnapshot) : (product ? Number(product.gstRate) : 18);
-      const hsnCode = item.hsnCodeSnapshot !== null ? item.hsnCodeSnapshot : (product ? product.hsnCode : (item.itemType === "LABOUR" ? "998714" : "8708"));
+      if (item.gstRateSnapshot === null || item.hsnCodeSnapshot === null) {
+          throw new Error(`Tax snapshot missing for Job Card item ${item.name}. Ensure estimate was approved.`);
+        }
+        const gstRate = Number(item.gstRateSnapshot);
+        const hsnCode = item.hsnCodeSnapshot;
 
       if (item.itemType !== "LABOUR" && !product) {
         throw new Error(`Product missing for Job Card item ${item.name}`);
@@ -159,6 +162,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
 
 
 
