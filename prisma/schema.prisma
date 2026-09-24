@@ -149,6 +149,15 @@ model Product {
   barcode             String?
   hsnCode             String      @default("9983")
   category            String?
+
+  // Automotive specifics
+  brand               String?
+  partNumber          String?
+  oemNumber           String?
+  compatibleMakes     String?     // e.g. "Maruti, Hyundai"
+  compatibleModels    String?     // e.g. "Swift, i20"
+  compatibleVariants  String?
+  compatibleYears     String?     // e.g. "2018-2023"
   imageUrl            String?     @db.Text
   productType         ProductType @default(RETAIL_ITEM) // RETAIL_ITEM, RAW_MATERIAL, FINISHED_GOOD
   baseUnit            String      @default("PCS") // Atomic unit: PCS, KG, MTR, NOS, TAB, LTR
@@ -270,16 +279,32 @@ model Customer {
 // ----------------------------------------------------
 
 model CustomerVehicle {
-  id           String   @id @default(uuid())
-  tenantId     String
-  customerId   String
-  licensePlate String // e.g. KL-07-AB-1234
-  make         String? // e.g. Honda, Maruti
-  model        String? // e.g. City, Swift
-  year         Int?
-  vin          String? // Vehicle Identification Number
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  tenantId           String
+  customerId         String
+  licensePlate       String // e.g. KL-07-AB-1234
+  make               String? // e.g. Honda, Maruti
+  model              String? // e.g. City, Swift
+  year               Int?
+  vin                String? // Vehicle Identification Number
+  
+  // Automotive specifics
+  fuelType           String?   // Petrol, Diesel, EV, CNG
+  variant            String?   // e.g. VXI, LXI
+  engineNumber       String?
+  engineCapacity     String?   // e.g. 1.2L, 1197cc
+  transmission       String?   // Manual, Automatic
+  color              String?
+  insuranceExpiry    DateTime?
+  pollutionExpiry    DateTime?
+  registrationExpiry DateTime?
+  lastServiceDate    DateTime?
+  lastServiceKm      Int?
+  nextServiceKm      Int?
+  nextServiceDate    DateTime?
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
@@ -292,8 +317,16 @@ model CustomerVehicle {
 
 enum JobCardStatus {
   OPEN
+  RECEPTION
+  INSPECTION
+  ESTIMATION
+  APPROVAL_PENDING
   IN_PROGRESS
+  WORK_IN_PROGRESS
+  QUALITY_CHECK
   COMPLETED
+  READY_FOR_DELIVERY
+  DELIVERED
   INVOICED
   CANCELLED
 }

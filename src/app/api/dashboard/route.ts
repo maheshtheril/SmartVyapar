@@ -9,9 +9,16 @@ export async function GET(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
 
-    // 1. Get Today's Sales
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    // 1. Get Today's Sales (IST Timezone boundary)
+    const now = new Date();
+    // Get current time components in India (Asia/Kolkata)
+    const istTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    
+    // We want the start of the current IST day (00:00:00), expressed as a UTC Date for Prisma.
+    // IST is UTC+05:30. So 00:00:00 IST is the previous day's 18:30:00 UTC.
+    const startOfToday = new Date(
+      Date.UTC(istTime.getFullYear(), istTime.getMonth(), istTime.getDate(), -5, -30, 0, 0)
+    );
 
     const todayInvoices = await prisma.invoice.findMany({
       where: {
@@ -39,26 +46,29 @@ export async function GET(req: NextRequest) {
     });
     const totalUdhar = pendingInvoices.reduce((sum, inv) => sum + Number(inv.dueAmount), 0);
 
-    // 3. Get Low Stock Items (top 10 for dashboard)
-    const allProducts = await prisma.product.findMany({
-      where: {
-        tenantId,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        currentStock: true,
-        minStockAlert: true,
-        baseUnit: true
-      }
+    // 3. Get Low Stock Items and Total Products (optimized for 100k+ products via SQL)
+    const totalProductsCount = await prisma.product.count({
+      where: { tenantId, isActive: true }
     });
-    
-    const allLowStock = allProducts.filter(p => Number(p.currentStock) <= Number(p.minStockAlert));
-    const lowStockItems = allLowStock
-      .sort((a, b) => Number(a.currentStock) - Number(b.currentStock))
-      .slice(0, 10);
+
+    const lowStockItems = await prisma.$queryRaw<any[]>`
+      SELECT id, name, sku, "currentStock", "minStockAlert", "baseUnit"
+      FROM "Product"
+      WHERE "tenantId" = ${tenantId} 
+        AND "isActive" = true 
+        AND "currentStock" <= "minStockAlert"
+      ORDER BY "currentStock" ASC
+      LIMIT 10
+    `;
+
+    const lowStockTotalResult = await prisma.$queryRaw<any[]>`
+      SELECT COUNT(*) as count
+      FROM "Product"
+      WHERE "tenantId" = ${tenantId} 
+        AND "isActive" = true 
+        AND "currentStock" <= "minStockAlert"
+    `;
+    const lowStockCount = Number(lowStockTotalResult[0]?.count || 0);
 
     // 4. Get Last 5 Invoices
     const recentInvoices = await prisma.invoice.findMany({

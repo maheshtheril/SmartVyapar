@@ -206,7 +206,7 @@ async function runAudit() {
   console.log(`   STATUS: ${stockDiff <= 0.01 ? "🟢 100% RECONCILED TO THE EXACT PENNY (Diff: ₹0.00)" : "🔴 VARIANCE DETECTED"}\n`);
 
   console.log("================================================================================");
-  console.log(" 🏆 FINAL VERDICT: 100% MATHEMATICAL & STATUTORY ACCURACY CONFIRMED");
+  console.log(" 🏆 FINAL VERDICT: ACCOUNTING LIFECYCLE SIMULATION PASSED (MATHEMATICALLY BALANCED)");
   console.log("================================================================================\n");
 }
 
