@@ -44,7 +44,7 @@ export async function PATCH(
     const tenantId = session.tenantId;
     const body = await request.json();
 
-    const { status, approvedEstimate, mechanicNotes, odometerReading, inspectionDetails, deliveryDetails } = body;
+    const { status, approvedEstimate, mechanicNotes, odometerReading, inspectionDetails, deliveryDetails, approvalDetails } = body;
 
     const existingJobCard = await prisma.jobCard.findFirst({
       where: { id: params.id, tenantId }
@@ -91,6 +91,7 @@ export async function PATCH(
     if (odometerReading !== undefined) dataToUpdate.odometerReading = Number(odometerReading);
     if (inspectionDetails !== undefined) dataToUpdate.inspectionDetails = inspectionDetails;
     if (deliveryDetails !== undefined) dataToUpdate.deliveryDetails = deliveryDetails;
+    if (approvalDetails !== undefined) dataToUpdate.approvalDetails = approvalDetails;
 
     // If status moves to COMPLETED or DELIVERED, record completedAt / deliveredAt 
     if (status === JobCardStatus.COMPLETED && !existingJobCard.completedAt) {

@@ -354,6 +354,7 @@ model JobCard {
 
   estimatedTotal   Decimal @default(0.0) @db.Decimal(10, 2)
   approvedEstimate Decimal? @db.Decimal(10, 2)
+  approvalDetails  Json?
   
   inspectionDetails Json?
   deliveryDetails   Json?

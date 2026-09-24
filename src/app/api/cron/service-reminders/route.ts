@@ -47,24 +47,23 @@ export async function GET(req: NextRequest) {
     const newlyCreated = [];
 
     for (const vehicle of vehiclesDue) {
-      // Avoid spam: If we already reminded them in the last 14 days, skip
-      const lastReminder = vehicle.serviceReminders[0];
-      if (lastReminder) {
-        const daysSinceLastReminder = (today.getTime() - lastReminder.createdAt.getTime()) / (1000 * 3600 * 24);
-        if (daysSinceLastReminder < 14) {
-          continue;
-        }
-      }
-
       const daysUntil = vehicle.nextServiceDate 
         ? Math.ceil((vehicle.nextServiceDate.getTime() - today.getTime()) / (1000 * 3600 * 24))
         : 0;
 
+      // Formalize reminder cycles
+      let cycle = "";
+      if (daysUntil === 7) cycle = "SERVICE_DUE_7_DAYS";
+      else if (daysUntil === 0) cycle = "SERVICE_DUE_TODAY";
+      else if (daysUntil === -7) cycle = "SERVICE_OVERDUE_7_DAYS";
+      else if (daysUntil === -30) cycle = "SERVICE_OVERDUE_30_DAYS";
+      else continue; // Only trigger on exact cycle boundaries
+
       let statusStr = daysUntil < 0 ? "OVERDUE" : (daysUntil === 0 ? "TODAY" : "UPCOMING");
       
-      const message = `Hello ${vehicle.customer.name}, your ${vehicle.make || ''} ${vehicle.model || ''} (${vehicle.licensePlate}) is due for service ${statusStr === 'OVERDUE' ? 'since ' + Math.abs(daysUntil) + ' days ago' : 'in ' + daysUntil + ' days'}. Please visit ${vehicle.tenant.businessName} or call to book an appointment!`;
+      const message = `Hello ${vehicle.customer.name}, your ${vehicle.make || ''} ${vehicle.model || ''} (${vehicle.licensePlate}) is due for service ${statusStr === 'OVERDUE' ? 'since ' + Math.abs(daysUntil) + ' days ago' : (daysUntil === 0 ? 'today' : 'in ' + daysUntil + ' days')}. Please visit ${vehicle.tenant.businessName} or call to book an appointment!`;
       
-      const idempotencyKey = `${vehicle.id}-${today.toISOString().split('T')[0]}`;
+      const idempotencyKey = `${vehicle.tenantId}-${vehicle.id}-${cycle}`;
 
       try {
         // Persist to database atomically

@@ -15,6 +15,7 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
   const [approvedEstimate, setApprovedEstimate] = useState<string>('');
   
   // New structured payload states
+  const [approvalDetails, setApprovalDetails] = useState({ approvedBy: '', method: 'IN_PERSON', signature: '' });
   const [inspectionDetails, setInspectionDetails] = useState({ brakeTest: false, roadTest: false, finalChecklist: false, mechanicSignature: '' });
   const [deliveryDetails, setDeliveryDetails] = useState({ deliveredTo: '', customerSignature: '', paymentConfirmed: false });
   
@@ -30,6 +31,9 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
         setJobCard(data);
         setApprovedEstimate(data.approvedEstimate?.toString() || data.estimatedTotal?.toString() || '0');
         
+        if (data.approvalDetails) {
+          setApprovalDetails(data.approvalDetails);
+        }
         if (data.inspectionDetails) {
           setInspectionDetails(data.inspectionDetails);
         }
@@ -50,6 +54,10 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
       const payload: any = { status: newStatus };
       if (newStatus === 'IN_PROGRESS' || newStatus === 'WORK_IN_PROGRESS') {
         payload.approvedEstimate = Number(approvedEstimate);
+        payload.approvalDetails = {
+          ...approvalDetails,
+          timestamp: new Date().toISOString()
+        };
       }
       if (newStatus === 'READY_FOR_DELIVERY') {
         payload.inspectionDetails = inspectionDetails;
@@ -150,21 +158,8 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
             
             <div className="space-y-4">
               {jobCard.status === 'ESTIMATION' || jobCard.status === 'APPROVAL_PENDING' || jobCard.status === 'OPEN' ? (
-                <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
-                  <label className="block text-xs font-bold text-orange-800 mb-1">Customer Approved Estimate (₹)</label>
-                  <input 
-                    type="number" 
-                    value={approvedEstimate}
-                    onChange={(e) => setApprovedEstimate(e.target.value)}
-                    className="w-full rounded-lg border-orange-200 px-3 py-2 text-sm focus:ring-orange-500 focus:border-orange-500"
-                  />
-                  <button 
-                    onClick={() => handleStatusUpdate('WORK_IN_PROGRESS')}
-                    disabled={updating}
-                    className="w-full mt-3 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-lg text-sm transition-colors"
-                  >
-                    {updating ? 'Updating...' : 'Approve & Start Work'}
-                  </button>
+                <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 space-y-3">
+                  <div className="space-y-1"><label className="block text-xs font-bold text-orange-800">Customer Approved Estimate</label><input type="number" value={approvedEstimate} onChange={(e) => setApprovedEstimate(e.target.value)} className="w-full rounded-lg border-orange-200 px-3 py-2 text-sm focus:ring-orange-500 focus:border-orange-500" /></div><div className="space-y-1 mt-2"><label className="block text-xs font-bold text-orange-800">Approved By</label><input type="text" value={approvalDetails.approvedBy} onChange={(e) => setApprovalDetails({...approvalDetails, approvedBy: e.target.value})} className="w-full rounded-lg border-orange-200 px-3 py-2 text-sm focus:ring-orange-500 focus:border-orange-500" placeholder="e.g. Customer Name / Son" /></div><div className="space-y-1 mt-2"><label className="block text-xs font-bold text-orange-800">Approval Method</label><select value={approvalDetails.method} onChange={(e) => setApprovalDetails({...approvalDetails, method: e.target.value})} className="w-full rounded-lg border-orange-200 px-3 py-2 text-sm focus:ring-orange-500 focus:border-orange-500"><option value="IN_PERSON">In Person Signature</option><option value="WHATSAPP">WhatsApp Confirmation</option><option value="PHONE">Phone Call</option></select></div><button onClick={() => handleStatusUpdate('WORK_IN_PROGRESS')} disabled={updating} className="w-full mt-3 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-lg text-sm transition-colors">{updating ? 'Updating...' : 'Approve & Start Work'}</button>
                 </div>
               ) : null}
 
@@ -254,3 +249,4 @@ export default function JobCardDetail({ params }: { params: { id: string } }) {
     </div>
   );
 }
+
