@@ -200,7 +200,12 @@ export default function EWayBillsRegisterPage() {
                 records.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/60 transition text-slate-800">
                     <td className="p-3.5 font-mono font-bold text-indigo-600">
-                      {row.ewayBillNo}
+                      <div>{row.ewayBillNo}</div>
+                      {row.isSimulated && (
+                        <div className="text-[9px] font-sans font-bold uppercase text-amber-600 bg-amber-50 px-1 py-0.5 rounded w-max mt-0.5 border border-amber-200">
+                          Simulated
+                        </div>
+                      )}
                     </td>
                     <td className="p-3.5">
                       <div className="font-bold text-slate-900">{row.docNumber}</div>

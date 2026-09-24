@@ -167,6 +167,7 @@ export default function EInvoiceModal({
   const ackDate = data?.invoice?.ackDate || invoice.ackDate;
   const cancelEligibility = data?.cancelEligibility;
   const isB2B = Boolean(invoice.customerGstin && invoice.customerGstin.length === 15);
+  const isSimulated = data?.invoice?.einvoiceIsSimulated ?? invoice.einvoiceIsSimulated ?? false;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
@@ -271,6 +272,15 @@ export default function EInvoiceModal({
           {/* ACTIVE IRN STATE */}
           {currentStatus === 'GENERATED' && irn && (
             <div className="space-y-5 animate-in fade-in">
+              {isSimulated && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start space-x-3 text-amber-900 text-sm">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Simulated E-Invoice</p>
+                    <p className="text-amber-800 mt-0.5">This E-Invoice payload was generated locally for offline upload. It has NOT been registered with the official IRP portal.</p>
+                  </div>
+                </div>
+              )}
               <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-emerald-900 uppercase tracking-wider">
