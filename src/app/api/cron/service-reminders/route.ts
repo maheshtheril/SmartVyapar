@@ -6,20 +6,25 @@ export const dynamic = "force-dynamic";
 // This endpoint should be triggered by a Vercel Cron Job (e.g., daily at 9:00 AM)
 export async function GET(req: NextRequest) {
   try {
-    // Add Vercel Cron auth check here in production
-    // if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    // Vercel Cron auth check
+    if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const today = new Date();
+    // Get current time components in India (Asia/Kolkata)
+    const now = new Date();
+    const istTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    
+    // We want the start of the current IST day (00:00:00), expressed as a UTC Date for Prisma.
+    // IST is UTC+05:30. So 00:00:00 IST is the previous day's 18:30:00 UTC.
+    const today = new Date(Date.UTC(istTime.getFullYear(), istTime.getMonth(), istTime.getDate(), -5, -30, 0, 0));
     
     // Look ahead 7 days for upcoming services
-    const upcomingDate = new Date();
+    const upcomingDate = new Date(today);
     upcomingDate.setDate(today.getDate() + 7);
 
-    // 1. Find vehicles whose nextServiceDate is between today and 7 days from now,
-    // OR vehicles that are already overdue (up to 30 days past due) but haven't been reminded recently
-    const pastDate = new Date();
+    // Look back up to 30 days past due
+    const pastDate = new Date(today);
     pastDate.setDate(today.getDate() - 30);
 
     const vehiclesDue = await prisma.customerVehicle.findMany({
@@ -28,40 +33,57 @@ export async function GET(req: NextRequest) {
           gte: pastDate,
           lte: upcomingDate,
         },
-        // In a full implementation, you'd check a 'ReminderLog' table to ensure 
-        // you don't spam the customer every day.
       },
       include: {
         customer: true,
-        tenant: true
+        tenant: true,
+        serviceReminders: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
       }
     });
 
-    const generatedReminders = vehiclesDue.map(vehicle => {
+    const newlyCreated = [];
+
+    for (const vehicle of vehiclesDue) {
+      // Avoid spam: If we already reminded them in the last 14 days, skip
+      const lastReminder = vehicle.serviceReminders[0];
+      if (lastReminder) {
+        const daysSinceLastReminder = (today.getTime() - lastReminder.createdAt.getTime()) / (1000 * 3600 * 24);
+        if (daysSinceLastReminder < 14) {
+          continue;
+        }
+      }
+
       const daysUntil = vehicle.nextServiceDate 
         ? Math.ceil((vehicle.nextServiceDate.getTime() - today.getTime()) / (1000 * 3600 * 24))
         : 0;
 
-      let status = daysUntil < 0 ? "OVERDUE" : (daysUntil === 0 ? "TODAY" : "UPCOMING");
+      let statusStr = daysUntil < 0 ? "OVERDUE" : (daysUntil === 0 ? "TODAY" : "UPCOMING");
       
-      return {
-        vehicleId: vehicle.id,
-        licensePlate: vehicle.licensePlate,
-        customerId: vehicle.customer.id,
-        customerPhone: vehicle.customer.phone,
-        message: `Hello ${vehicle.customer.name}, your ${vehicle.make} ${vehicle.model} (${vehicle.licensePlate}) is due for service ${status === 'OVERDUE' ? 'since ' + Math.abs(daysUntil) + ' days ago' : 'in ' + daysUntil + ' days'}. Please visit ${vehicle.tenant.businessName} or call to book an appointment!`,
-        scheduledDate: vehicle.nextServiceDate,
-        status
-      };
-    });
+      const message = `Hello ${vehicle.customer.name}, your ${vehicle.make || ''} ${vehicle.model || ''} (${vehicle.licensePlate}) is due for service ${statusStr === 'OVERDUE' ? 'since ' + Math.abs(daysUntil) + ' days ago' : 'in ' + daysUntil + ' days'}. Please visit ${vehicle.tenant.businessName} or call to book an appointment!`;
 
-    // In a real implementation, we would write these to a `ServiceReminder` table
-    // and push them to a WhatsApp/SMS queue like Twilio/Meta API.
-    
+      // Persist to database
+      const reminder = await prisma.serviceReminder.create({
+        data: {
+          tenantId: vehicle.tenantId,
+          customerId: vehicle.customerId,
+          vehicleId: vehicle.id,
+          reminderDate: today,
+          reminderType: "AUTOMATED_SMS",
+          message,
+          status: "PENDING"
+        }
+      });
+
+      newlyCreated.push(reminder);
+    }
+
     return NextResponse.json({ 
       success: true, 
-      processed: generatedReminders.length,
-      reminders: generatedReminders
+      processed: newlyCreated.length,
+      reminders: newlyCreated
     });
 
   } catch (error: any) {

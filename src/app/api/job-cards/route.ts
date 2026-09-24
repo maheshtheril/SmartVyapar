@@ -88,64 +88,8 @@ export async function POST(request: NextRequest) {
         include: { items: true, vehicle: true }
       });
 
-      // Deduct inventory for parts if items were provided
-      if (items && items.length > 0) {
-        for (const item of items) {
-          if (item.itemType === 'PART' && item.productId) {
-            // Tenant validation for product
-            const product = await tx.product.findFirst({ where: { id: item.productId, tenantId } });
-            if (!product) throw new Error(`Product ${item.productId} not found or access denied`);
-
-            // Deduct from product overall stock
-            const updatedProduct = await tx.product.update({
-              where: { id: item.productId },
-              data: { currentStock: { decrement: Number(item.quantity) } }
-            });
-
-            if (Number(updatedProduct.currentStock) < 0) {
-              throw new Error(`Insufficient stock for ${product.name}`);
-            }
-
-            // Deduct from batch if specified
-            if (item.batchId) {
-              const batch = await tx.batch.findFirst({ where: { id: item.batchId, tenantId, productId: item.productId } });
-              if (!batch) throw new Error(`Batch ${item.batchId} not found or access denied`);
-
-              const updatedBatch = await tx.batch.update({
-                where: { id: item.batchId },
-                data: { currentStock: { decrement: Number(item.quantity) } }
-              });
-
-              if (Number(updatedBatch.currentStock) < 0) {
-                throw new Error(`Insufficient stock in batch ${batch.batchNumber} for ${product.name}`);
-              }
-            }
-
-            // Verify strict Sub-Ledger vs Main Ledger consistency
-            // (Only if the product tracks batches, we ensure SUM(batch.currentStock) == product.currentStock)
-            const allBatches = await tx.batch.findMany({ where: { productId: item.productId } });
-            if (allBatches.length > 0) {
-              const sumOfBatches = allBatches.reduce((acc, b) => acc + Number(b.currentStock), 0);
-              // Adding an epsilon/rounding protection just in case decimals differ slightly
-              if (Math.abs(sumOfBatches - Number(updatedProduct.currentStock)) > 0.01) {
-                 throw new Error(`Inventory corruption detected: Product ${product.name} total stock (${updatedProduct.currentStock}) does not match the sum of its batches (${sumOfBatches}).`);
-              }
-            }
-
-            // Record StockLog for traceability
-            await tx.stockLog.create({
-              data: {
-                tenantId,
-                productId: item.productId,
-                type: StockLogType.CONSUMPTION_OUT,
-                changeQty: -Number(item.quantity),
-                referenceId: jobCardNumber,
-                note: `Consumed in Job Card ${jobCardNumber} for vehicle ${vehicle.licensePlate}`,
-              }
-            });
-          }
-        }
-      }
+      // Parts are reserved/estimated during creation, NOT consumed.
+      // Actual consumption happens when the job card moves to IN_PROGRESS or via direct part issuance.
 
       return jobCard;
     }, DEFAULT_TX_OPTIONS);

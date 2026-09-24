@@ -89,6 +89,55 @@ export async function PATCH(
         });
       }
 
+      // Consume inventory when moving to WORK_IN_PROGRESS
+      if (status === JobCardStatus.WORK_IN_PROGRESS && existingJobCard.status !== JobCardStatus.WORK_IN_PROGRESS) {
+        const fullJc = await tx.jobCard.findFirst({
+          where: { id: params.id },
+          include: { items: true }
+        });
+        
+        if (fullJc && fullJc.items) {
+          for (const item of fullJc.items) {
+            if (item.itemType === 'PART' && item.productId) {
+              const product = await tx.product.findFirst({ where: { id: item.productId, tenantId } });
+              if (!product) throw new Error(`Product ${item.productId} not found`);
+
+              const updatedProduct = await tx.product.update({
+                where: { id: item.productId },
+                data: { currentStock: { decrement: Number(item.quantity) } }
+              });
+
+              if (Number(updatedProduct.currentStock) < 0) {
+                throw new Error(`Insufficient stock for ${product.name}`);
+              }
+
+              if (item.batchId) {
+                const batch = await tx.batch.findFirst({ where: { id: item.batchId, tenantId, productId: item.productId } });
+                if (batch) {
+                  const updatedBatch = await tx.batch.update({
+                    where: { id: item.batchId },
+                    data: { currentStock: { decrement: Number(item.quantity) } }
+                  });
+                  if (Number(updatedBatch.currentStock) < 0) throw new Error(`Insufficient stock in batch`);
+                }
+              }
+
+              // Record consumption
+              await tx.stockLog.create({
+                data: {
+                  tenantId,
+                  productId: item.productId,
+                  type: 'CONSUMPTION_OUT',
+                  changeQty: -Number(item.quantity),
+                  referenceId: jc.jobCardNumber,
+                  note: `Consumed on Job Card approval`,
+                }
+              });
+            }
+          }
+        }
+      }
+
       return jc;
     });
 
