@@ -28,6 +28,7 @@ export default function DashboardPage() {
     totalUdhar: 0,
     netGstOutput: 0,
     lowStockCount: 0,
+    totalProductsCount: 0,
   });
 
   const loadDashboardData = async () => {
@@ -172,7 +173,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">Stock & Products</div>
-            <div className="text-[11px] text-slate-500">{products.length} live SKUs in Neon DB</div>
+            <div className="text-[11px] text-slate-500">{metrics.totalProductsCount || 0} live SKUs in Neon DB</div>
           </div>
         </Link>
 
