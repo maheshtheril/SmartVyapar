@@ -1,17 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireSession(request);
 
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get("customerId");
     const licensePlate = searchParams.get("licensePlate");
 
-    const where: any = { tenantId: user.tenantId };
+    const where: any = { tenantId: session.tenantId };
     if (customerId) where.customerId = customerId;
     if (licensePlate) where.licensePlate = { contains: licensePlate, mode: "insensitive" };
 
@@ -27,10 +26,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireSession(request);
 
     const body = await request.json();
     const { customerId, licensePlate, make, model, year, vin } = body;
@@ -41,7 +39,7 @@ export async function POST(request: Request) {
 
     const vehicle = await prisma.customerVehicle.create({
       data: {
-        tenantId: user.tenantId,
+        tenantId: session.tenantId,
         customerId,
         licensePlate: licensePlate.toUpperCase().replace(/[\s\-_]/g, ""),
         make,

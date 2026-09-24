@@ -1,17 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireSession(request);
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const vehicleId = searchParams.get("vehicleId");
 
-    const where: any = { tenantId: user.tenantId };
+    const where: any = { tenantId: session.tenantId };
     if (status) where.status = status;
     if (vehicleId) where.vehicleId = vehicleId;
 
@@ -30,10 +29,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireSession(request);
 
     const body = await request.json();
     const { vehicleId, customerId, odometerReading, customerConcerns, mechanicNotes, assignedMechanic, items } = body;
@@ -43,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     // Generate unique job card number
-    const count = await prisma.jobCard.count({ where: { tenantId: user.tenantId } });
+    const count = await prisma.jobCard.count({ where: { tenantId: session.tenantId } });
     const jobCardNumber = `JC-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
 
     // Calculate total
@@ -52,7 +50,7 @@ export async function POST(request: Request) {
     const result = await prisma.$transaction(async (tx) => {
       const jobCard = await tx.jobCard.create({
         data: {
-          tenantId: user.tenantId,
+          tenantId: session.tenantId,
           jobCardNumber,
           vehicleId,
           customerId,

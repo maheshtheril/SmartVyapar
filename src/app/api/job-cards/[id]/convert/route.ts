@@ -1,15 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { generateDocSeries } from "@/lib/gstr1";
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireSession(request);
 
     const jobCard = await prisma.jobCard.findUnique({
-      where: { id: params.id, tenantId: user.tenantId },
+      where: { id: params.id, tenantId: session.tenantId },
       include: { items: true, vehicle: { include: { customer: true } } }
     });
 
@@ -24,7 +23,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const { paymentMethod, amountPaid } = await request.json();
 
     // Generate Invoice Number
-    const count = await prisma.invoice.count({ where: { tenantId: user.tenantId } });
+    const count = await prisma.invoice.count({ where: { tenantId: session.tenantId } });
     const invoiceNumber = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
 
     // Calculate totals (Simplification: assuming 18% IGST or CGST/SGST total tax for parts/labour. 
@@ -42,7 +41,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       // 1. Create the Invoice
       const invoice = await tx.invoice.create({
         data: {
-          tenantId: user.tenantId,
+          tenantId: session.tenantId,
           invoiceNumber,
           customerId: jobCard.customerId,
           customerName: jobCard.vehicle.customer.name,
