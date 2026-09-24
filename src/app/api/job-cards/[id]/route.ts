@@ -122,6 +122,15 @@ export async function PATCH(
                 }
               }
 
+              // Verify strict Sub-Ledger vs Main Ledger consistency (tenant scoped)
+              const allBatches = await tx.batch.findMany({ where: { tenantId, productId: item.productId } });
+              if (allBatches.length > 0) {
+                const sumOfBatches = allBatches.reduce((acc, b) => acc + Number(b.currentStock), 0);
+                if (Math.abs(sumOfBatches - Number(updatedProduct.currentStock)) > 0.01) {
+                   throw new Error(`Inventory corruption detected: Product ${product.name} total stock (${updatedProduct.currentStock}) does not match the sum of its batches (${sumOfBatches}).`);
+                }
+              }
+
               // Record consumption
               await tx.stockLog.create({
                 data: {

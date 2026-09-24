@@ -203,6 +203,10 @@ model Product {
   @@unique([tenantId, barcode])
   @@index([tenantId])
   @@index([tenantId, barcode])
+  @@index([tenantId, sku])
+  @@index([tenantId, partNumber])
+  @@index([tenantId, oemNumber])
+  @@index([tenantId, name])
   @@map("products")
 }
 
