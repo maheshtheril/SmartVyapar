@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const updated = await prisma.tenant.updateMany({
       where: {
         subscriptionStatus: "ACTIVE",
-        subscriptionValidUntil: { lt: now }
+        planExpiresAt: { lt: now }
       },
       data: {
         subscriptionStatus: "EXPIRED"
