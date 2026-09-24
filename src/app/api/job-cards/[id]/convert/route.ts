@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const { paymentMethod, amountPaid } = await request.json();
 
-    const isInterState = jobCard.vehicle.customer.stateCode && jobCard.vehicle.customer.stateCode !== jobCard.tenant.stateCode;
+    const isInterState = Boolean(jobCard.vehicle.customer.stateCode && jobCard.vehicle.customer.stateCode !== jobCard.tenant.stateCode);
 
     let subtotal = 0;
     let totalTaxAmount = 0;
