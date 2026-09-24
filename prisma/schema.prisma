@@ -406,6 +406,9 @@ model JobCardItem {
   // For Parts (Linked to Inventory)
   productId String?
   batchId   String?
+  
+  // For Labour
+  labourServiceId String?
 
   // Shared / General
   name      String
@@ -423,6 +426,7 @@ model JobCardItem {
 
   jobCard JobCard  @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  labourService LabourService? @relation(fields: [labourServiceId], references: [id], onDelete: SetNull)
   batch   Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
 
   @@index([jobCardId])
@@ -1430,3 +1434,6 @@ model ServiceReminder {
   @@index([tenantId, status])
   @@index([tenantId, reminderDate])
 }
+
+
+
