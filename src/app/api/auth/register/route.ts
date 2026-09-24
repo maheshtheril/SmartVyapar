@@ -111,6 +111,10 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      // Seed the default Chart of Accounts for the new tenant
+      const { seedDefaultAccounts } = await import("@/lib/default-accounts");
+      await seedDefaultAccounts(tx, createdTenant.id);
+
       return { tenant: createdTenant, user: createdUser };
     }, DEFAULT_TX_OPTIONS);
 

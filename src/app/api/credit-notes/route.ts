@@ -295,6 +295,10 @@ export async function POST(req: NextRequest) {
         tx
       );
 
+      // 7. Automated Double-Entry Accounting
+      const { postCreditNoteJournalEntry } = await import("@/lib/accounting-mapper");
+      await postCreditNoteJournalEntry(tx, tenantId, createdNote);
+
       return createdNote;
     }, DEFAULT_TX_OPTIONS);
 

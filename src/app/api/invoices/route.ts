@@ -409,6 +409,10 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // 7. Automated Double-Entry Accounting
+      const { postInvoiceJournalEntry } = await import("@/lib/accounting-mapper");
+      await postInvoiceJournalEntry(tx, tenantId, invoice);
+
       return {
         ...invoice,
         customerLoyalty: {
