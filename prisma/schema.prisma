@@ -147,7 +147,7 @@ model Product {
   name                String
   sku                 String?
   barcode             String?
-  hsnCode             String      @default("9983")
+  hsnCode             String
   category            String?
 
   // Automotive specifics

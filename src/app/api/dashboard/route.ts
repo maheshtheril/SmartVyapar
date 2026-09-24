@@ -20,31 +20,31 @@ export async function GET(req: NextRequest) {
       Date.UTC(istTime.getFullYear(), istTime.getMonth(), istTime.getDate(), -5, -30, 0, 0)
     );
 
-    const todayInvoices = await prisma.invoice.findMany({
+    const todayAgg = await prisma.invoice.aggregate({
       where: {
         tenantId,
         invoiceDate: { gte: startOfToday }
       },
-      select: {
+      _sum: {
         totalAmount: true,
         totalTax: true
       }
     });
 
-    const todaySales = todayInvoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
-    const netGstOutput = todayInvoices.reduce((sum, inv) => sum + Number(inv.totalTax), 0);
+    const todaySales = Number(todayAgg._sum.totalAmount || 0);
+    const netGstOutput = Number(todayAgg._sum.totalTax || 0);
 
     // 2. Get Total Udhar (Unpaid/Partial)
-    const pendingInvoices = await prisma.invoice.findMany({
+    const udharAgg = await prisma.invoice.aggregate({
       where: {
         tenantId,
         dueAmount: { gt: 0 }
       },
-      select: {
+      _sum: {
         dueAmount: true
       }
     });
-    const totalUdhar = pendingInvoices.reduce((sum, inv) => sum + Number(inv.dueAmount), 0);
+    const totalUdhar = Number(udharAgg._sum.dueAmount || 0);
 
     // 3. Get Low Stock Items and Total Products (optimized for 100k+ products via SQL)
     const totalProductsCount = await prisma.product.count({
