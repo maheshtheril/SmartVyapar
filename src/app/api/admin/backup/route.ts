@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Return the binary archive as a file download, with metadata in headers
-    return new NextResponse(archiveBuffer, {
+    return new NextResponse(archiveBuffer as any, {
       status: 200,
       headers: {
         "Content-Type": "application/octet-stream",
