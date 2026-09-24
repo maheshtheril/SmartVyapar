@@ -45,7 +45,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }
 
       // Generate atomic invoice number
-      const invoiceNumber = await generateNextInvoiceNumber(tx, session.tenantId, "INV");
+      const seqResult = await generateNextInvoiceNumber(tx, { tenantId: session.tenantId, prefix: "INV" });
+      const invoiceNumber = seqResult.invoiceNumber;
 
       // 1. Create the Invoice
       const invoice = await tx.invoice.create({
