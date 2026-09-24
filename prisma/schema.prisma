@@ -393,7 +393,8 @@ model LabourService {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobCardItems JobCardItem[]
 
   @@unique([tenantId, name])
 }
@@ -406,7 +407,7 @@ model JobCardItem {
   // For Parts (Linked to Inventory)
   productId String?
   batchId   String?
-  
+
   // For Labour
   labourServiceId String?
 
@@ -424,10 +425,26 @@ model JobCardItem {
 
   createdAt DateTime @default(now())
 
-  jobCard JobCard  @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  labourService LabourService? @relation(fields: [labourServiceId], references: [id], onDelete: SetNull)
-  batch   Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  jobCard                JobCard               @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  product                Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
+  labourService          LabourService?        @relation(fields: [labourServiceId], references: [id], onDelete: SetNull)
+  batch                  Batch?                @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  InvoiceSequence        InvoiceSequence?      @relation(fields: [invoiceSequenceId], references: [id])
+  invoiceSequenceId      String?
+  VoucherSequence        VoucherSequence?      @relation(fields: [voucherSequenceId], references: [id])
+  voucherSequenceId      String?
+  AuditLog               AuditLog?             @relation(fields: [auditLogId], references: [id])
+  auditLogId             String?
+  PrintTemplate          PrintTemplate?        @relation(fields: [printTemplateId], references: [id])
+  printTemplateId        String?
+  SubscriptionPayment    SubscriptionPayment?  @relation(fields: [subscriptionPaymentId], references: [id])
+  subscriptionPaymentId  String?
+  Gstr2bReconciliation   Gstr2bReconciliation? @relation(fields: [gstr2bReconciliationId], references: [id])
+  gstr2bReconciliationId String?
+  Gstr3bReturn           Gstr3bReturn?         @relation(fields: [gstr3bReturnId], references: [id])
+  gstr3bReturnId         String?
+  EWayBillRecord         EWayBillRecord?       @relation(fields: [eWayBillRecordId], references: [id])
+  eWayBillRecordId       String?
 
   @@index([jobCardId])
   @@map("job_card_items")
@@ -866,7 +883,8 @@ model InvoiceSequence {
   lastNumber    Int      @default(0)
   updatedAt     DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobCardItems JobCardItem[]
 
   @@unique([tenantId, financialYear, prefix])
   @@map("invoice_sequences")
@@ -879,7 +897,8 @@ model VoucherSequence {
   prefix        String
   lastNumber    Int    @default(0)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobCardItems JobCardItem[]
 
   @@unique([tenantId, financialYear, prefix])
   @@map("voucher_sequences")
@@ -995,8 +1014,9 @@ model AuditLog {
   userAgent  String?
   createdAt  DateTime    @default(now())
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobCardItems JobCardItem[]
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
   @@index([tenantId, entityType, entityId])
@@ -1020,7 +1040,8 @@ model PrintTemplate {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobCardItems JobCardItem[]
 
   @@unique([tenantId, name, docType])
   @@index([tenantId, docType])
@@ -1062,7 +1083,8 @@ model SubscriptionPayment {
   status       String           @default("PAID") // "PAID", "FAILED", "PENDING"
   createdAt    DateTime         @default(now())
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobCardItems JobCardItem[]
 
   @@index([tenantId])
   @@index([orderId])
@@ -1239,7 +1261,8 @@ model Gstr2bReconciliation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobCardItems JobCardItem[]
 
   @@unique([tenantId, returnPeriod])
   @@index([tenantId, uploadedAt])
@@ -1354,7 +1377,8 @@ model Gstr3bReturn {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobCardItems JobCardItem[]
 
   @@unique([tenantId, returnPeriod])
   @@index([tenantId, createdAt])
@@ -1390,7 +1414,8 @@ model EWayBillRecord {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobCardItems JobCardItem[]
 
   @@unique([tenantId, ewayBillNo])
   @@index([tenantId, ewayBillDate])
@@ -1434,6 +1459,3 @@ model ServiceReminder {
   @@index([tenantId, status])
   @@index([tenantId, reminderDate])
 }
-
-
-
