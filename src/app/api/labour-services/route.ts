@@ -1,14 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/auth';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const auth = await requireSession();
-    if (!auth?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await requireSession(request);
 
     const labourServices = await prisma.labourService.findMany({
-      where: { tenantId: auth.user.tenantId, isActive: true },
+      where: { tenantId: session.tenantId, isActive: true },
       orderBy: { name: 'asc' }
     });
 
@@ -18,4 +17,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to fetch labour services' }, { status: 500 });
   }
 }
-
