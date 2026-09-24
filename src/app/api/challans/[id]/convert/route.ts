@@ -98,7 +98,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             create: challan.items.map((item) => ({
               productId: item.productId || "", // fallback
               productName: item.productName,
-              hsnCode: item.hsnCode,
+              hsnCode: item.hsnCode || "",
               unitSold: item.unit,
               quantity: item.quantity,
               conversionFactor: 1.0,
