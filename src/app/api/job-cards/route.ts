@@ -52,8 +52,28 @@ export async function POST(request: NextRequest) {
     if (!customer) throw new Error("Customer not found or access denied");
     if (!vehicle) throw new Error("Vehicle not found or access denied");
 
-    // Calculate total
-    const estimatedTotal = items?.reduce((acc: number, item: any) => acc + (Number(item.quantity) * Number(item.unitPrice)), 0) || 0;
+    // Calculate total and validate inputs (P0)
+    let estimatedTotal = 0;
+    if (items && items.length > 0) {
+      for (const item of items) {
+        const qty = Number(item.quantity);
+        const price = Number(item.unitPrice);
+        
+        if (!Number.isFinite(qty) || qty <= 0) {
+          return NextResponse.json({ error: `Invalid quantity ${item.quantity}. Must be > 0.` }, { status: 400 });
+        }
+        if (!Number.isFinite(price) || price < 0) {
+          return NextResponse.json({ error: `Invalid unit price ${item.unitPrice}. Cannot be negative.` }, { status: 400 });
+        }
+        
+        const type = item.itemType || 'PART';
+        if (type === 'PART' && !item.productId) {
+          return NextResponse.json({ error: `Product ID is required for PART items.` }, { status: 400 });
+        }
+
+        estimatedTotal += (qty * price);
+      }
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       // Generate atomic unique job card number
@@ -113,3 +133,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

@@ -72,9 +72,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const totalAmount = subtotal + totalTaxAmount;
     
     // Default to unpaid if not fully provided
-    const paid = amountPaid ? Number(amountPaid) : 0;
-    const dueAmount = totalAmount - paid;
-    const paymentStatus = dueAmount <= 0 ? "PAID" : dueAmount < totalAmount ? "PARTIAL" : "UNPAID";
+      const paid = amountPaid ? Number(amountPaid) : 0;
+      
+      if (!Number.isFinite(paid) || paid < 0) {
+        throw new Error("Paid amount cannot be negative");
+      }
+      if (paid > totalAmount) {
+        throw new Error("Paid amount cannot exceed the total invoice amount");
+      }
+      
+      const dueAmount = totalAmount - paid;
+      const paymentStatus = dueAmount <= 0 ? "PAID" : dueAmount < totalAmount ? "PARTIAL" : "UNPAID";
 
     const result = await prisma.$transaction(async (tx) => {
       // Conditionally lock the job card
@@ -101,6 +109,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           customerPhone: jobCard.vehicle.customer.phone || "0000000000",
           customerGstin: jobCard.vehicle.customer.gstin,
           customerStateCode: jobCard.vehicle.customer.stateCode || "32",
+            isInterState,
           subtotal,
           cgstAmount: isInterState ? 0 : totalTaxAmount / 2,
           sgstAmount: isInterState ? 0 : totalTaxAmount / 2,
@@ -144,3 +153,5 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
