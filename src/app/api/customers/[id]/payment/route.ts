@@ -111,6 +111,10 @@ export async function POST(
         },
         tx
       );
+
+      // Automated Double-Entry Accounting
+      const { postCustomerPaymentJournalEntry } = await import("@/lib/accounting-mapper");
+      await postCustomerPaymentJournalEntry(tx, tenantId, customerId, paymentToApply, mode);
     }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({

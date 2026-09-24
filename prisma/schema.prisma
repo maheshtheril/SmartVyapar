@@ -97,6 +97,7 @@ model Tenant {
   printTemplates        PrintTemplate[]
   subscriptionPayments  SubscriptionPayment[]
   warehouses            Warehouse[]
+  voucherSequences      VoucherSequence[]
   stockTransfers        StockTransfer[]
   journalEntries        JournalEntry[]
   purchaseOrders        PurchaseOrder[]
@@ -398,6 +399,10 @@ model PurchaseBill {
   scannedFileUrl    String?
   aiConfidenceScore Decimal? @db.Decimal(4, 2) // e.g. 0.95 (95% accuracy)
   isConfirmed       Boolean  @default(false) // True when user confirms AI extraction
+  
+  paymentStatus     PaymentStatus @default(UNPAID)
+  paidAmount        Decimal  @default(0.0) @db.Decimal(10, 2)
+  dueAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -684,6 +689,19 @@ model InvoiceSequence {
 
   @@unique([tenantId, financialYear, prefix])
   @@map("invoice_sequences")
+}
+
+model VoucherSequence {
+  id            String   @id @default(uuid())
+  tenantId      String
+  financialYear String 
+  prefix        String   
+  lastNumber    Int      @default(0)
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, financialYear, prefix])
+  @@map("voucher_sequences")
 }
 
 // ----------------------------------------------------

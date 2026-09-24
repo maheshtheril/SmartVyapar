@@ -29,22 +29,35 @@ export function getVoucherPrefix(type: VoucherType | string): string {
  */
 export async function generateVoucherNumber(
   tenantId: string,
-  voucherType: VoucherType
+  voucherType: VoucherType,
+  tx?: any
 ): Promise<string> {
   const year = new Date().getFullYear();
+  const financialYear = String(year); // Or map to fiscal year if needed
   const prefix = getVoucherPrefix(voucherType);
 
-  const count = await prisma.journalEntry.count({
+  const client = tx || prisma;
+
+  const sequence = await client.voucherSequence.upsert({
     where: {
-      tenantId,
-      voucherType,
-      voucherNumber: {
-        startsWith: `${prefix}-${year}-`,
-      },
+      tenantId_financialYear_prefix: {
+        tenantId,
+        financialYear,
+        prefix,
+      }
     },
+    update: {
+      lastNumber: { increment: 1 }
+    },
+    create: {
+      tenantId,
+      financialYear,
+      prefix,
+      lastNumber: 1
+    }
   });
 
-  const nextSeq = String(count + 1).padStart(4, "0");
+  const nextSeq = String(sequence.lastNumber).padStart(4, "0");
   return `${prefix}-${year}-${nextSeq}`;
 }
 

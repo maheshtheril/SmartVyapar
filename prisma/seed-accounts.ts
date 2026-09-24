@@ -6,17 +6,19 @@ const STANDARD_ACCOUNTS = [
   // 1. ASSETS
   { code: "1000", name: "Cash in Hand (Counter Cash)", classification: AccountClassification.ASSET, balance: 15000 },
   { code: "1010", name: "Bank Current Account (ICICI/HDFC)", classification: AccountClassification.ASSET, balance: 85000 },
-  { code: "1050", name: "Accounts Receivable (Debtors / Customer Credit)", classification: AccountClassification.ASSET, balance: 2389.6 },
-  { code: "1200", name: "Merchandise Inventory Asset", classification: AccountClassification.ASSET, balance: 45000 },
+  { code: "1020", name: "UPI Settlement Account", classification: AccountClassification.ASSET, balance: 0 },
+  { code: "1030", name: "Card Settlement Account", classification: AccountClassification.ASSET, balance: 0 },
+  { code: "1200", name: "Accounts Receivable (Debtors / Customer Credit)", classification: AccountClassification.ASSET, balance: 2389.6 },
+  { code: "1300", name: "Merchandise Inventory Asset", classification: AccountClassification.ASSET, balance: 45000 },
   { code: "1410", name: "Input Tax Credit - CGST", classification: AccountClassification.ASSET, balance: 1200 },
   { code: "1420", name: "Input Tax Credit - SGST", classification: AccountClassification.ASSET, balance: 1200 },
   { code: "1430", name: "Input Tax Credit - IGST", classification: AccountClassification.ASSET, balance: 0 },
 
   // 2. LIABILITIES
   { code: "2000", name: "Accounts Payable (Creditors / Distributors)", classification: AccountClassification.LIABILITY, balance: 18000 },
-  { code: "2110", name: "Output CGST Payable (Government Dues)", classification: AccountClassification.LIABILITY, balance: 334.8 },
-  { code: "2120", name: "Output SGST Payable (Government Dues)", classification: AccountClassification.LIABILITY, balance: 334.8 },
-  { code: "2130", name: "Output IGST Payable (Government Dues)", classification: AccountClassification.LIABILITY, balance: 1485 },
+  { code: "2200", name: "Output CGST Payable (Government Dues)", classification: AccountClassification.LIABILITY, balance: 334.8 },
+  { code: "2201", name: "Output SGST Payable (Government Dues)", classification: AccountClassification.LIABILITY, balance: 334.8 },
+  { code: "2202", name: "Output IGST Payable (Government Dues)", classification: AccountClassification.LIABILITY, balance: 1485 },
 
   // 3. EQUITY
   { code: "3000", name: "Owner's Capital", classification: AccountClassification.EQUITY, balance: 100000 },

@@ -29,18 +29,8 @@ export async function postJournalEntry(
   // Generate voucher number inside the transaction manually or via utility
   // Note: generateVoucherNumber in accounting-voucher.ts uses prisma directly. 
   // We should do a raw count here to be transaction safe.
-  const year = new Date().getFullYear();
-  const prefix = voucherType === "PAYMENT" ? "PV" : voucherType === "RECEIPT" ? "RV" : voucherType === "CONTRA" ? "CV" : "JV";
-  
-  const count = await tx.journalEntry.count({
-    where: {
-      tenantId,
-      voucherType,
-      voucherNumber: { startsWith: `${prefix}-${year}-` },
-    },
-  });
-  const nextSeq = String(count + 1).padStart(4, "0");
-  const voucherNumber = `${prefix}-${year}-${nextSeq}`;
+  // Generate voucher number atomically inside the transaction using VoucherSequence
+  const voucherNumber = await generateVoucherNumber(tenantId, voucherType, tx);
 
   // 1. Create the Journal Entry header with lines
   const journalEntry = await tx.journalEntry.create({
@@ -115,7 +105,10 @@ export async function postInvoiceJournalEntry(tx: any, tenantId: string, invoice
   const due = Number(invoice.dueAmount || 0);
   
   if (paid > 0) {
-    const cashAccountCode = invoice.paymentMode === "CASH" ? "1000" : "1010"; // Bank for UPI/Card
+    let cashAccountCode = "1000"; // CASH
+    if (invoice.paymentMode === "UPI") cashAccountCode = "1020";
+    else if (invoice.paymentMode === "CARD") cashAccountCode = "1030";
+    else if (invoice.paymentMode === "BANK") cashAccountCode = "1010";
     lines.push({ accountCode: cashAccountCode, debit: paid, credit: 0, narration: "Payment received on invoice" });
   }
   
@@ -143,12 +136,23 @@ export async function postInvoiceJournalEntry(tx: any, tenantId: string, invoice
   let totalCost = 0;
   if (invoice.items) {
     for (const item of invoice.items) {
-      // Assuming item has baseQuantity and we can fetch costPrice, or we pass it in.
-      // If we don't have costPrice on invoiceItem directly, we'll fetch product.purchasePrice
-      const product = await tx.product.findUnique({ where: { id: item.productId }});
-      if (product) {
-        totalCost += Number(product.purchasePrice) * Number(item.baseQuantity);
+      let costPerBaseUnit = 0;
+      
+      if (item.batchId) {
+        const batch = await tx.batch.findUnique({ where: { id: item.batchId }});
+        if (batch) {
+          costPerBaseUnit = Number(batch.costPrice);
+        }
       }
+
+      if (!costPerBaseUnit) {
+        const product = await tx.product.findUnique({ where: { id: item.productId }});
+        if (product) {
+          costPerBaseUnit = Number(product.purchasePrice);
+        }
+      }
+
+      totalCost += costPerBaseUnit * Number(item.baseQuantity);
     }
   }
 
@@ -185,13 +189,18 @@ export async function postPurchaseJournalEntry(tx: any, tenantId: string, purcha
     lines.push({ accountCode: "1300", debit: subtotal, credit: 0, narration: `Inventory Purchase` });
   }
 
-  // Debit: Input GST (For simplicity, posting to same GST Payable accounts to reduce liability)
-  if (cgst > 0) lines.push({ accountCode: "2200", debit: cgst, credit: 0, narration: "Input CGST" });
-  if (sgst > 0) lines.push({ accountCode: "2201", debit: sgst, credit: 0, narration: "Input SGST" });
-  if (igst > 0) lines.push({ accountCode: "2202", debit: igst, credit: 0, narration: "Input IGST" });
+  // Debit: Input Tax Credit Asset (1410, 1420, 1430)
+  if (cgst > 0) lines.push({ accountCode: "1410", debit: cgst, credit: 0, narration: "Input CGST" });
+  if (sgst > 0) lines.push({ accountCode: "1420", debit: sgst, credit: 0, narration: "Input SGST" });
+  if (igst > 0) lines.push({ accountCode: "1430", debit: igst, credit: 0, narration: "Input IGST" });
 
   // Credit: Accounts Payable (2000) or Cash/Bank
-  const payAccount = purchaseBill.paymentTerms === "CREDIT" ? "2000" : (purchaseBill.paymentTerms === "CASH" ? "1000" : "1010");
+  let payAccount = "2000"; // CREDIT
+  if (purchaseBill.paymentTerms === "CASH") payAccount = "1000";
+  else if (purchaseBill.paymentTerms === "UPI") payAccount = "1020";
+  else if (purchaseBill.paymentTerms === "CARD") payAccount = "1030";
+  else if (purchaseBill.paymentTerms === "BANK") payAccount = "1010";
+
   if (total > 0) {
     lines.push({ accountCode: payAccount, debit: 0, credit: total, narration: "Purchase liability/payment" });
   }
@@ -230,7 +239,12 @@ export async function postCreditNoteJournalEntry(tx: any, tenantId: string, cred
   if (igst > 0) lines.push({ accountCode: "2202", debit: igst, credit: 0, narration: "Reversal of Output IGST" });
 
   // Credit: Accounts Receivable (1200) or Cash if refund was immediate
-  const payAccount = creditNote.refundMode === "CREDIT" ? "1200" : (creditNote.refundMode === "CASH" ? "1000" : "1010");
+  let payAccount = "1200"; // CREDIT
+  if (creditNote.refundMode === "CASH") payAccount = "1000";
+  else if (creditNote.refundMode === "UPI") payAccount = "1020";
+  else if (creditNote.refundMode === "CARD") payAccount = "1030";
+  else if (creditNote.refundMode === "BANK") payAccount = "1010";
+
   if (total > 0) {
     lines.push({ accountCode: payAccount, debit: 0, credit: total, narration: "Refund/Credit given to customer" });
   }
@@ -240,10 +254,23 @@ export async function postCreditNoteJournalEntry(tx: any, tenantId: string, cred
   if (creditNote.items) {
     for (const item of creditNote.items) {
       if (item.restock) {
-        const product = await tx.product.findUnique({ where: { id: item.productId }});
-        if (product) {
-          totalCost += Number(product.purchasePrice) * Number(item.baseQuantity);
+        let costPerBaseUnit = 0;
+        
+        if (item.batchId) {
+          const batch = await tx.batch.findUnique({ where: { id: item.batchId }});
+          if (batch) {
+            costPerBaseUnit = Number(batch.costPrice);
+          }
         }
+  
+        if (!costPerBaseUnit) {
+          const product = await tx.product.findUnique({ where: { id: item.productId }});
+          if (product) {
+            costPerBaseUnit = Number(product.purchasePrice);
+          }
+        }
+  
+        totalCost += costPerBaseUnit * Number(item.baseQuantity);
       }
     }
   }
@@ -260,6 +287,62 @@ export async function postCreditNoteJournalEntry(tx: any, tenantId: string, cred
     new Date(), 
     `Automated entry for Credit Note #${creditNote.creditNoteNumber}`,
     creditNote.creditNoteNumber,
+    lines
+  );
+}
+
+/**
+ * Automatically posts a Journal Entry for a Customer Khata Payment.
+ */
+export async function postCustomerPaymentJournalEntry(tx: any, tenantId: string, customerId: string, amount: number, mode: string) {
+  const lines: any[] = [];
+  
+  let cashAccountCode = "1000"; // CASH
+  if (mode === "UPI") cashAccountCode = "1020";
+  else if (mode === "CARD") cashAccountCode = "1030";
+  else if (mode === "BANK") cashAccountCode = "1010";
+
+  // Debit: Cash/Bank
+  lines.push({ accountCode: cashAccountCode, debit: amount, credit: 0, narration: "Customer payment received" });
+  
+  // Credit: Accounts Receivable (1200)
+  lines.push({ accountCode: "1200", debit: 0, credit: amount, narration: "Reduction in customer credit" });
+
+  await postJournalEntry(
+    tx, 
+    tenantId, 
+    "RECEIPT", 
+    new Date(), 
+    `Automated receipt for Customer Payment`,
+    null,
+    lines
+  );
+}
+
+/**
+ * Automatically posts a Journal Entry for a Supplier Payment.
+ */
+export async function postSupplierPaymentJournalEntry(tx: any, tenantId: string, supplierName: string, amount: number, mode: string) {
+  const lines: any[] = [];
+  
+  let cashAccountCode = "1000"; // CASH
+  if (mode === "UPI") cashAccountCode = "1020";
+  else if (mode === "CARD") cashAccountCode = "1030";
+  else if (mode === "BANK") cashAccountCode = "1010";
+
+  // Debit: Accounts Payable (2000)
+  lines.push({ accountCode: "2000", debit: amount, credit: 0, narration: `Supplier payment to ${supplierName}` });
+  
+  // Credit: Cash/Bank
+  lines.push({ accountCode: cashAccountCode, debit: 0, credit: amount, narration: "Payment made" });
+
+  await postJournalEntry(
+    tx, 
+    tenantId, 
+    "PAYMENT", 
+    new Date(), 
+    `Automated payment for Supplier: ${supplierName}`,
+    null,
     lines
   );
 }

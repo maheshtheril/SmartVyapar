@@ -299,16 +299,18 @@ async function main() {
     // 1. ASSETS
     { code: "1000", name: "Workshop Counter Cash in Hand", classification: AccountClassification.ASSET, balance: 28450.0 },
     { code: "1010", name: "HDFC Bank Auto Current Account", classification: AccountClassification.ASSET, balance: 184600.0 },
-    { code: "1050", name: "Accounts Receivable (Fleet Dues & Khata)", classification: AccountClassification.ASSET, balance: 14500.0 },
-    { code: "1200", name: "Auto Spare Parts & Fluids Inventory", classification: AccountClassification.ASSET, balance: 118400.0 },
+    { code: "1020", name: "UPI Settlement Account", classification: AccountClassification.ASSET, balance: 0 },
+    { code: "1030", name: "Card Settlement Account", classification: AccountClassification.ASSET, balance: 0 },
+    { code: "1200", name: "Accounts Receivable (Fleet Dues & Khata)", classification: AccountClassification.ASSET, balance: 14500.0 },
+    { code: "1300", name: "Auto Spare Parts & Fluids Inventory", classification: AccountClassification.ASSET, balance: 118400.0 },
     { code: "1410", name: "Input Tax Credit - CGST (Purchases)", classification: AccountClassification.ASSET, balance: 6450.0 },
     { code: "1420", name: "Input Tax Credit - SGST (Purchases)", classification: AccountClassification.ASSET, balance: 6450.0 },
     { code: "1500", name: "Workshop Hydraulic Lifts & 3D Aligners", classification: AccountClassification.ASSET, balance: 250000.0 },
 
     // 2. LIABILITIES
     { code: "2000", name: "Accounts Payable (Bosch & Castrol Distributors)", classification: AccountClassification.LIABILITY, balance: 42000.0 },
-    { code: "2110", name: "Output CGST Payable (Statutory GST)", classification: AccountClassification.LIABILITY, balance: 2840.0 },
-    { code: "2120", name: "Output SGST Payable (Statutory GST)", classification: AccountClassification.LIABILITY, balance: 2840.0 },
+    { code: "2200", name: "Output CGST Payable (Statutory GST)", classification: AccountClassification.LIABILITY, balance: 2840.0 },
+    { code: "2201", name: "Output SGST Payable (Statutory GST)", classification: AccountClassification.LIABILITY, balance: 2840.0 },
 
     // 3. EQUITY
     { code: "3000", name: "Owner's Equity & Capital", classification: AccountClassification.EQUITY, balance: 450000.0 },
@@ -351,7 +353,7 @@ async function main() {
   const cashAcc = await prisma.account.findUnique({ where: { tenantId_code: { tenantId: tenant.id, code: "1000" } } });
   const bankAcc = await prisma.account.findUnique({ where: { tenantId_code: { tenantId: tenant.id, code: "1010" } } });
   const rentAcc = await prisma.account.findUnique({ where: { tenantId_code: { tenantId: tenant.id, code: "5100" } } });
-  const recvAcc = await prisma.account.findUnique({ where: { tenantId_code: { tenantId: tenant.id, code: "1050" } } });
+  const recvAcc = await prisma.account.findUnique({ where: { tenantId_code: { tenantId: tenant.id, code: "1200" } } });
 
   if (cashAcc && bankAcc && rentAcc && recvAcc) {
     // 1. Payment Voucher (PV) - Rent Payment
