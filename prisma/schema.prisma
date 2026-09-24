@@ -7,7 +7,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -430,7 +430,7 @@ model Invoice {
 model InvoiceItem {
   id               String  @id @default(uuid())
   invoiceId        String
-  productId        String
+  productId        String?
   productName      String
   hsnCode          String
   unitSold         String  @default("PCS") // Unit chosen by cashier: PCS, BOX, KG, etc.
@@ -447,7 +447,7 @@ model InvoiceItem {
   lineTotal        Decimal @db.Decimal(10, 2)
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   batch   Batch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
 
   @@map("invoice_items")
