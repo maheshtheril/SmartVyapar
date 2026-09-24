@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     
     // Find open cash drawers older than 24 hours
-    const staleDrawers = await prisma.cashDrawer.findMany({
+    const staleDrawers = await prisma.cashDrawerShift.findMany({
       where: {
         status: "OPEN",
         openedAt: { lt: yesterday }
