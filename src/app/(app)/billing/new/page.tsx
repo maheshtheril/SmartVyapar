@@ -1305,21 +1305,9 @@ export default function NewInvoicePage() {
       {/* 2. MAIN BODY: 2-COLUMN FULLSCREEN SPLIT TERMINAL */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         
-        {/* LEFT PANEL: CART, ITEMS & CUSTOMER SELECTOR (58% on Desktop) */}
+        {/* LEFT PANEL: CART & ITEMS (58% on Desktop) */}
         <section className="w-full lg:w-[58%] border-b lg:border-b-0 lg:border-r border-slate-200 bg-white flex flex-col p-4 sm:p-5 overflow-hidden">
           
-          {/* Customer Bar */}
-          <div className="mb-3 p-3 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs shrink-0">
-            <CustomerSearch
-              customerName={customerName}
-              customerPhone={customerPhone}
-              onSelectCustomer={handleSelectCustomer}
-              onNameChange={setCustomerName}
-              onPhoneChange={setCustomerPhone}
-              isDark={false}
-            />
-          </div>
-
           {/* Barcode & Product Quick Search */}
           <div className="mb-3 shrink-0">
             <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
@@ -1590,6 +1578,17 @@ export default function NewInvoicePage() {
           
           <div className="space-y-4">
             
+            {/* Customer Bar */}
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs shrink-0">
+              <CustomerSearch
+                customerName={customerName}
+                customerPhone={customerPhone}
+                onSelectCustomer={handleSelectCustomer}
+                onNameChange={setCustomerName}
+                onPhoneChange={setCustomerPhone}
+                isDark={false}
+              />
+            </div>
             {/* SINGLE DEFINITIVE ORDER FINANCIAL BREAKDOWN CARD */}
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">

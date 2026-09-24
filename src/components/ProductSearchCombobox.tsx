@@ -131,6 +131,7 @@ export default function ProductSearchCombobox({
         <input
           ref={inputRef}
           type="text"
+          autoFocus
           value={isOpen ? query : (selectedProduct ? `${selectedProduct.name} (Stock: ${selectedProduct.currentStock})` : "")}
           placeholder={selectedProduct ? selectedProduct.name : placeholder}
           onFocus={() => {
