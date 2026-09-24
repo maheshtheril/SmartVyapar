@@ -385,6 +385,19 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Role-Based Pruning for STAFF (Cashier / Mechanic / Waiter)
+    // Simplify the UI by hiding complex ERP/Accounting functions
+    if (userRole === "STAFF") {
+      const billing = menuTree.find(m => m.id === "billing");
+      if (billing) billing.children = billing.children.filter(c => ["pos", "invoices", "cash-drawer"].includes(c.id));
+      
+      const inventory = menuTree.find(m => m.id === "inventory");
+      if (inventory) inventory.children = inventory.children.filter(c => ["stock", "barcode"].includes(c.id));
+
+      const parties = menuTree.find(m => m.id === "parties");
+      if (parties) parties.children = parties.children.filter(c => ["customers"].includes(c.id));
+    }
+
     return NextResponse.json({
       success: true,
       tenant: {
