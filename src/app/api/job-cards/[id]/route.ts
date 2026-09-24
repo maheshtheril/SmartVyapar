@@ -72,9 +72,24 @@ export async function PATCH(
       dataToUpdate.deliveredAt = new Date();
     }
 
-    const updated = await prisma.jobCard.update({
-      where: { id: params.id },
-      data: dataToUpdate
+    const updated = await prisma.$transaction(async (tx) => {
+      const jc = await tx.jobCard.update({
+        where: { id: params.id },
+        data: dataToUpdate
+      });
+
+      // Update vehicle's service history if completed
+      if (status === JobCardStatus.COMPLETED || status === JobCardStatus.DELIVERED) {
+        await tx.customerVehicle.update({
+          where: { id: existingJobCard.vehicleId },
+          data: {
+            lastServiceDate: new Date(),
+            lastServiceKm: jc.odometerReading ?? existingJobCard.odometerReading ?? undefined,
+          }
+        });
+      }
+
+      return jc;
     });
 
     return NextResponse.json({ success: true, jobCard: updated });

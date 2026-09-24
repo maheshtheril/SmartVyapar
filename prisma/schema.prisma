@@ -97,6 +97,7 @@ model Tenant {
   auditLogs             AuditLog[]
   printTemplates        PrintTemplate[]
   subscriptionPayments  SubscriptionPayment[]
+  serviceReminders      ServiceReminder[]
   warehouses            Warehouse[]
   voucherSequences      VoucherSequence[]
   stockTransfers        StockTransfer[]
@@ -269,6 +270,7 @@ model Customer {
   creditNotes         CreditNote[]
   loyaltyTransactions LoyaltyTransaction[]
   vehicles            CustomerVehicle[]
+  serviceReminders    ServiceReminder[]
 
   @@index([tenantId, phone])
   @@map("customers")
@@ -308,7 +310,8 @@ model CustomerVehicle {
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  jobCards JobCard[]
+  jobCards         JobCard[]
+  serviceReminders ServiceReminder[]
 
   @@unique([tenantId, licensePlate])
   @@index([tenantId, customerId])
@@ -1355,4 +1358,34 @@ model EWayBillRecord {
   @@unique([tenantId, ewayBillNo])
   @@index([tenantId, ewayBillDate])
   @@map("eway_bill_records")
+}
+
+// ----------------------------------------------------
+// Service Reminders
+// ----------------------------------------------------
+model ServiceReminder {
+  id               String   @id @default(uuid())
+  tenantId         String
+  customerId       String
+  vehicleId        String
+  
+  reminderDate     DateTime // When the reminder should be sent/called
+  reminderType     String   @default("AUTOMATED_SMS") // SMS, WHATSAPP, CALL_TASK
+  message          String?  @db.Text
+  
+  status           String   @default("PENDING") // PENDING, SENT, FAILED, COMPLETED
+  
+  // Follow-up tracking for call tasks
+  callNotes        String?  @db.Text
+  nextFollowUpDate DateTime?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vehicle  CustomerVehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, reminderDate])
 }
