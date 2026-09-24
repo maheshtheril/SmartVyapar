@@ -2,6 +2,7 @@ import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
 import { StockLogType, AuditAction } from "@prisma/client";
 import { recordAuditLog } from "@/lib/audit";
 import { CreateStockTransferInput } from "@/lib/schemas/warehouse";
+import { generateNextInvoiceNumber } from "@/lib/invoice-sequence";
 
 /**
  * Ensures a tenant has at least a default warehouse created.
@@ -90,7 +91,11 @@ export async function dispatchStockTransfer(
       throw new Error("One or both specified warehouses were not found.");
     }
 
-    const transferNumber = await generateTransferNumber(tenantId);
+    // Generate sequence using the atomic sequence generator instead of count+1
+    const { invoiceNumber: transferNumber } = await generateNextInvoiceNumber(tx, {
+      tenantId,
+      prefix: `ST-${new Date().getFullYear()}`,
+    });
 
     // 2. Validate and deduct stock from source warehouse
     for (const item of items) {
@@ -120,14 +125,8 @@ export async function dispatchStockTransfer(
         });
       }
 
-      if (Number(sourceStock.quantity) < Number(item.quantity)) {
-        throw new Error(
-          `Insufficient stock in ${fromWh.name} for "${item.productName}". Available: ${sourceStock.quantity}, Requested: ${item.quantity}`
-        );
-      }
-
-      // Deduct from source warehouse stock
-      await tx.warehouseStock.update({
+      // Deduct from source warehouse stock atomically
+      const updatedStock = await tx.warehouseStock.update({
         where: { id: sourceStock.id },
         data: {
           quantity: {
@@ -135,6 +134,13 @@ export async function dispatchStockTransfer(
           },
         },
       });
+
+      // Check if the atomic decrement pushed the stock below zero
+      if (Number(updatedStock.quantity) < 0) {
+        throw new Error(
+          `Insufficient stock in ${fromWh.name} for "${item.productName}". Available: ${sourceStock.quantity}, Requested: ${item.quantity}`
+        );
+      }
 
       // Record Stock Log
       await tx.stockLog.create({

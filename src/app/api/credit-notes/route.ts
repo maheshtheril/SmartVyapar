@@ -146,6 +146,26 @@ export async function POST(req: NextRequest) {
         const conversionFactor = Number(item.conversionFactor || 1);
         const baseQty = Number((qty * conversionFactor).toFixed(3));
 
+        // Enforce Return Quantity Boundaries
+        if (!item.invoiceItemId) {
+          throw new Error(`invoiceItemId is required to process return for ${item.productName}`);
+        }
+        
+        const originalInvoiceItem = await tx.invoiceItem.findUnique({ where: { id: item.invoiceItemId }});
+        if (!originalInvoiceItem) {
+          throw new Error(`Original invoice item not found for ${item.productName}`);
+        }
+
+        const previousReturns = await tx.creditNoteItem.aggregate({
+          where: { invoiceItemId: item.invoiceItemId },
+          _sum: { quantity: true }
+        });
+        
+        const alreadyReturned = Number(previousReturns._sum.quantity || 0);
+        if (alreadyReturned + qty > Number(originalInvoiceItem.quantity)) {
+          throw new Error(`Cannot return ${qty} of ${item.productName}. Only ${Number(originalInvoiceItem.quantity) - alreadyReturned} remaining to be returned on this invoice.`);
+        }
+
         // Compute GST reversal matching the original invoice's state codes
         const tax = GstCalculator.calculate(
           lineTaxable,
@@ -161,7 +181,7 @@ export async function POST(req: NextRequest) {
 
         processedItems.push({
           productId: item.productId,
-          invoiceItemId: item.invoiceItemId || null,
+          invoiceItemId: item.invoiceItemId,
           productName: item.productName,
           hsnCode: item.hsnCode || "9983",
           unitReturned: item.unitReturned || "PCS",
@@ -179,12 +199,19 @@ export async function POST(req: NextRequest) {
 
         // 2. Restock Inventory if requested
         if (item.restock !== false) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: {
-              currentStock: { increment: baseQty },
-            },
-          });
+          // If the original sale used a specific batch, restore it to that batch
+          if (originalInvoiceItem.batchId) {
+            await tx.batch.update({
+              where: { id: originalInvoiceItem.batchId },
+              data: { currentStock: { increment: baseQty } },
+            });
+          } else {
+            // Otherwise restore to generic product stock
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { currentStock: { increment: baseQty } },
+            });
+          }
 
           // 3. Audit Log in stock ledger
           await tx.stockLog.create({
@@ -194,7 +221,7 @@ export async function POST(req: NextRequest) {
               changeQty: baseQty,
               type: StockLogType.RETURN_IN,
               referenceId: creditNoteNumber,
-              note: `Sales Return: ${qty} ${item.unitReturned} (${baseQty} base units) for Invoice #${invoice.invoiceNumber} (CN #${creditNoteNumber})`,
+              note: `Sales Return: ${qty} ${item.unitReturned} (${baseQty} base units) for Invoice #${invoice.invoiceNumber}${originalInvoiceItem.batchNumber ? ` [Batch: ${originalInvoiceItem.batchNumber}]` : ''} (CN #${creditNoteNumber})`,
             },
           });
         }

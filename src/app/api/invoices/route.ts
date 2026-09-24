@@ -207,13 +207,18 @@ export async function POST(req: NextRequest) {
           lineTotal: tax.totalAmount,
         });
 
-        // Batch Stock Depletion: If specific batch was selected
+        // Batch Stock Depletion & Verification
         if (item.batchId) {
+          const batch = await tx.batch.findUnique({ where: { id: item.batchId } });
+          if (!batch || batch.tenantId !== tenantId) {
+            throw new Error(`Batch not found or unauthorized for product ${product.name}`);
+          }
+          if (Number(batch.currentStock) < baseQty) {
+            throw new Error(`Insufficient stock in batch ${batch.batchNumber} for ${product.name}`);
+          }
           await tx.batch.update({
             where: { id: item.batchId },
-            data: {
-              currentStock: { decrement: baseQty },
-            },
+            data: { currentStock: { decrement: baseQty } },
           });
         }
 
@@ -225,12 +230,15 @@ export async function POST(req: NextRequest) {
             const wasteFactor = 1 + (Number(recipeItem.wastePercentage || 0) / 100);
             const totalRawConsumed = Number((qty * rawReqPerPortion * wasteFactor).toFixed(3));
 
+            const ingredient = await tx.product.findUnique({ where: { id: recipeItem.ingredientId } });
+            if (!ingredient || Number(ingredient.currentStock) < totalRawConsumed) {
+               throw new Error(`Insufficient stock for ingredient ${ingredient?.name || recipeItem.ingredientId} needed for ${product.name}`);
+            }
+
             // Decrement raw material stock
             await tx.product.update({
               where: { id: recipeItem.ingredientId },
-              data: {
-                currentStock: { decrement: totalRawConsumed },
-              },
+              data: { currentStock: { decrement: totalRawConsumed } },
             });
 
             // Log raw material consumption audit
@@ -241,17 +249,20 @@ export async function POST(req: NextRequest) {
                 changeQty: -totalRawConsumed,
                 type: StockLogType.CONSUMPTION_OUT,
                 referenceId: invoiceNumber,
-                note: `Recipe Depletion: ${totalRawConsumed} ${recipeItem.ingredient.baseUnit} consumed for ${qty} ${product.name} (Bill #${invoiceNumber})`,
+                note: `Recipe Depletion: ${totalRawConsumed} consumed for ${qty} ${product.name} (Bill #${invoiceNumber})`,
               },
             });
           }
         } else {
           // Standard Retail Item: Direct stock deduction
+          const currentProd = await tx.product.findUnique({ where: { id: product.id } });
+          if (!currentProd || Number(currentProd.currentStock) < baseQty) {
+            throw new Error(`Insufficient stock for product ${product.name}`);
+          }
+
           await tx.product.update({
             where: { id: product.id },
-            data: {
-              currentStock: { decrement: baseQty },
-            },
+            data: { currentStock: { decrement: baseQty } },
           });
 
           // Audit Stock Log
@@ -262,7 +273,7 @@ export async function POST(req: NextRequest) {
               changeQty: -baseQty,
               type: StockLogType.SALE_OUT,
               referenceId: invoiceNumber,
-              note: `Sold ${qty} ${unitSold} (${baseQty} ${product.baseUnit}) to ${data.customerName}${item.batchNumber ? ` [Batch: ${item.batchNumber}]` : ''} (Bill #${invoiceNumber})`,
+              note: `Sold ${qty} ${unitSold} (${baseQty}) to ${data.customerName}${item.batchNumber ? ` [Batch: ${item.batchNumber}]` : ''} (Bill #${invoiceNumber})`,
             },
           });
         }
@@ -298,7 +309,11 @@ export async function POST(req: NextRequest) {
       );
       const loyaltyDiscountAmount = pointsToRedeem;
       const totalAmount = Number(Math.max(0, grossAmount - loyaltyDiscountAmount).toFixed(2));
-      const finalPaid = data.paymentStatus === "PAID" ? totalAmount : Number(data.paidAmount || 0);
+      let submittedPaid = Number(data.paidAmount || 0);
+      if (submittedPaid > totalAmount) {
+        throw new Error(`Paid amount (₹${submittedPaid}) cannot exceed total invoice amount (₹${totalAmount})`);
+      }
+      const finalPaid = data.paymentStatus === "PAID" ? totalAmount : submittedPaid;
       const dueAmount = Number(Math.max(0, totalAmount - finalPaid).toFixed(2));
 
       // 2. Process Loyalty Points Accrual (1 point per ₹100 billed)
