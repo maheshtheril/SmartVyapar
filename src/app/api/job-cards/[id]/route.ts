@@ -235,8 +235,14 @@ export async function PATCH(
                   referenceId: fullJc.jobCardNumber,
                   idempotencyKey: `JC:${fullJc.jobCardNumber}:ITEM:${item.id}`,
                   note: `Consumed on Job Card approval`,
-                }
-              });
+                  }
+                });
+
+                // Mark as consumed after successful inventory transaction
+                await tx.jobCardItem.update({
+                  where: { id: item.id },
+                  data: { isConsumed: true }
+                });
             }
           }
         }
