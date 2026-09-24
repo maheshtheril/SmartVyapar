@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
           if (item.itemType === 'PART' && item.batchId) {
             await tx.batch.update({
               where: { id: item.batchId },
-              data: { quantity: { decrement: Number(item.quantity) } }
+              data: { currentStock: { decrement: Number(item.quantity) } }
             });
           }
         }
