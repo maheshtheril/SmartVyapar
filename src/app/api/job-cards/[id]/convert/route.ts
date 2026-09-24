@@ -47,12 +47,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           customerGstin: jobCard.vehicle.customer.gstin,
           customerStateCode: jobCard.vehicle.customer.stateCode || "32",
           subtotal,
-          taxAmount,
+          cgstAmount: taxAmount / 2,
+          sgstAmount: taxAmount / 2,
+          igstAmount: 0,
+          totalTax: taxAmount,
           totalAmount,
           paidAmount: paid,
           dueAmount,
-          status,
-          paymentMethod: paymentMethod || "CASH",
+          paymentStatus: status,
+          paymentMode: paymentMethod || "CASH",
           notes: `Generated from Job Card: ${jobCard.jobCardNumber} (Vehicle: ${jobCard.vehicle.licensePlate})`,
           items: {
             create: jobCard.items.map((item) => {
