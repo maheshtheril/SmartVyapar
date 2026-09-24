@@ -22,7 +22,7 @@ import {
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({
     todaySales: 0,
     totalUdhar: 0,
@@ -33,20 +33,13 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [invRes, prodRes] = await Promise.all([
-        fetch("/api/invoices"),
-        fetch("/api/products"),
-      ]);
+      const res = await fetch("/api/dashboard");
+      const data = await res.json();
 
-      const invData = await invRes.json();
-      const prodData = await prodRes.json();
-
-      if (invData.success) {
-        setInvoices(invData.invoices || []);
-        if (invData.metrics) setMetrics(invData.metrics);
-      }
-      if (prodData.success) {
-        setProducts(prodData.products || []);
+      if (data.success) {
+        setInvoices(data.recentInvoices || []);
+        setLowStockItems(data.lowStockItems || []);
+        if (data.metrics) setMetrics(data.metrics);
       }
     } catch (err) {
       console.error("Error loading dashboard data:", err);
@@ -59,15 +52,13 @@ export default function DashboardPage() {
     loadDashboardData();
   }, []);
 
-  const lowStockItems = products.filter((p) => p.currentStock <= p.minStockAlert);
-
   return (
     <div className="space-y-8">
       {/* Top Welcome & Quick Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Executive Dashboard</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Real-time business performance from your Neon PostgreSQL database</p>
+          <p className="text-xs text-slate-500 mt-0.5">Business performance overview from your Neon PostgreSQL database</p>
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto">
