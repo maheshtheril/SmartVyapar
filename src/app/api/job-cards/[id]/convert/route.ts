@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
-import { generateDocSeries } from "@/lib/gstr1";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
