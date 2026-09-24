@@ -15,6 +15,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
+import ProductSearchCombobox from '@/components/ProductSearchCombobox';
 
 export default function NewJobCard() {
   const router = useRouter();
@@ -77,11 +78,10 @@ export default function NewJobCard() {
 
   const fetchInventory = async () => {
     try {
-      const res = await fetch('/api/inventory/stock-history'); // Basic fetch, ideally a proper products endpoint
+      const res = await fetch('/api/products');
       if (res.ok) {
         const data = await res.json();
-        // Just extract unique products from history for simplicity in this demo UI
-        // In a real app, you'd fetch from /api/products
+        setInventory(data.products || data);
       }
     } catch (err) { console.error(err); }
   };
@@ -90,8 +90,8 @@ export default function NewJobCard() {
     if (newItemType === 'LABOUR' && !labourName) return;
     if (newItemType === 'PART' && !selectedProductId) return;
 
-    // For demo simplicity, we will just use manual names if part is selected
-    const name = newItemType === 'LABOUR' ? labourName : `Part ID: ${selectedProductId}`;
+    const selectedProduct = newItemType === 'PART' ? inventory.find(p => p.id === selectedProductId) : null;
+    const name = newItemType === 'LABOUR' ? labourName : (selectedProduct?.name || `Part ID: ${selectedProductId}`);
     
     setItems([...items, {
       id: Date.now().toString(),
@@ -138,11 +138,11 @@ export default function NewJobCard() {
         router.push('/garage');
       } else {
         const err = await res.json();
-        alert(err.error);
+        alert(`Couldn't save the Job Card. Your stock was not changed.\nError: ${err.error || 'Unknown'}\n\nPlease try again.`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to save Job Card');
+      alert(`Network Error: Couldn't connect to server. Please check your connection and try again.`);
     } finally {
       setLoading(false);
     }
@@ -275,12 +275,25 @@ export default function NewJobCard() {
                     placeholder="e.g. Wheel Alignment"
                   />
                 ) : (
-                  <input 
-                    type="text" 
-                    value={selectedProductId}
-                    onChange={e => setSelectedProductId(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    placeholder="Enter Part ID or SKU..."
+                  <ProductSearchCombobox
+                    products={inventory.map(p => ({
+                      ...p,
+                      sellingPrice: Number(p.sellingPrice),
+                      gstRate: Number(p.gstRate),
+                      currentStock: Number(p.currentStock),
+                      minStockAlert: Number(p.minStockAlert)
+                    }))}
+                    selectedProductId={selectedProductId}
+                    onSelect={(prod) => {
+                      if (prod) {
+                        setSelectedProductId(prod.id);
+                        setItemPrice(prod.sellingPrice);
+                      } else {
+                        setSelectedProductId('');
+                        setItemPrice(0);
+                      }
+                    }}
+                    placeholder="Search Part by Name, SKU..."
                   />
                 )}
               </div>
