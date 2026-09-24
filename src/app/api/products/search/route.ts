@@ -53,6 +53,8 @@ export async function GET(req: NextRequest) {
           { brand: { contains: trimmedQuery, mode: "insensitive" } },
           { compatibleMakes: { contains: trimmedQuery, mode: "insensitive" } },
           { compatibleModels: { contains: trimmedQuery, mode: "insensitive" } },
+          { partNumber: { contains: trimmedQuery, mode: "insensitive" } },
+          { oemNumber: { contains: trimmedQuery, mode: "insensitive" } },
         ]
       },
       take: limit,

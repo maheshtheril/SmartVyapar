@@ -234,18 +234,27 @@ export async function POST(req: NextRequest) {
             const wasteFactor = 1 + (Number(recipeItem.wastePercentage || 0) / 100);
             const totalRawConsumed = Number((qty * rawReqPerPortion * wasteFactor).toFixed(3));
 
-            const ingredient = await tx.product.findUnique({ where: { id: recipeItem.ingredientId } });
-            if (!ingredient || Number(ingredient.currentStock) < totalRawConsumed) {
-               throw new Error(`Insufficient stock for ingredient ${ingredient?.name || recipeItem.ingredientId} needed for ${product.name}`);
+            const ingredient = await tx.product.findFirst({ 
+              where: { id: recipeItem.ingredientId, tenantId } 
+            });
+            if (!ingredient) {
+               throw new Error(`Ingredient ${recipeItem.ingredientId} not found or access denied`);
             }
 
-            // Decrement raw material stock
-            const updatedIng = await tx.product.update({
-              where: { id: recipeItem.ingredientId },
+            // Decrement raw material stock safely honoring tenant boundaries
+            const updatedIngResult = await tx.product.updateMany({
+              where: { id: recipeItem.ingredientId, tenantId },
               data: { currentStock: { decrement: totalRawConsumed } },
             });
-            if (Number(updatedIng.currentStock) < 0) {
-              throw new Error(`Insufficient stock for ingredient ID ${recipeItem.ingredientId}`);
+            
+            if (updatedIngResult.count === 0) {
+              throw new Error(`Failed to update ingredient stock for ${recipeItem.ingredientId}`);
+            }
+
+            // Verify stock didn't drop below zero
+            const postUpdateIng = await tx.product.findFirst({ where: { id: recipeItem.ingredientId } });
+            if (postUpdateIng && Number(postUpdateIng.currentStock) < 0) {
+              throw new Error(`Insufficient stock for ingredient ${ingredient.name}`);
             }
 
             // Log raw material consumption audit
