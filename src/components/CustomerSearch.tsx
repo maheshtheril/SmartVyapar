@@ -29,43 +29,35 @@ export default function CustomerSearch({
   onPhoneChange,
   isDark = false,
 }: CustomerSearchProps) {
-  const [allCustomers, setAllCustomers] = useState<CustomerOption[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<CustomerOption[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
 
-  // Pre-load all existing customers from Neon DB
+  // Server-side debounced search
   useEffect(() => {
-    async function fetchCustomers() {
+    const trimmed = searchQuery.trim();
+    
+    const fetchSearch = async () => {
+      setIsLoading(true);
       try {
-        const res = await fetch("/api/customers");
+        const res = await fetch(`/api/customers/search?q=${encodeURIComponent(trimmed)}`);
         const data = await res.json();
         if (data.success && Array.isArray(data.customers)) {
-          setAllCustomers(data.customers);
           setFilteredCustomers(data.customers);
         }
       } catch (err) {
         console.error("Error loading customers:", err);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    fetchCustomers();
-  }, []);
+    };
 
-  // Filter list as user searches
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredCustomers(allCustomers);
-    } else {
-      const q = searchQuery.toLowerCase();
-      setFilteredCustomers(
-        allCustomers.filter(
-          (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q)
-        )
-      );
-    }
-  }, [searchQuery, allCustomers]);
+    const delay = setTimeout(fetchSearch, 300);
+    return () => clearTimeout(delay);
+  }, [searchQuery]);
 
   // Outside click listener
   useEffect(() => {

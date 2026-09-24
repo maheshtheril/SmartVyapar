@@ -16,17 +16,19 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import ProductSearchCombobox from '@/components/ProductSearchCombobox';
+import CustomerSearch from '@/components/CustomerSearch';
 
 export default function NewJobCard() {
   const router = useRouter();
   
   // State
   const [loading, setLoading] = useState(false);
-  const [customers, setCustomers] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   
   // Form State
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [odometerReading, setOdometerReading] = useState('');
@@ -43,10 +45,6 @@ export default function NewJobCard() {
   const [itemPrice, setItemPrice] = useState(0);
 
   useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  useEffect(() => {
     if (selectedCustomerId) {
       fetchVehicles(selectedCustomerId);
     } else {
@@ -54,16 +52,6 @@ export default function NewJobCard() {
       setSelectedVehicleId('');
     }
   }, [selectedCustomerId]);
-
-  const fetchCustomers = async () => {
-    try {
-      const res = await fetch('/api/customers');
-      if (res.ok) {
-        const data = await res.json();
-        setCustomers(data.customers || data);
-      }
-    } catch (err) { console.error(err); }
-  };
 
   const fetchVehicles = async (customerId: string) => {
     try {
@@ -169,18 +157,24 @@ export default function NewJobCard() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Select Customer</label>
-              <select 
-                value={selectedCustomerId}
-                onChange={e => setSelectedCustomerId(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none bg-slate-50"
-                required
-              >
-                <option value="">-- Choose Customer --</option>
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
-                ))}
-              </select>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Search Customer</label>
+              <CustomerSearch
+                customerName={customerName}
+                customerPhone={customerPhone}
+                onSelectCustomer={(cust) => {
+                  if (cust) {
+                    setSelectedCustomerId(cust.id);
+                    setCustomerName(cust.name);
+                    setCustomerPhone(cust.phone);
+                  } else {
+                    setSelectedCustomerId('');
+                    setCustomerName('');
+                    setCustomerPhone('');
+                  }
+                }}
+                onNameChange={setCustomerName}
+                onPhoneChange={setCustomerPhone}
+              />
             </div>
 
             <div>
