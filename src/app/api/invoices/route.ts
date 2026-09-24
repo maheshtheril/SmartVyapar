@@ -216,10 +216,14 @@ export async function POST(req: NextRequest) {
           if (Number(batch.currentStock) < baseQty) {
             throw new Error(`Insufficient stock in batch ${batch.batchNumber} for ${product.name}`);
           }
-          await tx.batch.update({
+          const updatedBatch = await tx.batch.update({
             where: { id: item.batchId },
             data: { currentStock: { decrement: baseQty } },
           });
+          
+          if (Number(updatedBatch.currentStock) < 0) {
+            throw new Error(`Insufficient stock for batch ${updatedBatch.batchNumber}`);
+          }
         }
 
         // Stock Depletion: Check if Product has Recipe Items (Finished Good / Restaurant Dish)
@@ -236,10 +240,13 @@ export async function POST(req: NextRequest) {
             }
 
             // Decrement raw material stock
-            await tx.product.update({
+            const updatedIng = await tx.product.update({
               where: { id: recipeItem.ingredientId },
               data: { currentStock: { decrement: totalRawConsumed } },
             });
+            if (Number(updatedIng.currentStock) < 0) {
+              throw new Error(`Insufficient stock for ingredient ID ${recipeItem.ingredientId}`);
+            }
 
             // Log raw material consumption audit
             await tx.stockLog.create({
@@ -260,10 +267,13 @@ export async function POST(req: NextRequest) {
             throw new Error(`Insufficient stock for product ${product.name}`);
           }
 
-          await tx.product.update({
+          const updatedProd = await tx.product.update({
             where: { id: product.id },
             data: { currentStock: { decrement: baseQty } },
           });
+          if (Number(updatedProd.currentStock) < 0) {
+            throw new Error(`Insufficient global stock for ${product.name}`);
+          }
 
           // Audit Stock Log
           await tx.stockLog.create({

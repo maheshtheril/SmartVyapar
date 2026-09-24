@@ -29,24 +29,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Payment amount must be greater than zero" }, { status: 400 });
     }
 
-    // Fetch unpaid bills for this supplier
-    const unpaidBills = await prisma.purchaseBill.findMany({
-      where: {
-        tenantId,
-        supplierName,
-        paymentStatus: { in: ["UNPAID", "PARTIAL"] },
-      },
-      orderBy: { billDate: "asc" },
-    });
+    const appliedAmount = await prisma.$transaction(async (tx) => {
+      // Fetch unpaid bills for this supplier INSIDE the transaction
+      const unpaidBills = await tx.purchaseBill.findMany({
+        where: {
+          tenantId,
+          supplierName,
+          paymentStatus: { in: ["UNPAID", "PARTIAL"] },
+        },
+        orderBy: { billDate: "asc" },
+      });
 
-    if (unpaidBills.length === 0) {
-      return NextResponse.json({ error: "No outstanding bills for this supplier" }, { status: 400 });
-    }
+      if (unpaidBills.length === 0) {
+        throw new Error("No outstanding bills for this supplier");
+      }
 
-    let remaining = amount;
-    let appliedAmount = 0;
+      let remaining = amount;
+      let appliedAmount = 0;
 
-    await prisma.$transaction(async (tx) => {
       // Apply payment across bills (oldest first)
       for (const bill of unpaidBills) {
         if (remaining <= 0) break;
@@ -58,8 +58,8 @@ export async function POST(req: NextRequest) {
         const newDue = Math.max(0, due - applyToThis);
         const newStatus = newDue < 0.01 ? "PAID" : "PARTIAL";
 
-        await tx.purchaseBill.update({
-          where: { id: bill.id },
+        const result = await tx.purchaseBill.updateMany({
+          where: { id: bill.id, dueAmount: due },
           data: {
             paidAmount: newPaid,
             dueAmount: newDue,
@@ -69,6 +69,10 @@ export async function POST(req: NextRequest) {
               : bill.notes,
           },
         });
+
+        if (result.count === 0) {
+          throw new Error("Concurrency error: Bill balance changed while processing payment");
+        }
 
         remaining -= applyToThis;
         appliedAmount += applyToThis;
@@ -96,6 +100,8 @@ export async function POST(req: NextRequest) {
         },
         tx
       );
+      
+      return appliedAmount;
     }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({

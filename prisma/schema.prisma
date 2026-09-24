@@ -409,6 +409,7 @@ model PurchaseBill {
   tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   items  PurchaseBillItem[]
 
+  @@unique([tenantId, supplierName, billNumber])
   @@index([tenantId])
   @@map("purchase_bills")
 }

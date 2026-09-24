@@ -46,19 +46,19 @@ export async function POST(
 
     const paymentToApply = Math.min(amount, currentBalance);
 
-    // Fetch oldest unpaid/partial invoices for this customer (FIFO)
-    const unpaidInvoices = await prisma.invoice.findMany({
-      where: {
-        tenantId,
-        customerId,
-        paymentStatus: { in: ["UNPAID", "PARTIAL"] },
-      },
-      orderBy: { invoiceDate: "asc" },
-    });
-
-    let remaining = paymentToApply;
-
     await prisma.$transaction(async (tx) => {
+      // Fetch oldest unpaid/partial invoices for this customer (FIFO) INSIDE the transaction
+      const unpaidInvoices = await tx.invoice.findMany({
+        where: {
+          tenantId,
+          customerId,
+          paymentStatus: { in: ["UNPAID", "PARTIAL"] },
+        },
+        orderBy: { invoiceDate: "asc" },
+      });
+
+      let remaining = paymentToApply;
+
       // Apply payment across invoices (oldest first)
       for (const inv of unpaidInvoices) {
         if (remaining <= 0) break;
@@ -70,8 +70,8 @@ export async function POST(
         const newDue = Math.max(0, due - applyToThis);
         const newStatus = newDue < 0.01 ? "PAID" : "PARTIAL";
 
-        await tx.invoice.update({
-          where: { id: inv.id },
+        const result = await tx.invoice.updateMany({
+          where: { id: inv.id, dueAmount: due },
           data: {
             paidAmount: newPaid,
             dueAmount: newDue,
@@ -82,15 +82,23 @@ export async function POST(
           },
         });
 
+        if (result.count === 0) {
+          throw new Error("Concurrency error: Invoice balance changed while processing payment");
+        }
+
         remaining -= applyToThis;
       }
 
       // Deduct from customer outstanding balance
       const newBalance = Math.max(0, currentBalance - paymentToApply);
-      await tx.customer.update({
-        where: { id: customerId },
+      const custResult = await tx.customer.updateMany({
+        where: { id: customerId, outstandingBalance: currentBalance },
         data: { outstandingBalance: newBalance },
       });
+
+      if (custResult.count === 0) {
+        throw new Error("Concurrency error: Customer balance changed while processing payment");
+      }
 
       // Audit log
       await recordAuditLog(
