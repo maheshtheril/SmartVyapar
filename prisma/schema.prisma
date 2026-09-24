@@ -395,6 +395,10 @@ model JobCardItem {
   unitPrice Decimal @db.Decimal(10, 2)
   lineTotal Decimal @db.Decimal(10, 2) // qty * price
   
+  // Tax snapshots captured at approval
+  gstRateSnapshot Decimal? @db.Decimal(5, 2)
+  hsnCodeSnapshot String?
+
   isConsumed Boolean @default(false)
 
   createdAt DateTime @default(now())

@@ -144,8 +144,32 @@ export async function PATCH(
         
         if (fullJc && fullJc.items) {
           for (const item of fullJc.items) {
+            // Snapshot GST and HSN
+            let snapshotGstRate = null;
+            let snapshotHsnCode = null;
+            if (item.productId) {
+              const p = await tx.product.findUnique({ where: { id: item.productId } });
+              if (p) {
+                snapshotGstRate = p.gstRate;
+                snapshotHsnCode = p.hsnCode;
+              }
+            } else if (item.itemType === "LABOUR") {
+              snapshotGstRate = 18.0;
+              snapshotHsnCode = "998714";
+            }
+
+            // Mark as consumed & snapshot
+            await tx.jobCardItem.update({
+              where: { id: item.id },
+              data: { 
+                isConsumed: item.itemType === "PART" ? true : item.isConsumed,
+                gstRateSnapshot: snapshotGstRate,
+                hsnCodeSnapshot: snapshotHsnCode
+              }
+            });
+
             // Check explicit idempotency marker
-            if (item.itemType === 'PART' && item.productId && !item.isConsumed) {
+            if (item.itemType === "PART" && item.productId && !item.isConsumed) {
               const product = await tx.product.findFirst({ where: { id: item.productId, tenantId } });
               if (!product) throw new Error(`Product ${item.productId} not found`);
 
@@ -195,12 +219,6 @@ export async function PATCH(
                 }
               }
 
-              // Mark as consumed
-              await tx.jobCardItem.update({
-                where: { id: item.id },
-                data: { isConsumed: true }
-              });
-
               // Record consumption idempotently
               await tx.stockLog.create({
                 data: {
@@ -226,3 +244,4 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
