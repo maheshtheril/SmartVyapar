@@ -1278,7 +1278,7 @@ model DeliveryChallanItem {
   challanId   String
   productId   String?
   productName String
-  hsnCode     String  @default("9983")
+  hsnCode     String?
   unit        String  @default("PCS")
   quantity    Decimal @db.Decimal(12, 3)
   unitPrice   Decimal @db.Decimal(10, 2)
@@ -1389,6 +1389,12 @@ model ServiceReminder {
   // Follow-up tracking for call tasks
   callNotes        String?  @db.Text
   nextFollowUpDate DateTime?
+
+  // Delivery tracking
+  attemptCount     Int      @default(0)
+  nextAttemptAt    DateTime?
+  providerMessageId String?
+  sentAt           DateTime?
   
   idempotencyKey   String?  @unique // Format: {vehicleId}-{date}
   

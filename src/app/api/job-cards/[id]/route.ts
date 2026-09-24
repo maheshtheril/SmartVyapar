@@ -153,6 +153,7 @@ export async function PATCH(
               const updatedProductResult = await tx.product.updateMany({
                 where: { 
                   id: item.productId,
+                  tenantId,
                   currentStock: { gte: Number(item.quantity) }
                 },
                 data: { currentStock: { decrement: Number(item.quantity) } }
@@ -172,6 +173,7 @@ export async function PATCH(
                 const updatedBatchResult = await tx.batch.updateMany({
                   where: { 
                     id: item.batchId,
+                    tenantId,
                     currentStock: { gte: Number(item.quantity) }
                   },
                   data: { currentStock: { decrement: Number(item.quantity) } }
