@@ -141,7 +141,8 @@ export async function PATCH(
         
         if (fullJc && fullJc.items) {
           for (const item of fullJc.items) {
-            if (item.itemType === 'PART' && item.productId) {
+            // Check explicit idempotency marker
+            if (item.itemType === 'PART' && item.productId && !item.isConsumed) {
               const product = await tx.product.findFirst({ where: { id: item.productId, tenantId } });
               if (!product) throw new Error(`Product ${item.productId} not found`);
 
@@ -175,14 +176,20 @@ export async function PATCH(
                 }
               }
 
-              // Record consumption
+              // Mark as consumed
+              await tx.jobCardItem.update({
+                where: { id: item.id },
+                data: { isConsumed: true }
+              });
+
+              // Record consumption idempotently
               await tx.stockLog.create({
                 data: {
                   tenantId,
                   productId: item.productId,
                   type: 'CONSUMPTION_OUT',
                   changeQty: -Number(item.quantity),
-                  referenceId: fullJc.jobCardNumber,
+                  referenceId: `JC:${fullJc.jobCardNumber}:ITEM:${item.id}`,
                   note: `Consumed on Job Card approval`,
                 }
               });

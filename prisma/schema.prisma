@@ -353,6 +353,9 @@ model JobCard {
 
   estimatedTotal   Decimal @default(0.0) @db.Decimal(10, 2)
   approvedEstimate Decimal? @db.Decimal(10, 2)
+  
+  inspectionDetails Json?
+  deliveryDetails   Json?
 
   completedAt DateTime?
   deliveredAt DateTime?
@@ -389,6 +392,8 @@ model JobCardItem {
   quantity  Decimal @db.Decimal(10, 3)
   unitPrice Decimal @db.Decimal(10, 2)
   lineTotal Decimal @db.Decimal(10, 2) // qty * price
+  
+  isConsumed Boolean @default(false)
 
   createdAt DateTime @default(now())
 
