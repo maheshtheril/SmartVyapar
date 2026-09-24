@@ -91,8 +91,8 @@ export async function GET(req: NextRequest) {
         todaySales,
         totalUdhar,
         netGstOutput,
-        lowStockCount: allLowStock.length,
-        totalProductsCount: allProducts.length
+        lowStockCount: lowStockCount,
+        totalProductsCount: totalProductsCount
       },
       recentInvoices,
       lowStockItems
