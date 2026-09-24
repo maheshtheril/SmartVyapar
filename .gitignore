@@ -48,3 +48,6 @@ backups/
 *.dump
 *.sql.gz
 scratch/
+
+.vercel
+.env*
