@@ -240,6 +240,20 @@ export async function GET(req: NextRequest) {
       },
     ];
 
+    menuTree.push({
+      id: "garage",
+      name: "Garage & Service",
+      icon: "Wrench",
+      children: [
+        {
+          id: "job-cards",
+          name: "Active Job Cards",
+          href: "/garage",
+          icon: "ClipboardCheck"
+        }
+      ]
+    });
+
     // Industry-Specific Module: Only show Food & Restaurant for RESTAURANT businesses
     if (tenant.businessType === "RESTAURANT") {
       menuTree.splice(2, 0, {

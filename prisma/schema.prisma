@@ -109,6 +109,8 @@ model Tenant {
   deliveryChallans      DeliveryChallan[]
   gstr3bReturns         Gstr3bReturn[]
   ewayBills             EWayBillRecord[]
+  CustomerVehicle       CustomerVehicle[]
+  JobCard               JobCard[]
 
   @@map("tenants")
 }
@@ -183,13 +185,14 @@ model Product {
   recipeIngredients RecipeItem[] @relation("MenuToIngredients")
 
   // Recipes: When this product is used as a raw material ingredient (e.g. Raw Chicken):
-  usedInRecipes RecipeItem[] @relation("IngredientToMenu")
+  usedInRecipes RecipeItem[]  @relation("IngredientToMenu")
+  JobCardItem   JobCardItem[]
 
-  @@index([tenantId])
-  @@index([tenantId, barcode])
   // Prevent duplicate SKU or barcode per tenant (NULLs are allowed multiple times by PostgreSQL)
   @@unique([tenantId, sku])
   @@unique([tenantId, barcode])
+  @@index([tenantId])
+  @@index([tenantId, barcode])
   @@map("products")
 }
 
@@ -256,9 +259,102 @@ model Customer {
   invoices            Invoice[]
   creditNotes         CreditNote[]
   loyaltyTransactions LoyaltyTransaction[]
+  vehicles            CustomerVehicle[]
 
   @@index([tenantId, phone])
   @@map("customers")
+}
+
+// ----------------------------------------------------
+// 5A. GARAGE / AUTOMOTIVE SERVICE MODULE
+// ----------------------------------------------------
+
+model CustomerVehicle {
+  id           String   @id @default(uuid())
+  tenantId     String
+  customerId   String
+  licensePlate String // e.g. KL-07-AB-1234
+  make         String? // e.g. Honda, Maruti
+  model        String? // e.g. City, Swift
+  year         Int?
+  vin          String? // Vehicle Identification Number
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  jobCards JobCard[]
+
+  @@unique([tenantId, licensePlate])
+  @@index([tenantId, customerId])
+  @@map("customer_vehicles")
+}
+
+enum JobCardStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  INVOICED
+  CANCELLED
+}
+
+model JobCard {
+  id               String        @id @default(uuid())
+  tenantId         String
+  jobCardNumber    String // e.g. JC-2026-0001
+  vehicleId        String
+  customerId       String
+  status           JobCardStatus @default(OPEN)
+  odometerReading  Int?
+  customerConcerns String?       @db.Text
+  mechanicNotes    String?       @db.Text
+  assignedMechanic String?
+  invoiceId        String?       @unique // Linked when finalized
+
+  estimatedTotal Decimal @default(0.0) @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicle CustomerVehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  invoice Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  items   JobCardItem[]
+
+  @@unique([tenantId, jobCardNumber])
+  @@index([tenantId, vehicleId])
+  @@index([tenantId, status])
+  @@map("job_cards")
+}
+
+enum JobCardItemType {
+  PART
+  LABOUR
+}
+
+model JobCardItem {
+  id        String          @id @default(uuid())
+  jobCardId String
+  itemType  JobCardItemType @default(PART)
+
+  // For Parts (Linked to Inventory)
+  productId String?
+  batchId   String?
+
+  // Shared / General
+  name      String
+  quantity  Decimal @db.Decimal(10, 3)
+  unitPrice Decimal @db.Decimal(10, 2)
+  lineTotal Decimal @db.Decimal(10, 2) // qty * price
+
+  createdAt DateTime @default(now())
+
+  jobCard JobCard  @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  batch   Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([jobCardId])
+  @@map("job_card_items")
 }
 
 // ----------------------------------------------------
@@ -323,6 +419,7 @@ model Invoice {
   items               InvoiceItem[]
   creditNotes         CreditNote[]
   loyaltyTransactions LoyaltyTransaction[]
+  JobCard             JobCard?
 
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId, invoiceDate])
@@ -401,13 +498,13 @@ model PurchaseBill {
   scannedFileUrl    String?
   aiConfidenceScore Decimal? @db.Decimal(4, 2) // e.g. 0.95 (95% accuracy)
   isConfirmed       Boolean  @default(false) // True when user confirms AI extraction
-  itcEligible       Boolean  @default(true)  // Checked to claim ITC in GSTR-3B Table 4 fallback
-  
-  paymentStatus     PaymentStatus @default(UNPAID)
-  paidAmount        Decimal  @default(0.0) @db.Decimal(10, 2)
-  dueAmount         Decimal  @default(0.0) @db.Decimal(10, 2)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  itcEligible       Boolean  @default(true) // Checked to claim ITC in GSTR-3B Table 4 fallback
+
+  paymentStatus PaymentStatus @default(UNPAID)
+  paidAmount    Decimal       @default(0.0) @db.Decimal(10, 2)
+  dueAmount     Decimal       @default(0.0) @db.Decimal(10, 2)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   items  PurchaseBillItem[]
@@ -597,6 +694,7 @@ model Batch {
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   invoiceItems InvoiceItem[]
+  JobCardItem  JobCardItem[]
 
   @@unique([tenantId, productId, batchNumber])
   @@index([tenantId, productId])
@@ -696,13 +794,13 @@ model InvoiceSequence {
 }
 
 model VoucherSequence {
-  id            String   @id @default(uuid())
+  id            String @id @default(uuid())
   tenantId      String
-  financialYear String 
-  prefix        String   
-  lastNumber    Int      @default(0)
+  financialYear String
+  prefix        String
+  lastNumber    Int    @default(0)
 
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, financialYear, prefix])
   @@map("voucher_sequences")

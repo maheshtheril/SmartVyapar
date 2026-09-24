@@ -48,6 +48,7 @@ import {
   Crown,
   Zap,
   CheckCircle2,
+  Wrench,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -85,6 +86,7 @@ const ICON_MAP: Record<string, any> = {
   Calculator,
   Crown,
   Zap,
+  Wrench,
 };
 
 const EXPANDED_STORAGE_KEY = 'sv_sidebar_expanded';
