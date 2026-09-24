@@ -5,8 +5,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
   // directUrl = env("DIRECT_URL")
 }
 
@@ -112,6 +112,7 @@ model Tenant {
   ewayBills             EWayBillRecord[]
   CustomerVehicle       CustomerVehicle[]
   JobCard               JobCard[]
+  LabourService         LabourService[]
 
   @@map("tenants")
 }
@@ -143,22 +144,22 @@ model User {
 // 3. PRODUCT & INVENTORY CATALOG
 // ----------------------------------------------------
 model Product {
-  id                  String      @id @default(uuid())
-  tenantId            String
-  name                String
-  sku                 String?
-  barcode             String?
-  hsnCode             String
-  category            String?
+  id       String  @id @default(uuid())
+  tenantId String
+  name     String
+  sku      String?
+  barcode  String?
+  hsnCode  String
+  category String?
 
   // Automotive specifics
   brand               String?
   partNumber          String?
   oemNumber           String?
-  compatibleMakes     String?     // e.g. "Maruti, Hyundai"
-  compatibleModels    String?     // e.g. "Swift, i20"
+  compatibleMakes     String? // e.g. "Maruti, Hyundai"
+  compatibleModels    String? // e.g. "Swift, i20"
   compatibleVariants  String?
-  compatibleYears     String?     // e.g. "2018-2023"
+  compatibleYears     String? // e.g. "2018-2023"
   imageUrl            String?     @db.Text
   productType         ProductType @default(RETAIL_ITEM) // RETAIL_ITEM, RAW_MATERIAL, FINISHED_GOOD
   baseUnit            String      @default("PCS") // Atomic unit: PCS, KG, MTR, NOS, TAB, LTR
@@ -235,15 +236,15 @@ model RecipeItem {
 // 4. INVENTORY STOCK LEDGER (AUDIT LOG)
 // ----------------------------------------------------
 model StockLog {
-  id          String       @id @default(uuid())
-  tenantId    String
-  productId   String
-  changeQty   Decimal      @db.Decimal(12, 3) // Positive for additions, negative for deductions
-  type        StockLogType
-  referenceId String? // Invoice number or Purchase bill number
-  idempotencyKey String? @unique // For guaranteed single-execution (e.g. "JC:123:ITEM:456")
-  note        String?
-  createdAt   DateTime     @default(now())
+  id             String       @id @default(uuid())
+  tenantId       String
+  productId      String
+  changeQty      Decimal      @db.Decimal(12, 3) // Positive for additions, negative for deductions
+  type           StockLogType
+  referenceId    String? // Invoice number or Purchase bill number
+  idempotencyKey String?      @unique // For guaranteed single-execution (e.g. "JC:123:ITEM:456")
+  note           String?
+  createdAt      DateTime     @default(now())
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -286,21 +287,21 @@ model Customer {
 // ----------------------------------------------------
 
 model CustomerVehicle {
-  id                 String    @id @default(uuid())
-  tenantId           String
-  customerId         String
-  licensePlate       String // e.g. KL-07-AB-1234
-  make               String? // e.g. Honda, Maruti
-  model              String? // e.g. City, Swift
-  year               Int?
-  vin                String? // Vehicle Identification Number
-  
+  id           String  @id @default(uuid())
+  tenantId     String
+  customerId   String
+  licensePlate String // e.g. KL-07-AB-1234
+  make         String? // e.g. Honda, Maruti
+  model        String? // e.g. City, Swift
+  year         Int?
+  vin          String? // Vehicle Identification Number
+
   // Automotive specifics
-  fuelType           String?   // Petrol, Diesel, EV, CNG
-  variant            String?   // e.g. VXI, LXI
+  fuelType           String? // Petrol, Diesel, EV, CNG
+  variant            String? // e.g. VXI, LXI
   engineNumber       String?
-  engineCapacity     String?   // e.g. 1.2L, 1197cc
-  transmission       String?   // Manual, Automatic
+  engineCapacity     String? // e.g. 1.2L, 1197cc
+  transmission       String? // Manual, Automatic
   color              String?
   insuranceExpiry    DateTime?
   pollutionExpiry    DateTime?
@@ -310,11 +311,11 @@ model CustomerVehicle {
   nextServiceKm      Int?
   nextServiceDate    DateTime?
 
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer         Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
   jobCards         JobCard[]
   serviceReminders ServiceReminder[]
 
@@ -352,17 +353,17 @@ model JobCard {
   assignedMechanic String?
   invoiceId        String?       @unique // Linked when finalized
 
-  estimatedTotal   Decimal @default(0.0) @db.Decimal(10, 2)
+  estimatedTotal   Decimal  @default(0.0) @db.Decimal(10, 2)
   approvedEstimate Decimal? @db.Decimal(10, 2)
   approvalDetails  Json?
-  
+
   inspectionDetails Json?
   deliveryDetails   Json?
 
   completedAt DateTime?
   deliveredAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vehicle CustomerVehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
@@ -380,6 +381,23 @@ enum JobCardItemType {
   LABOUR
 }
 
+model LabourService {
+  id         String   @id @default(uuid())
+  tenantId   String
+  name       String
+  sacCode    String   @default("998714")
+  gstRate    Decimal  @default(18.0) @db.Decimal(5, 2)
+  hourlyRate Decimal? @db.Decimal(10, 2)
+  fixedRate  Decimal? @db.Decimal(10, 2)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+}
+
 model JobCardItem {
   id        String          @id @default(uuid())
   jobCardId String
@@ -394,7 +412,7 @@ model JobCardItem {
   quantity  Decimal @db.Decimal(10, 3)
   unitPrice Decimal @db.Decimal(10, 2)
   lineTotal Decimal @db.Decimal(10, 2) // qty * price
-  
+
   // Tax snapshots captured at approval
   gstRateSnapshot Decimal? @db.Decimal(5, 2)
   hsnCodeSnapshot String?
@@ -438,8 +456,8 @@ model Invoice {
   upiUri            String? // NPCI QR Link
   notes             String?
 
-  shiftId           String? // Links the invoice to a specific cash drawer shift
-  isReconciled      Boolean       @default(false) // True when Z-Report is generated
+  shiftId      String? // Links the invoice to a specific cash drawer shift
+  isReconciled Boolean @default(false) // True when Z-Report is generated
 
   // E-Way Bill (GST Rule 138)
   ewayBillNo      String? // 12-digit statutory E-Way Bill number
@@ -503,9 +521,9 @@ model InvoiceItem {
   batchNumber      String?
   lineTotal        Decimal @db.Decimal(10, 2)
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  batch   Batch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  batch   Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
 
   @@map("invoice_items")
 }
@@ -1379,31 +1397,31 @@ model EWayBillRecord {
 // Service Reminders
 // ----------------------------------------------------
 model ServiceReminder {
-  id               String   @id @default(uuid())
-  tenantId         String
-  customerId       String
-  vehicleId        String
-  
-  reminderDate     DateTime // When the reminder should be sent/called
-  reminderType     String   @default("AUTOMATED_SMS") // SMS, WHATSAPP, CALL_TASK
-  message          String?  @db.Text
-  
-  status           String   @default("PENDING") // PENDING, SENT, FAILED, COMPLETED
-  
+  id         String @id @default(uuid())
+  tenantId   String
+  customerId String
+  vehicleId  String
+
+  reminderDate DateTime // When the reminder should be sent/called
+  reminderType String   @default("AUTOMATED_SMS") // SMS, WHATSAPP, CALL_TASK
+  message      String?  @db.Text
+
+  status String @default("PENDING") // PENDING, SENT, FAILED, COMPLETED
+
   // Follow-up tracking for call tasks
-  callNotes        String?  @db.Text
+  callNotes        String?   @db.Text
   nextFollowUpDate DateTime?
 
   // Delivery tracking
-  attemptCount     Int      @default(0)
-  nextAttemptAt    DateTime?
+  attemptCount      Int       @default(0)
+  nextAttemptAt     DateTime?
   providerMessageId String?
-  sentAt           DateTime?
-  
-  idempotencyKey   String?  @unique // Format: {vehicleId}-{date}
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  sentAt            DateTime?
+
+  idempotencyKey String? @unique // Format: {vehicleId}-{date}
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)

@@ -124,8 +124,8 @@ export async function PATCH(
 
       if (!fullJc) throw new Error("Job card not found after update");
 
-      // Update vehicle's service history if completed
-      if (status === JobCardStatus.COMPLETED || status === JobCardStatus.DELIVERED) {
+      // Update vehicle's service history if DELIVERED
+      if (status === JobCardStatus.DELIVERED) {
         await tx.customerVehicle.update({
           where: { id: existingJobCard.vehicleId },
           data: {
@@ -133,6 +133,40 @@ export async function PATCH(
             lastServiceKm: fullJc.odometerReading ?? existingJobCard.odometerReading ?? undefined,
           }
         });
+      }
+
+      // Capture Tax/Commercial Snapshot when estimate is ready for approval
+      if (status === JobCardStatus.APPROVAL_PENDING && existingJobCard.status !== JobCardStatus.APPROVAL_PENDING) {
+        const fullJc = await tx.jobCard.findFirst({
+          where: { id: params.id },
+          include: { items: true }
+        });
+        
+        if (fullJc && fullJc.items) {
+          for (const item of fullJc.items) {
+            let snapshotGstRate = null;
+            let snapshotHsnCode = null;
+            if (item.productId) {
+              const p = await tx.product.findUnique({ where: { id: item.productId } });
+              if (p) {
+                snapshotGstRate = p.gstRate;
+                snapshotHsnCode = p.hsnCode;
+              }
+            } else if (item.itemType === "LABOUR") {
+              const svc = await tx.labourService.findFirst({ where: { name: item.name, tenantId } });
+              snapshotGstRate = svc ? svc.gstRate : 18.0;
+              snapshotHsnCode = svc ? svc.sacCode : "998714";
+            }
+
+            await tx.jobCardItem.update({
+              where: { id: item.id },
+              data: { 
+                gstRateSnapshot: snapshotGstRate,
+                hsnCodeSnapshot: snapshotHsnCode
+              }
+            });
+          }
+        }
       }
 
       // Consume inventory when moving to WORK_IN_PROGRESS
@@ -144,28 +178,10 @@ export async function PATCH(
         
         if (fullJc && fullJc.items) {
           for (const item of fullJc.items) {
-            // Snapshot GST and HSN
-            let snapshotGstRate = null;
-            let snapshotHsnCode = null;
-            if (item.productId) {
-              const p = await tx.product.findUnique({ where: { id: item.productId } });
-              if (p) {
-                snapshotGstRate = p.gstRate;
-                snapshotHsnCode = p.hsnCode;
-              }
-            } else if (item.itemType === "LABOUR") {
-              snapshotGstRate = 18.0;
-              snapshotHsnCode = "998714";
-            }
-
-            // Mark as consumed & snapshot
+            // Mark as consumed
             await tx.jobCardItem.update({
               where: { id: item.id },
-              data: { 
-                isConsumed: item.itemType === "PART" ? true : item.isConsumed,
-                gstRateSnapshot: snapshotGstRate,
-                hsnCodeSnapshot: snapshotHsnCode
-              }
+              data: { isConsumed: item.itemType === "PART" ? true : item.isConsumed }
             });
 
             // Check explicit idempotency marker
@@ -244,4 +260,9 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
+
+
+
 

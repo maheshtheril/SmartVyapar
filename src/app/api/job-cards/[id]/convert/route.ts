@@ -25,8 +25,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: "Job card is already invoiced", invoiceId: jobCard.invoiceId }, { status: 400 });
     }
 
-    // P0: Enforce that we can only convert from READY_FOR_DELIVERY or DELIVERED or COMPLETED
-    if (jobCard.status !== JobCardStatus.READY_FOR_DELIVERY && jobCard.status !== JobCardStatus.DELIVERED && jobCard.status !== JobCardStatus.COMPLETED) {
+    // Enforce that we can only convert from READY_FOR_DELIVERY or DELIVERED
+    if (jobCard.status !== JobCardStatus.READY_FOR_DELIVERY && jobCard.status !== JobCardStatus.DELIVERED) {
        return NextResponse.json({ error: `Cannot invoice Job Card from status ${jobCard.status}. Must be READY_FOR_DELIVERY or DELIVERED.` }, { status: 400 });
     }
 
@@ -38,11 +38,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     let totalTaxAmount = 0;
 
     const itemsToCreate = jobCard.items.map((item) => {
-      const product = item.product;
-      const gstRate = product ? Number(product.gstRate) : 18;
-      const hsnCode = product ? product.hsnCode : (item.itemType === 'LABOUR' ? "998714" : "8708");
+      // Enforce PART consumption before billing
+      if (item.itemType === "PART" && !item.isConsumed) {
+        throw new Error(`Cannot invoice unconsumed part: ${item.name}`);
+      }
 
-      if (item.itemType !== 'LABOUR' && !product) {
+      const product = item.product;
+      // Use frozen tax snapshot from Job Card approval, fallback to product/default
+      const gstRate = item.gstRateSnapshot !== null ? Number(item.gstRateSnapshot) : (product ? Number(product.gstRate) : 18);
+      const hsnCode = item.hsnCodeSnapshot !== null ? item.hsnCodeSnapshot : (product ? product.hsnCode : (item.itemType === "LABOUR" ? "998714" : "8708"));
+
+      if (item.itemType !== "LABOUR" && !product) {
         throw new Error(`Product missing for Job Card item ${item.name}`);
       }
       if (!hsnCode) {
@@ -153,6 +159,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
 
 
 
