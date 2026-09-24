@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS, withRetry } from "@/lib/prisma";
 import { requireSession, AuthError } from "@/lib/auth";
 import { recordAuditLog } from "@/lib/audit";
 import { AuditAction } from "@prisma/client";
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Payment amount must be greater than zero" }, { status: 400 });
     }
 
-    const appliedAmount = await prisma.$transaction(async (tx) => {
+    const appliedAmount = await withRetry(() => prisma.$transaction(async (tx) => {
       // Fetch unpaid bills for this supplier INSIDE the transaction
       const unpaidBills = await tx.purchaseBill.findMany({
         where: {
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       );
       
       return appliedAmount;
-    }, DEFAULT_TX_OPTIONS);
+    }, DEFAULT_TX_OPTIONS));
 
     return NextResponse.json({
       success: true,

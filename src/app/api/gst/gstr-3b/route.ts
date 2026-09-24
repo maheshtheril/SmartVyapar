@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     }
 
     // If 2B reconciliation exists, use its matched eligible ITC numbers
-    let reconciled2bItc: { igst: number; cgst: number; sgst: number } | undefined;
+    let reconciled2bItc: { igst: number; cgst: number; sgst: number; ineligibleIgst?: number; ineligibleCgst?: number; ineligibleSgst?: number } | undefined;
     if (reconciliation2b && reconciliation2b.resultsJson) {
       try {
         const parsed = JSON.parse(reconciliation2b.resultsJson);
@@ -82,13 +82,29 @@ export async function GET(req: NextRequest) {
         let matchedIgst = 0;
         let matchedCgst = 0;
         let matchedSgst = 0;
+        let ineligibleIgst = 0;
+        let ineligibleCgst = 0;
+        let ineligibleSgst = 0;
+        
         for (const r of rows) {
           if (r.status === "MATCHED" && r.itcAvailable !== false) {
-            matchedCgst += Number(r.gstr2bTax ? r.gstr2bTax / 2 : 0);
-            matchedSgst += Number(r.gstr2bTax ? r.gstr2bTax / 2 : 0);
+            matchedIgst += Number(r.gstr2bIgst || 0);
+            matchedCgst += Number(r.gstr2bCgst || 0);
+            matchedSgst += Number(r.gstr2bSgst || 0);
+          } else if (r.status === "MATCHED" && r.itcAvailable === false) {
+            ineligibleIgst += Number(r.gstr2bIgst || 0);
+            ineligibleCgst += Number(r.gstr2bCgst || 0);
+            ineligibleSgst += Number(r.gstr2bSgst || 0);
           }
         }
-        reconciled2bItc = { igst: matchedIgst, cgst: matchedCgst, sgst: matchedSgst };
+        reconciled2bItc = { 
+          igst: matchedIgst, 
+          cgst: matchedCgst, 
+          sgst: matchedSgst,
+          ineligibleIgst,
+          ineligibleCgst,
+          ineligibleSgst
+        };
       } catch (e) {
         // fallback to books
       }

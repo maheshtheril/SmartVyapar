@@ -179,11 +179,15 @@ export async function POST(req: NextRequest) {
         totalSgst += tax.sgstAmount;
         totalIgst += tax.igstAmount;
 
+        if (!item.hsnCode) {
+          throw new Error(`HSN code is required for item: ${item.productName}`);
+        }
+
         processedItems.push({
           productId: item.productId,
           invoiceItemId: item.invoiceItemId,
           productName: item.productName,
-          hsnCode: item.hsnCode || "9983",
+          hsnCode: item.hsnCode,
           unitReturned: item.unitReturned || "PCS",
           quantity: qty,
           conversionFactor,

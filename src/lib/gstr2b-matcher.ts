@@ -108,6 +108,9 @@ export interface ReconciledRow {
   // Amounts in GSTR-2B
   gstr2bTaxable?: number;
   gstr2bTax?: number;
+  gstr2bIgst?: number;
+  gstr2bCgst?: number;
+  gstr2bSgst?: number;
   gstr2bTotal?: number;
   itcAvailable?: boolean;
   supplierFiled?: boolean;
@@ -342,6 +345,9 @@ export function reconcileGstr2bWithBooks(
           booksBillId: bookMatch.id,
           gstr2bTaxable: g2b.taxableValue,
           gstr2bTax: g2b.totalTax,
+          gstr2bIgst: g2b.igst,
+          gstr2bCgst: g2b.cgst,
+          gstr2bSgst: g2b.sgst,
           gstr2bTotal: g2b.totalAmount,
           itcAvailable: g2b.itcAvailable,
           supplierFiled: g2b.supplierFiled,

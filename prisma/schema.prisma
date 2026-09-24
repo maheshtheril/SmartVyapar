@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -307,6 +308,7 @@ model Invoice {
   einvoiceStatus       String?   @default("PENDING") // PENDING, GENERATED, CANCELLED, FAILED
   einvoiceCancelReason String?
   einvoiceCancelDate   DateTime?
+  einvoiceIsSimulated  Boolean   @default(false) // Required statutory declaration if IRN is not registered with real IRP
 
   // Customer Loyalty Rewards
   loyaltyPointsEarned   Int     @default(0)
@@ -399,6 +401,7 @@ model PurchaseBill {
   scannedFileUrl    String?
   aiConfidenceScore Decimal? @db.Decimal(4, 2) // e.g. 0.95 (95% accuracy)
   isConfirmed       Boolean  @default(false) // True when user confirms AI extraction
+  itcEligible       Boolean  @default(true)  // Checked to claim ITC in GSTR-3B Table 4 fallback
   
   paymentStatus     PaymentStatus @default(UNPAID)
   paidAmount        Decimal  @default(0.0) @db.Decimal(10, 2)
@@ -1191,6 +1194,7 @@ model EWayBillRecord {
   ewayBillNo   String // 12-digit number
   ewayBillDate DateTime @default(now())
   validUpto    DateTime
+  isSimulated  Boolean  @default(false)
   docNumber    String // Invoice or Challan Number
   docDate      DateTime
   fromGstin    String

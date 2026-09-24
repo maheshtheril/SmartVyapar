@@ -42,6 +42,9 @@ export interface Gstr3bComputationInput {
     igst: number;
     cgst: number;
     sgst: number;
+    ineligibleIgst?: number;
+    ineligibleCgst?: number;
+    ineligibleSgst?: number;
   };
 }
 
@@ -91,6 +94,10 @@ export interface Gstr3bReport {
       camt: number;
       samt: number;
       csamt: number;
+    };
+    ineligibleItc: {
+      section175: { iamt: number; camt: number; samt: number; csamt: number };
+      others: { iamt: number; camt: number; samt: number; csamt: number };
     };
   };
 
@@ -183,9 +190,11 @@ export function computeGstr3bReturn(input: Gstr3bComputationInput): Gstr3bReport
     itcSgst = reconciled2bItc.sgst;
   } else {
     for (const b of purchaseBills) {
-      itcIgst += Number(b.igstAmount || 0);
-      itcCgst += Number(b.cgstAmount || 0);
-      itcSgst += Number(b.sgstAmount || 0);
+      if ((b as any).itcEligible !== false) { // By default true for backward compatibility
+        itcIgst += Number(b.igstAmount || 0);
+        itcCgst += Number(b.cgstAmount || 0);
+        itcSgst += Number(b.sgstAmount || 0);
+      }
     }
   }
 
@@ -284,6 +293,15 @@ export function computeGstr3bReturn(input: Gstr3bComputationInput): Gstr3bReport
         camt: Math.round(itcCgst * 100) / 100,
         samt: Math.round(itcSgst * 100) / 100,
         csamt: 0.0,
+      },
+      ineligibleItc: {
+        section175: {
+          iamt: Math.round((reconciled2bItc?.ineligibleIgst || 0) * 100) / 100,
+          camt: Math.round((reconciled2bItc?.ineligibleCgst || 0) * 100) / 100,
+          samt: Math.round((reconciled2bItc?.ineligibleSgst || 0) * 100) / 100,
+          csamt: 0.0,
+        },
+        others: { iamt: 0, camt: 0, samt: 0, csamt: 0 },
       },
     },
 

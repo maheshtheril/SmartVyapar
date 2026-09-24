@@ -149,6 +149,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         einvoiceStatus: "GENERATED",
         einvoiceCancelReason: null,
         einvoiceCancelDate: null,
+        einvoiceIsSimulated: manualData ? false : true,
       },
     });
 
@@ -170,9 +171,12 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({
       success: true,
-      message: "E-Invoice IRN generated and registered successfully",
+      message: manualData 
+        ? "E-Invoice IRN registered successfully from manual entry" 
+        : "E-Invoice JSON payload generated successfully (Simulated mode: Not registered with IRP)",
       invoice: updatedInvoice,
       nicPayload,
+      isSimulated: !manualData,
     });
   } catch (error: any) {
     console.error("Error generating E-Invoice:", error);

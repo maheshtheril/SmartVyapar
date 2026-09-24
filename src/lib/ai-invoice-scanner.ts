@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export const ScannedPurchaseItemSchema = z.object({
   productName: z.string().trim().default("Unknown Item"),
-  hsnCode: z.string().trim().optional().default("9983"),
+  hsnCode: z.string().trim().optional(),
   batchNumber: z.string().trim().optional().default(""),
   expiryDate: z.string().trim().optional().default(""),
   unit: z.string().trim().default("PCS"),

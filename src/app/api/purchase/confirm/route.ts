@@ -76,11 +76,14 @@ export async function POST(req: NextRequest) {
         });
 
         if (!product) {
+          if (!item.hsnCode) {
+            throw new Error(`HSN code is required for new product: ${item.productName}`);
+          }
           product = await tx.product.create({
             data: {
               tenantId,
               name: item.productName,
-              hsnCode: item.hsnCode || "9983",
+              hsnCode: item.hsnCode,
               baseUnit: baseUnit,
               hasAltUnit: isPackaging,
               altUnit: isPackaging ? billedUnit : null,

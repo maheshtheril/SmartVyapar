@@ -36,8 +36,14 @@ export function generateNicEwayBillPayload(
   const toPincode = parseInt(invoice.customer?.pincode || "682001", 10) || 682001;
 
   const itemList = invoice.items.map((item, index) => {
+    if (!item.hsnCode) {
+      throw new Error(`HSN code is strictly required for E-Way Bill item: ${item.productName}`);
+    }
     const rawHsn = item.hsnCode.replace(/\D/g, "");
-    const hsnCode = parseInt(rawHsn || "9983", 10);
+    if (rawHsn.length < 4) {
+      throw new Error(`HSN code must be at least 4 digits for E-Way Bill item: ${item.productName}`);
+    }
+    const hsnCode = parseInt(rawHsn, 10);
     const taxableAmount = Number(
       (Number(item.unitPrice) * Number(item.quantity)).toFixed(2)
     );
@@ -49,7 +55,7 @@ export function generateNicEwayBillPayload(
       itemNo: index + 1,
       productName: item.productName || "Product",
       productDesc: item.productName || "Product",
-      hsnCode: isNaN(hsnCode) ? 9983 : hsnCode,
+      hsnCode: hsnCode,
       quantity: Number(item.quantity),
       qtyUnit: item.unitSold || "PCS",
       cgstRate: isInter ? 0 : Number((gstRate / 2).toFixed(2)),

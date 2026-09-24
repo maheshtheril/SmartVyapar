@@ -78,12 +78,16 @@ export async function POST(req: NextRequest) {
       const openingStock = Math.max(0, Number(raw.openingStock || 0));
       const minStockAlert = Math.max(1, Number(raw.minStockAlert || 5));
 
+      if (!raw.hsnCode || !String(raw.hsnCode).trim()) {
+        throw new Error(`HSN code is required for product: ${name}`);
+      }
+
       validRows.push({
         name,
         sku: raw.sku ? String(raw.sku).trim() : null,
         barcode: raw.barcode ? String(raw.barcode).trim() : null,
         category: (raw.category || "General").trim(),
-        hsnCode: (raw.hsnCode || "9983").trim(),
+        hsnCode: String(raw.hsnCode).trim(),
         baseUnit: (raw.baseUnit || "PCS").trim().toUpperCase(),
         purchasePrice: isNaN(purchasePrice) ? 0 : purchasePrice,
         sellingPrice,

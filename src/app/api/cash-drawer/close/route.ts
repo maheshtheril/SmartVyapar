@@ -160,6 +160,10 @@ export async function POST(req: NextRequest) {
         now,
         activeShift
       };
+    }, {
+      isolationLevel: 'Serializable',
+      maxWait: 5000,
+      timeout: 10000,
     });
 
     const { 

@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/daily-settlement",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/gstr-2b-sync",
+      "schedule": "0 3 14 * *"
+    },
+    {
+      "path": "/api/cron/subscription-renewal",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-sessions",
+      "schedule": "0 5 * * 0"
+    }
+  ]
+}

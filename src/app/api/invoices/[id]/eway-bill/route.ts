@@ -153,9 +153,12 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({
       success: true,
-      message: "Transport details updated successfully",
+      message: data.ewayBillNo
+        ? "E-Way Bill Number saved successfully"
+        : "Transport details saved and NIC JSON Payload generated successfully (Simulated mode: Not registered with NIC)",
       invoice: updatedInvoice,
       nicPayload,
+      isSimulated: !data.ewayBillNo,
     });
   } catch (error: any) {
     console.error("Error generating E-Way Bill:", error);

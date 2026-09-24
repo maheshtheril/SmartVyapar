@@ -283,7 +283,10 @@ export function generateOfficialGstr1Json(params: {
 
   for (const inv of invoices) {
     for (const item of inv.items) {
-      const hsn = (item.hsnCode || "9983").trim();
+      if (!item.hsnCode) {
+        throw new Error(`HSN code is strictly required for GSTR-1 reporting on item: ${item.productName || "Unknown"}`);
+      }
+      const hsn = item.hsnCode.trim();
       const uqc = normalizeUqc(item.unit || item.unitSold);
       const key = `${hsn}_${uqc}`;
       const qty = Number(item.quantity || 1);
@@ -318,6 +321,48 @@ export function generateOfficialGstr1Json(params: {
     }
   }
 
+  // Subtract Credit Notes
+  for (const cn of creditNotes) {
+    for (const item of cn.items) {
+      if (!item.hsnCode) {
+        throw new Error(`HSN code is strictly required for GSTR-1 reporting on credit note item: ${item.productName || "Unknown"}`);
+      }
+      const hsn = item.hsnCode.trim();
+      const uqc = normalizeUqc(item.unitReturned || "PCS");
+      const key = `${hsn}_${uqc}`;
+      
+      const qty = Number(item.quantity || 1);
+      const price = Number(item.unitPrice || 0);
+      const txval = Number((price * qty).toFixed(2));
+      const camt = Number(item.cgstAmount || 0);
+      const samt = Number(item.sgstAmount || 0);
+      const iamt = Number(item.igstAmount || 0);
+      const val = Number((txval + camt + samt + iamt).toFixed(2));
+      const desc = item.productName || item.name || "Goods";
+
+      if (!hsnSummaryMap[key]) {
+        hsnSummaryMap[key] = {
+          hsn_sc: hsn,
+          desc,
+          uqc,
+          qty: 0,
+          val: 0,
+          txval: 0,
+          iamt: 0,
+          camt: 0,
+          samt: 0,
+          csamt: 0.0,
+        };
+      }
+      hsnSummaryMap[key].qty = Number((hsnSummaryMap[key].qty - qty).toFixed(3));
+      hsnSummaryMap[key].val = Number((hsnSummaryMap[key].val - val).toFixed(2));
+      hsnSummaryMap[key].txval = Number((hsnSummaryMap[key].txval - txval).toFixed(2));
+      hsnSummaryMap[key].iamt = Number((hsnSummaryMap[key].iamt - iamt).toFixed(2));
+      hsnSummaryMap[key].camt = Number((hsnSummaryMap[key].camt - camt).toFixed(2));
+      hsnSummaryMap[key].samt = Number((hsnSummaryMap[key].samt - samt).toFixed(2));
+    }
+  }
+
   const hsnData = Object.values(hsnSummaryMap).map((h, idx) => ({
     num: idx + 1,
     ...h,
@@ -326,43 +371,50 @@ export function generateOfficialGstr1Json(params: {
   // 4. Table 13 Documents Issued
   const docDet: any[] = [];
 
-  if (invoices.length > 0) {
-    const sortedInvoices = [...invoices].sort((a, b) =>
-      a.invoiceNumber.localeCompare(b.invoiceNumber)
-    );
-    docDet.push({
-      doc_num: 1, // 1 = Invoices for outward supply
-      docs: [
-        {
-          num: 1,
-          from: sortedInvoices[0].invoiceNumber,
-          to: sortedInvoices[sortedInvoices.length - 1].invoiceNumber,
-          totnum: sortedInvoices.length,
-          canc: 0,
-          net_issue: sortedInvoices.length,
-        },
-      ],
-    });
+  // Helper to group by prefix and generate ranges
+  function generateDocSeries(documents: any[], docNumType: number, getDocNo: (d: any) => string) {
+    if (documents.length === 0) return null;
+    
+    // Group by prefix (e.g. "INV-2627-" or "CN-")
+    const groups: Record<string, any[]> = {};
+    for (const doc of documents) {
+      const docNo = getDocNo(doc);
+      // Extract prefix (everything up to the last dash)
+      const lastDash = docNo.lastIndexOf("-");
+      const prefix = lastDash >= 0 ? docNo.substring(0, lastDash + 1) : "SERIES-";
+      if (!groups[prefix]) groups[prefix] = [];
+      groups[prefix].push(doc);
+    }
+
+    const docsOutput = [];
+    let num = 1;
+    for (const [prefix, groupDocs] of Object.entries(groups)) {
+      const sorted = [...groupDocs].sort((a, b) => getDocNo(a).localeCompare(getDocNo(b)));
+      const totnum = sorted.length;
+      // In ZionaPOS, cancelled invoices currently aren't fetched if paymentStatus is filtered, 
+      // but if they are passed, we count them. We assume they have status === 'CANCELLED'
+      const canc = sorted.filter(d => d.status === "CANCELLED").length;
+      docsOutput.push({
+        num: num++,
+        from: getDocNo(sorted[0]),
+        to: getDocNo(sorted[sorted.length - 1]),
+        totnum,
+        canc,
+        net_issue: totnum - canc,
+      });
+    }
+
+    return {
+      doc_num: docNumType,
+      docs: docsOutput,
+    };
   }
 
-  if (creditNotes.length > 0) {
-    const sortedCN = [...creditNotes].sort((a, b) =>
-      a.creditNoteNumber.localeCompare(b.creditNoteNumber)
-    );
-    docDet.push({
-      doc_num: 2, // 2 = Credit Notes
-      docs: [
-        {
-          num: 1,
-          from: sortedCN[0].creditNoteNumber,
-          to: sortedCN[sortedCN.length - 1].creditNoteNumber,
-          totnum: sortedCN.length,
-          canc: 0,
-          net_issue: sortedCN.length,
-        },
-      ],
-    });
-  }
+  const invoiceSeries = generateDocSeries(invoices, 1, d => d.invoiceNumber);
+  if (invoiceSeries) docDet.push(invoiceSeries);
+
+  const cnSeries = generateDocSeries(creditNotes, 2, d => d.creditNoteNumber);
+  if (cnSeries) docDet.push(cnSeries);
 
   const calculatedGrossTurnover = Number(
     (grossTurnover !== undefined ? grossTurnover : totalSalesTurnover).toFixed(2)

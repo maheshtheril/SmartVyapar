@@ -137,10 +137,14 @@ export async function POST(req: NextRequest) {
 
       const lineTotal = lineTaxable + lineCgst + lineSgst + lineIgst;
 
+      if (!item.hsnCode) {
+        throw new Error(`HSN code is required for item: ${item.productName || "Goods"}`);
+      }
+
       return {
         productId: item.productId || null,
         productName: item.productName || "Goods",
-        hsnCode: item.hsnCode || "9983",
+        hsnCode: item.hsnCode,
         unit: item.unit || "PCS",
         quantity: qty,
         unitPrice: price,

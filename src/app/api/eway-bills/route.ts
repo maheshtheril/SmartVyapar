@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
           ewayBillDate: inv.ewayBillDate || inv.invoiceDate,
           validUpto,
           isExpired,
+          isSimulated: inv.ewayBillNo ? false : true,
           recipientName: inv.customerName,
           recipientGstin: inv.customerGstin || "URP",
           totalAmount: Number(inv.totalAmount || 0),
@@ -98,6 +99,7 @@ export async function GET(req: NextRequest) {
       }),
       ...persistedEwbRecords.map((ewb) => ({
         id: ewb.id,
+        isSimulated: ewb.isSimulated,
         sourceType: "RECORD",
         docId: ewb.invoiceId || ewb.id,
         docNumber: ewb.docNumber,

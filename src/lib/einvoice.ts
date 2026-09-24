@@ -153,13 +153,19 @@ export function generateNicEinvoicePayload(
     totalSgst += sgst;
     totalIgst += igst;
 
-    const rawHsn = (item.hsnCode || "8504").replace(/\D/g, "");
+    if (!item.hsnCode) {
+      throw new Error(`HSN code is strictly required for E-Invoice item: ${item.productName}`);
+    }
+    const rawHsn = item.hsnCode.replace(/\D/g, "");
+    if (rawHsn.length < 4) {
+      throw new Error(`HSN code must be at least 4 digits for E-Invoice item: ${item.productName}`);
+    }
 
     return {
       SlNo: String(idx + 1),
       PrdDesc: item.productName || "Product Item",
       IsServc: "N",
-      HsnCd: rawHsn.length >= 4 ? rawHsn : "8504",
+      HsnCd: rawHsn,
       Qty: Number(item.quantity),
       Unit: item.unitSold || "PCS",
       UnitPrice: Number(Number(item.unitPrice).toFixed(2)),
@@ -242,7 +248,10 @@ export async function registerEinvoice(
   const ackNo = generateAckNumber();
   const ackDate = new Date().toISOString();
   const docDateStr = formatEinvoiceDate(invoice.invoiceDate);
-  const mainHsn = invoice.items[0]?.hsnCode || "8504";
+  const mainHsn = invoice.items[0]?.hsnCode;
+  if (!mainHsn) {
+    throw new Error("E-Invoice generation requires at least one item with a valid HSN code.");
+  }
 
   const signedQrCode = generateSignedQrPayload({
     sellerGstin: sellerGstin.toUpperCase(),

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, DEFAULT_TX_OPTIONS } from "@/lib/prisma";
+import { prisma, DEFAULT_TX_OPTIONS, withRetry } from "@/lib/prisma";
 import { requireSession, AuthError } from "@/lib/auth";
 import { recordAuditLog } from "@/lib/audit";
 import { AuditAction } from "@prisma/client";
@@ -46,7 +46,7 @@ export async function POST(
 
     const paymentToApply = Math.min(amount, currentBalance);
 
-    await prisma.$transaction(async (tx) => {
+    await withRetry(() => prisma.$transaction(async (tx) => {
       // Fetch oldest unpaid/partial invoices for this customer (FIFO) INSIDE the transaction
       const unpaidInvoices = await tx.invoice.findMany({
         where: {
@@ -123,7 +123,7 @@ export async function POST(
       // Automated Double-Entry Accounting
       const { postCustomerPaymentJournalEntry } = await import("@/lib/accounting-mapper");
       await postCustomerPaymentJournalEntry(tx, tenantId, customerId, paymentToApply, mode);
-    }, DEFAULT_TX_OPTIONS);
+    }, DEFAULT_TX_OPTIONS));
 
     return NextResponse.json({
       success: true,

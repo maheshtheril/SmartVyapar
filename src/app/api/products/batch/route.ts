@@ -51,13 +51,17 @@ export async function POST(req: NextRequest) {
       const results = [];
 
       for (const item of variants) {
+        if (!item.hsnCode) {
+          throw new Error(`HSN code is required for product: ${item.name}`);
+        }
+        
         const product = await tx.product.create({
           data: {
             tenantId,
             name: item.name,
             sku: item.sku || null,
             barcode: item.barcode || null,
-            hsnCode: item.hsnCode || "9983",   // ✅ Generic default (not hardcoded Footwear)
+            hsnCode: item.hsnCode,
             category: item.category || null,   // ✅ No hardcoded "Footwear" default
             baseUnit: item.baseUnit || "PCS",
             purchasePrice: Number(item.purchasePrice),

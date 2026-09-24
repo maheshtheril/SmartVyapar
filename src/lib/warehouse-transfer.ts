@@ -110,8 +110,8 @@ export async function dispatchStockTransfer(
 
       // If source stock record does not exist, fetch current product stock
       if (!sourceStock) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
+        const product = await tx.product.findFirst({
+          where: { id: item.productId, tenantId },
         });
         if (!product) {
           throw new Error(`Product ${item.productName} not found.`);
@@ -267,12 +267,20 @@ export async function receiveStockTransfer(
     }
 
     // Update transfer status to RECEIVED
-    const updated = await tx.stockTransfer.update({
-      where: { id: transfer.id },
+    const updatedResult = await tx.stockTransfer.updateMany({
+      where: { id: transfer.id, status: "DISPATCHED" },
       data: {
         status: "RECEIVED",
         receivedDate: new Date(),
       },
+    });
+
+    if (updatedResult.count === 0) {
+      throw new Error(`Concurrency error: Transfer was already processed.`);
+    }
+
+    const updated = await tx.stockTransfer.findUnique({
+      where: { id: transfer.id },
       include: {
         fromWarehouse: true,
         toWarehouse: true,
@@ -363,14 +371,22 @@ export async function cancelStockTransfer(
     }
 
     // Update transfer status to CANCELLED
-    const updated = await tx.stockTransfer.update({
-      where: { id: transfer.id },
+    const updatedResult = await tx.stockTransfer.updateMany({
+      where: { id: transfer.id, status: "DISPATCHED" },
       data: {
         status: "CANCELLED",
         notes: transfer.notes
           ? `${transfer.notes} | Cancelled: ${cancelReason}`
           : `Cancelled: ${cancelReason}`,
       },
+    });
+
+    if (updatedResult.count === 0) {
+      throw new Error(`Concurrency error: Transfer was already processed or cancelled.`);
+    }
+
+    const updated = await tx.stockTransfer.findUnique({
+      where: { id: transfer.id },
       include: {
         fromWarehouse: true,
         toWarehouse: true,
