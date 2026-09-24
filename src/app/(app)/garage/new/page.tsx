@@ -25,6 +25,7 @@ export default function NewJobCard() {
   const [loading, setLoading] = useState(false);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
+  const [labourServices, setLabourServices] = useState<any[]>([]);
   
   // Form State
   const [customerName, setCustomerName] = useState("");
@@ -40,7 +41,7 @@ export default function NewJobCard() {
   // Add Item State
   const [newItemType, setNewItemType] = useState<'PART' | 'LABOUR'>('PART');
   const [selectedProductId, setSelectedProductId] = useState('');
-  const [labourName, setLabourName] = useState('');
+
   const [itemQty, setItemQty] = useState(1);
   const [itemPrice, setItemPrice] = useState(0);
 
@@ -74,11 +75,12 @@ export default function NewJobCard() {
   };
 
   const handleAddItem = () => {
-    if (newItemType === 'LABOUR' && !labourName) return;
+    if (newItemType === 'LABOUR' && !selectedProductId) return;
     if (newItemType === 'PART' && !selectedProductId) return;
 
     const selectedProduct = newItemType === 'PART' ? inventory.find(p => p.id === selectedProductId) : null;
-    const name = newItemType === 'LABOUR' ? labourName : (selectedProduct?.name || `Part ID: ${selectedProductId}`);
+    const selectedLabour = newItemType === 'LABOUR' ? labourServices.find(s => s.id === selectedProductId) : null;
+    const name = newItemType === 'LABOUR' ? (selectedLabour?.name || 'Labour') : (selectedProduct?.name || `Part ID: ${selectedProductId}`);
     
     setItems([...items, {
       id: Date.now().toString(),
@@ -91,7 +93,7 @@ export default function NewJobCard() {
     }]);
 
     // Reset
-    setLabourName('');
+
     setSelectedProductId('');
     setItemQty(1);
     setItemPrice(0);
@@ -374,3 +376,9 @@ export default function NewJobCard() {
     </div>
   );
 }
+
+
+
+
+
+
