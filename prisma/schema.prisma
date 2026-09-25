@@ -71,6 +71,7 @@ model Tenant {
   pincode            String?          @default("682001")
   isComposition      Boolean          @default(false)
   currency           String           @default("INR")
+  enableTerritory    Boolean          @default(false) // Toggle for FMCG Region/Zone hierarchy
   logoUrl            String?
   businessType       String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES"
   subscriptionTier   SubscriptionTier @default(FREE)
@@ -85,6 +86,10 @@ model Tenant {
   products              Product[]
   stockLogs             StockLog[]
   customers             Customer[]
+  regions               Region[]
+  zones                 Zone[]
+  territories           Territory[]
+  beats                 Beat[]
   invoices              Invoice[]
   purchaseBills         PurchaseBill[]
   accounts              Account[]
@@ -255,8 +260,74 @@ model StockLog {
 }
 
 // ----------------------------------------------------
+
+model Region {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  createdAt DateTime @default(now())
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  zones     Zone[]
+  customers Customer[]
+
+  @@index([tenantId])
+  @@map("regions")
+}
+
+model Zone {
+  id        String   @id @default(uuid())
+  tenantId  String
+  regionId  String
+  name      String
+  createdAt DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  region      Region      @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  territories Territory[]
+  customers   Customer[]
+
+  @@index([tenantId])
+  @@index([regionId])
+  @@map("zones")
+}
+
+model Territory {
+  id        String   @id @default(uuid())
+  tenantId  String
+  zoneId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  zone      Zone       @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  beats     Beat[]
+  customers Customer[]
+
+  @@index([tenantId])
+  @@index([zoneId])
+  @@map("territories")
+}
+
+model Beat {
+  id          String   @id @default(uuid())
+  tenantId    String
+  territoryId String
+  name        String
+  createdAt   DateTime @default(now())
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  territory Territory  @relation(fields: [territoryId], references: [id], onDelete: Cascade)
+  customers Customer[]
+
+  @@index([tenantId])
+  @@index([territoryId])
+  @@map("beats")
+}
+
 // 5. CUSTOMERS & KHATA (CREDIT LEDGER)
 // ----------------------------------------------------
+
 model Customer {
   id                 String   @id @default(uuid())
   tenantId           String
@@ -267,6 +338,7 @@ model Customer {
   stateCode          String?
   address            String?
   pincode            String?  @default("682001")
+  territoryId        String?
   outstandingBalance Decimal  @default(0.0) @db.Decimal(10, 2) // Positive means customer owes money
   accountId          String?  @unique
   loyaltyPoints      Int      @default(0)
@@ -275,11 +347,18 @@ model Customer {
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account             Account?             @relation(fields: [accountId], references: [id])
+  territory           Territory?           @relation(fields: [territoryId], references: [id], onDelete: SetNull)
   invoices            Invoice[]
   creditNotes         CreditNote[]
   loyaltyTransactions LoyaltyTransaction[]
   vehicles            CustomerVehicle[]
   serviceReminders    ServiceReminder[]
+  Region              Region?              @relation(fields: [regionId], references: [id])
+  regionId            String?
+  Zone                Zone?                @relation(fields: [zoneId], references: [id])
+  zoneId              String?
+  Beat                Beat?                @relation(fields: [beatId], references: [id])
+  beatId              String?
 
   @@index([tenantId, phone])
   @@map("customers")
