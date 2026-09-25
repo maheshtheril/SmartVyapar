@@ -101,6 +101,7 @@ export const RegisterTenantSchema = z.object({
     .regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, "Must be a valid UPI VPA format (e.g. shop@okaxis)"),
   address: z.string().trim().optional().nullable(),
   isComposition: z.boolean().default(false),
+  businessType: z.enum(["RETAIL", "DISTRIBUTION", "RESTAURANT", "SERVICES"]).default("RETAIL"),
 });
 
 export type RegisterTenantInput = z.infer<typeof RegisterTenantSchema>;
