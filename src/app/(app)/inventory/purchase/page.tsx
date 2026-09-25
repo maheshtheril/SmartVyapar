@@ -63,14 +63,7 @@ interface SupplierOption {
   isPreset?: boolean;
 }
 
-const DEFAULT_SUPPLIERS: SupplierOption[] = [
-  { name: 'Bosch Automotive Aftermarket India Ltd', gstin: '29AAACB2021A1Z8', phone: '1800 108 1234', isPreset: true },
-  { name: 'Castrol Lubricants Distribution Ltd', gstin: '32AABCC3344P1ZV', phone: '1800 222 100', isPreset: true },
-  { name: 'Exide Industries India Ltd', gstin: '32AAACE4455Q1ZT', phone: '1800 103 5454', isPreset: true },
-  { name: 'Mann & Hummel Filters India Pvt Ltd', gstin: '27AABCM8899P1ZA', phone: '020 6675 3000', isPreset: true },
-  { name: 'NGK Spark Plugs India Pvt Ltd', gstin: '27AABCN7788Q1ZB', phone: '0124 472 8888', isPreset: true },
-  { name: 'Valeo India Auto Parts Pvt Ltd', gstin: '33AABCV1122R1ZC', phone: '044 6711 8000', isPreset: true },
-];
+const DEFAULT_SUPPLIERS: SupplierOption[] = [];
 
 export default function PurchaseInwardPage() {
   const [activeTab, setActiveTab] = useState<'NEW_BILL' | 'REGISTER'>('REGISTER');
