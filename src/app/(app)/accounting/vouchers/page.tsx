@@ -640,7 +640,7 @@ export default function AccountingVouchersPage() {
   value={sourceAccountId}
   onChange={(val) => setSourceAccountId(val)}
   placeholder="Select Cash in Hand or Bank Account..."
-  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})` }))}
+  options={accounts.map(a => ({ id: a.id, label: `[${a.code}] ${a.name} (${a.classification} • Bal: ₹${Number(a.balance).toFixed(2)})` }))}
   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
 />
                   </div>
@@ -653,7 +653,7 @@ export default function AccountingVouchersPage() {
   value={destAccountId}
   onChange={(val) => setDestAccountId(val)}
   placeholder="Select Expense or Payable Account..."
-  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification})` }))}
+  options={accounts.map(a => ({ id: a.id, label: `[${a.code}] ${a.name} (${a.classification})` }))}
   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
 />
                   </div>
@@ -687,7 +687,7 @@ export default function AccountingVouchersPage() {
   value={destAccountId}
   onChange={(val) => setDestAccountId(val)}
   placeholder="Select Cash in Hand or Bank Account..."
-  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})` }))}
+  options={accounts.map(a => ({ id: a.id, label: `[${a.code}] ${a.name} (${a.classification} • Bal: ₹${Number(a.balance).toFixed(2)})` }))}
   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
 />
                   </div>
@@ -700,7 +700,7 @@ export default function AccountingVouchersPage() {
   value={sourceAccountId}
   onChange={(val) => setSourceAccountId(val)}
   placeholder="Select Revenue or Customer Account..."
-  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification})` }))}
+  options={accounts.map(a => ({ id: a.id, label: `[${a.code}] ${a.name} (${a.classification})` }))}
   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
 />
                   </div>
@@ -734,7 +734,7 @@ export default function AccountingVouchersPage() {
   value={sourceAccountId}
   onChange={(val) => setSourceAccountId(val)}
   placeholder="Select Source Cash/Bank..."
-  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})` }))}
+  options={accounts.map(a => ({ id: a.id, label: `[${a.code}] ${a.name} (${a.classification} • Bal: ₹${Number(a.balance).toFixed(2)})` }))}
   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
 />
                   </div>
@@ -747,7 +747,7 @@ export default function AccountingVouchersPage() {
   value={destAccountId}
   onChange={(val) => setDestAccountId(val)}
   placeholder="Select Destination Bank/Cash..."
-  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})` }))}
+  options={accounts.map(a => ({ id: a.id, label: `[${a.code}] ${a.name} (${a.classification} • Bal: ₹${Number(a.balance).toFixed(2)})` }))}
   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
 />
                   </div>
@@ -795,7 +795,7 @@ export default function AccountingVouchersPage() {
     setJournalLines((prev) => prev.map((l, i) => (i === idx ? { ...l, accountId: val } : l)));
   }}
   placeholder="Select Ledger Account..."
-  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification})` }))}
+  options={accounts.map(a => ({ id: a.id, label: `[${a.code}] ${a.name} (${a.classification})` }))}
   className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium focus:outline-none"
 />
                         </div>
