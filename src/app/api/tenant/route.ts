@@ -173,15 +173,9 @@ export async function GET(req: NextRequest) {
             aiTag: "AI Vision"
           },
           { 
-            id: "vendor-payables", 
-            name: "Vendor Payables & Aging", 
-            href: "/inventory/suppliers",
-              icon: "Users",
-            },
+            id: "supplier-master", name: "Supplier Master", href: "/inventory/suppliers", icon: "Users" },
             {
-              id: "payables",
-              name: "Accounts Payable",
-              href: "/inventory/payables", 
+              id: "vendor-payables", name: "Vendor Payables & Aging", href: "/inventory/payables", 
             icon: "CreditCard",
             badge: "Creditors",
             badgeColor: "amber"
