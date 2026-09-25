@@ -30,6 +30,7 @@ interface Customer {
   phone: string;
   gstin?: string;
   stateCode?: string;
+  territory?: { name: string; zone?: string | null };
   outstandingBalance: number;
   loyaltyPoints: number;
   totalBills: number;
