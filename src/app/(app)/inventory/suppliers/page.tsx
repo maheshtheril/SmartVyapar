@@ -7,6 +7,8 @@ export default function SupplierMasterPage() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editSupplier, setEditSupplier] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   
   // Form State
@@ -94,6 +96,7 @@ export default function SupplierMasterPage() {
                 <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">GSTIN</th>
                 <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Contact</th>
                 <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Address</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
