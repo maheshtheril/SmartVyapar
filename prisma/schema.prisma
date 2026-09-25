@@ -268,11 +268,13 @@ model Customer {
   address            String?
   pincode            String?  @default("682001")
   outstandingBalance Decimal  @default(0.0) @db.Decimal(10, 2) // Positive means customer owes money
+  accountId          String?  @unique
   loyaltyPoints      Int      @default(0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account             Account?             @relation(fields: [accountId], references: [id])
   invoices            Invoice[]
   creditNotes         CreditNote[]
   loyaltyTransactions LoyaltyTransaction[]
@@ -723,6 +725,7 @@ model Account {
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   journalLineItems JournalLineItem[]
   supplier         Supplier?
+  Customer         Customer?
 
   @@unique([tenantId, code])
   @@index([tenantId, classification])
