@@ -53,6 +53,10 @@ export default function CustomersPage() {
   const [addName, setAddName] = useState('');
   const [addPhone, setAddPhone] = useState('');
   const [addGstin, setAddGstin] = useState('');
+  const [addEmail, setAddEmail] = useState('');
+  const [addAddress, setAddAddress] = useState('');
+  const [addPincode, setAddPincode] = useState('');
+  const [addStateCode, setAddStateCode] = useState('');
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -99,12 +103,16 @@ export default function CustomersPage() {
           name: addName,
           phone: addPhone,
           gstin: addGstin || undefined,
+          email: addEmail || undefined,
+          address: addAddress || undefined,
+          pincode: addPincode || undefined,
+          stateCode: addStateCode || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save');
       setShowAddModal(false);
-      setAddName(''); setAddPhone(''); setAddGstin('');
+      setAddName(''); setAddPhone(''); setAddGstin(''); setAddEmail(''); setAddAddress(''); setAddPincode(''); setAddStateCode('');
       load();
     } catch (err: any) {
       setAddError(err.message);
