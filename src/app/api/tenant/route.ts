@@ -229,6 +229,14 @@ export async function GET(req: NextRequest) {
               icon: "Users"
             },
             { 
+              id: "field-sales", 
+              name: "Field Sales App (Mobile)", 
+              href: "/field-sales", 
+              icon: "Smartphone",
+              badge: "New",
+              badgeColor: "emerald"
+            },
+            {
               id: "territories-master", 
               name: "Territories Master (FMCG)", 
               href: "/territories", 
