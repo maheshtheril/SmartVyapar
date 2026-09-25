@@ -119,6 +119,7 @@ model Tenant {
   JobCard               JobCard[]
   LabourService         LabourService[]
   Supplier              Supplier[]
+  SalesOrder            SalesOrder[]
 
   @@map("tenants")
 }
@@ -202,8 +203,9 @@ model Product {
   recipeIngredients RecipeItem[] @relation("MenuToIngredients")
 
   // Recipes: When this product is used as a raw material ingredient (e.g. Raw Chicken):
-  usedInRecipes RecipeItem[]  @relation("IngredientToMenu")
-  JobCardItem   JobCardItem[]
+  usedInRecipes      RecipeItem[]         @relation("IngredientToMenu")
+  JobCardItem        JobCardItem[]
+  SalesOrderLineItem SalesOrderLineItem[]
 
   // Prevent duplicate SKU or barcode per tenant (NULLs are allowed multiple times by PostgreSQL)
   @@unique([tenantId, sku])
@@ -349,6 +351,7 @@ model Customer {
   account             Account?             @relation(fields: [accountId], references: [id])
   territory           Territory?           @relation(fields: [territoryId], references: [id], onDelete: SetNull)
   invoices            Invoice[]
+  salesOrders         SalesOrder[]
   creditNotes         CreditNote[]
   loyaltyTransactions LoyaltyTransaction[]
   vehicles            CustomerVehicle[]
@@ -1564,4 +1567,46 @@ model Supplier {
   purchaseBills PurchaseBill[]
 
   @@map("suppliers")
+}
+
+// 12. SALES ORDERS (FIELD BOOKING)
+// ----------------------------------------------------
+model SalesOrder {
+  id                   String    @id @default(uuid())
+  tenantId             String
+  orderNumber          String
+  customerId           String
+  date                 DateTime  @default(now())
+  expectedDeliveryDate DateTime?
+  status               String    @default("PENDING") // PENDING, CONFIRMED, FULFILLED, CANCELLED
+  totalAmount          Decimal   @default(0.0) @db.Decimal(12, 2)
+  notes                String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer  Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  lineItems SalesOrderLineItem[]
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId])
+  @@index([customerId])
+  @@map("sales_orders")
+}
+
+model SalesOrderLineItem {
+  id           String  @id @default(uuid())
+  salesOrderId String
+  productId    String
+  quantity     Int
+  unitPrice    Decimal @default(0.0) @db.Decimal(10, 2)
+  totalPrice   Decimal @default(0.0) @db.Decimal(12, 2)
+
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([salesOrderId])
+  @@index([productId])
+  @@map("sales_order_line_items")
 }
