@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireRole(['ADMIN', 'MANAGER', 'CASHIER']);
+    const auth = await requireRole(req, ['ADMIN', 'MANAGER', 'CASHIER']);
     if (auth instanceof NextResponse) return auth;
     const tenantId = auth.tenantId;
 
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireRole(['ADMIN', 'MANAGER']);
+    const auth = await requireRole(req, ['ADMIN', 'MANAGER']);
     if (auth instanceof NextResponse) return auth;
     const tenantId = auth.tenantId;
 
