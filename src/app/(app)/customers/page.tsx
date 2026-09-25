@@ -44,6 +44,7 @@ interface Summary {
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+    const [territories, setTerritories] = useState<any[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -57,6 +58,7 @@ export default function CustomersPage() {
   const [addAddress, setAddAddress] = useState('');
   const [addPincode, setAddPincode] = useState('');
   const [addStateCode, setAddStateCode] = useState('');
+    const [addTerritoryId, setAddTerritoryId] = useState('');
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -74,6 +76,9 @@ export default function CustomersPage() {
     try {
       const url = search ? `/api/customers?q=${encodeURIComponent(search)}` : '/api/customers';
       const res = await fetch(url);
+        const tRes = await fetch('/api/territories');
+        const tData = await tRes.json();
+        if (tData.success) setTerritories(tData.territories || []);
       const data = await res.json();
       if (data.success) {
         setCustomers(data.customers || []);
@@ -107,12 +112,13 @@ export default function CustomersPage() {
           address: addAddress || undefined,
           pincode: addPincode || undefined,
           stateCode: addStateCode || undefined,
+            territoryId: addTerritoryId || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save');
       setShowAddModal(false);
-      setAddName(''); setAddPhone(''); setAddGstin(''); setAddEmail(''); setAddAddress(''); setAddPincode(''); setAddStateCode('');
+      setAddName(''); setAddPhone(''); setAddGstin(''); setAddEmail(''); setAddAddress(''); setAddPincode(''); setAddStateCode(''); setAddTerritoryId('');
       load();
     } catch (err: any) {
       setAddError(err.message);
@@ -269,6 +275,7 @@ export default function CustomersPage() {
                     <tr key={c.id} className="hover:bg-slate-50/50 transition">
                       <td className="px-4 py-3">
                         <div className="font-bold text-slate-900">{c.name}</div>
+                          {c.territory && <div className="text-[10px] text-indigo-500 font-bold">{c.territory.name}</div>}
                         {c.gstin && (
                           <div className="text-[10px] text-slate-400 font-mono">{c.gstin}</div>
                         )}
@@ -445,6 +452,22 @@ export default function CustomersPage() {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-1 gap-4 mt-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">TERRITORY / BEAT (optional)</label>
+                  <select
+                    value={addTerritoryId}
+                    onChange={(e) => setAddTerritoryId(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
+                  >
+                    <option value="">-- Select Territory --</option>
+                    {territories.map(t => (
+                      <option key={t.id} value={t.id}>{t.zone ? `${t.zone} - ` : ''}{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {addError && (
 
                 <p className="text-xs text-rose-600 font-semibold bg-rose-50 px-3 py-2 rounded-lg">{addError}</p>
