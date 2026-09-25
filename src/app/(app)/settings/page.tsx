@@ -729,9 +729,10 @@ function SettingsContent() {
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Business Industry & Store Category
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                   {[
-                    { id: 'RETAIL', label: 'Retail & Wholesale', desc: 'Electricals, Supermarket, Garments, Electronics', emoji: '🛒' },
+                    { id: 'RETAIL', label: 'Retail & POS', desc: 'Electricals, Supermarket, Garments, Electronics', emoji: '🛒' },
+                      { id: 'DISTRIBUTION', label: 'FMCG & Distribution', desc: 'Territory management, wholesale beats, distribution', emoji: '🚚' },
                     { id: 'AUTOMOBILE', label: 'Automobile Workshop', desc: 'Vehicle Job-Cards, Spare Parts & Labor', emoji: '🚗' },
                     { id: 'RESTAURANT', label: 'Restaurant & Cafe', desc: 'Dining Tables, KOT, Bakery & Takeaway', emoji: '🍽️' },
                     { id: 'SERVICES', label: 'Services & Repair', desc: 'Consulting, Repair Services & Freelance', emoji: '💼' },

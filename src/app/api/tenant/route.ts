@@ -476,6 +476,7 @@ export async function PATCH(req: NextRequest) {
         ...(legalName !== undefined ? { legalName: legalName ? legalName.trim() : null } : {}),
         ...(logoUrl !== undefined ? { logoUrl: logoUrl ? logoUrl.trim() : null } : {}),
         ...(businessType !== undefined ? { businessType } : {}),
+        ...(businessType === "DISTRIBUTION" ? { enableTerritory: true } : {}),
         ...(phone !== undefined ? { phone: phone.trim() } : {}),
         ...(email !== undefined ? { email: email ? email.trim() : null } : {}),
         ...(address !== undefined ? { address: address ? address.trim() : null } : {}),
