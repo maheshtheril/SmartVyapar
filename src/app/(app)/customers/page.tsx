@@ -476,7 +476,7 @@ export default function CustomersPage() {
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
                       >
                         <option value="">-- Select Region --</option>
-                        {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        {regions.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
                       </select>
                     </div>
                     <div>
@@ -488,7 +488,7 @@ export default function CustomersPage() {
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white disabled:opacity-50"
                       >
                         <option value="">-- Select Zone --</option>
-                        {regions.find(r => r.id === addRegionId)?.zones?.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                        {regions.find((r: any) => r.id === addRegionId)?.zones?.map((z: any) => <option key={z.id} value={z.id}>{z.name}</option>)}
                       </select>
                     </div>
                   </div>
@@ -502,7 +502,7 @@ export default function CustomersPage() {
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white disabled:opacity-50"
                       >
                         <option value="">-- Select Territory --</option>
-                        {regions.find(r => r.id === addRegionId)?.zones?.find(z => z.id === addZoneId)?.territories?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        {regions.find((r: any) => r.id === addRegionId)?.zones?.find((z: any) => z.id === addZoneId)?.territories?.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                       </select>
                     </div>
                     <div>
@@ -514,7 +514,7 @@ export default function CustomersPage() {
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white disabled:opacity-50"
                       >
                         <option value="">-- Select Route --</option>
-                        {regions.find(r => r.id === addRegionId)?.zones?.find(z => z.id === addZoneId)?.territories?.find(t => t.id === addTerritoryId)?.beats?.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        {regions.find((r: any) => r.id === addRegionId)?.zones?.find((z: any) => z.id === addZoneId)?.territories?.find((t: any) => t.id === addTerritoryId)?.beats?.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
                     </div>
                   </div>
