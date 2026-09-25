@@ -217,7 +217,7 @@ export async function GET(req: NextRequest) {
       },
       {
         id: "parties",
-        name: "Parties & Khata",
+        name: "Customers & Receivables",
         icon: "Users",
         badge: customersCount > 0 ? `${customersCount}` : undefined,
         badgeColor: "indigo",
