@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import SearchableSelect from '@/components/SearchableSelect';
 import {
   Landmark,
   Plus,
@@ -635,38 +636,26 @@ export default function AccountingVouchersPage() {
                     <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                       Paid From Account (Credit Cash / Bank) *
                     </label>
-                    <select
-                      required
-                      value={sourceAccountId}
-                      onChange={(e) => setSourceAccountId(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
-                    >
-                      <option value="">Select Cash in Hand or Bank Account...</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          [{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+  value={sourceAccountId}
+  onChange={(val) => setSourceAccountId(val)}
+  placeholder="Select Cash in Hand or Bank Account..."
+  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})` }))}
+  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+/>
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                       Paid To Account (Debit Expense / Vendor / Liability) *
                     </label>
-                    <select
-                      required
-                      value={destAccountId}
-                      onChange={(e) => setDestAccountId(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
-                    >
-                      <option value="">Select Expense or Payable Account...</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          [{a.code}] {a.name} ({a.classification})
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+  value={destAccountId}
+  onChange={(val) => setDestAccountId(val)}
+  placeholder="Select Expense or Payable Account..."
+  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification})` }))}
+  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+/>
                   </div>
 
                   <div>
@@ -694,38 +683,26 @@ export default function AccountingVouchersPage() {
                     <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                       Deposited Into Account (Debit Cash / Bank) *
                     </label>
-                    <select
-                      required
-                      value={destAccountId}
-                      onChange={(e) => setDestAccountId(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
-                    >
-                      <option value="">Select Cash in Hand or Bank Account...</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          [{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+  value={destAccountId}
+  onChange={(val) => setDestAccountId(val)}
+  placeholder="Select Cash in Hand or Bank Account..."
+  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})` }))}
+  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+/>
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                       Received From Account (Credit Revenue / Debtor / Customer) *
                     </label>
-                    <select
-                      required
-                      value={sourceAccountId}
-                      onChange={(e) => setSourceAccountId(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
-                    >
-                      <option value="">Select Revenue or Customer Account...</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          [{a.code}] {a.name} ({a.classification})
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+  value={sourceAccountId}
+  onChange={(val) => setSourceAccountId(val)}
+  placeholder="Select Revenue or Customer Account..."
+  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification})` }))}
+  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+/>
                   </div>
 
                   <div>
@@ -753,38 +730,26 @@ export default function AccountingVouchersPage() {
                     <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                       Source Account (Credit - e.g. Cash in Hand) *
                     </label>
-                    <select
-                      required
-                      value={sourceAccountId}
-                      onChange={(e) => setSourceAccountId(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
-                    >
-                      <option value="">Select Source Cash/Bank...</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          [{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+  value={sourceAccountId}
+  onChange={(val) => setSourceAccountId(val)}
+  placeholder="Select Source Cash/Bank..."
+  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})` }))}
+  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+/>
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                       Destination Account (Debit - e.g. Bank Account) *
                     </label>
-                    <select
-                      required
-                      value={destAccountId}
-                      onChange={(e) => setDestAccountId(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
-                    >
-                      <option value="">Select Destination Bank/Cash...</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          [{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+  value={destAccountId}
+  onChange={(val) => setDestAccountId(val)}
+  placeholder="Select Destination Bank/Cash..."
+  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification} • Bal: ₹{Number(a.balance).toFixed(2)})` }))}
+  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none"
+/>
                   </div>
 
                   <div>
@@ -824,24 +789,15 @@ export default function AccountingVouchersPage() {
                     {journalLines.map((row, idx) => (
                       <div key={idx} className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-slate-200">
                         <div className="flex-1 min-w-0">
-                          <select
-                            required
-                            value={row.accountId}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setJournalLines((prev) =>
-                                prev.map((l, i) => (i === idx ? { ...l, accountId: val } : l))
-                              );
-                            }}
-                            className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium focus:outline-none"
-                          >
-                            <option value="">Select Ledger Account...</option>
-                            {accounts.map((a) => (
-                              <option key={a.id} value={a.id}>
-                                [{a.code}] {a.name} ({a.classification})
-                              </option>
-                            ))}
-                          </select>
+                          <SearchableSelect
+  value={row.accountId}
+  onChange={(val) => {
+    setJournalLines((prev) => prev.map((l, i) => (i === idx ? { ...l, accountId: val } : l)));
+  }}
+  placeholder="Select Ledger Account..."
+  options={accounts.map(a => ({ id: a.id, label: `[{a.code}] {a.name} ({a.classification})` }))}
+  className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium focus:outline-none"
+/>
                         </div>
 
                         <div className="w-24">
