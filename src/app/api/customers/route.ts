@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId } = body;
+    const { name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, openingBalance } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ error: "Name and phone are required" }, { status: 400 });
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
             code: `AR-${Date.now().toString().slice(-6)}`,
             name: `Customer: ${name}`,
             classification: 'ASSET',
-            balance: 0,
+            balance: parseFloat(openingBalance) || 0,
           }
         });
         return await tx.customer.create({
@@ -138,7 +138,8 @@ export async function POST(req: NextRequest) {
             pincode: pincode || null,
             gstin: gstin || null, 
             stateCode: stateCode || "32",
-            accountId: arAccount.id
+            accountId: arAccount.id,
+              outstandingBalance: parseFloat(openingBalance) || 0
           },
         });
       });

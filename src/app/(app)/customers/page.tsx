@@ -55,6 +55,7 @@ export default function CustomersPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addName, setAddName] = useState('');
   const [addPhone, setAddPhone] = useState('');
+    const [openingBalance, setOpeningBalance] = useState('');
   const [addGstin, setAddGstin] = useState('');
   const [addEmail, setAddEmail] = useState('');
   const [addAddress, setAddAddress] = useState('');
@@ -156,6 +157,7 @@ export default function CustomersPage() {
         body: JSON.stringify({
           name: addName,
           phone: addPhone,
+            openingBalance: openingBalance ? parseFloat(openingBalance) : 0,
           gstin: addGstin || undefined,
           email: addEmail || undefined,
           address: addAddress || undefined,
@@ -463,6 +465,19 @@ export default function CustomersPage() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Opening Balance (₹)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={openingBalance}
+                      onChange={(e) => setOpeningBalance(e.target.value)}
+                      placeholder="e.g. 1500.00"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
+                    />
+                    <p className="text-[9px] text-slate-400 mt-1">Amount the customer already owes you.</p>
+                  </div>
+
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">EMAIL (optional)</label>
                   <input
