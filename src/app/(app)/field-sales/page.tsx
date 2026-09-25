@@ -26,7 +26,7 @@ export default function FieldSalesApp() {
           const allBeats = d.regions?.flatMap((r: any) => 
             r.zones?.flatMap((z: any) => 
               z.territories?.flatMap((t: any) => 
-                t.beats?.map((b: any) => ({ ...b, routeName: \`\${b.name} (\${t.name})\` }))
+                t.beats?.map((b: any) => ({ ...b, routeName: `${b.name} (${t.name})` }))
               )
             )
           ) || [];
@@ -225,7 +225,7 @@ export default function FieldSalesApp() {
         <button 
           disabled={!selectedCustomer}
           onClick={() => setActiveTab('PRODUCTS')}
-          className={\`py-4 flex flex-col items-center justify-center gap-1 \${activeTab === 'PRODUCTS' ? 'text-indigo-600' : 'text-slate-400'} \${!selectedCustomer ? 'opacity-30' : ''}\`}
+          className={`py-4 flex flex-col items-center justify-center gap-1 ${activeTab === 'PRODUCTS' ? 'text-indigo-600' : 'text-slate-400'} ${!selectedCustomer ? 'opacity-30' : ''}`}
         >
           <Search className="h-5 w-5" />
           <span className="text-[9px] font-black uppercase tracking-wider">Catalog</span>
@@ -233,7 +233,7 @@ export default function FieldSalesApp() {
         <button 
           disabled={!selectedCustomer}
           onClick={() => setActiveTab('CART')}
-          className={\`py-4 flex flex-col items-center justify-center gap-1 relative \${activeTab === 'CART' ? 'text-indigo-600' : 'text-slate-400'} \${!selectedCustomer ? 'opacity-30' : ''}\`}
+          className={`py-4 flex flex-col items-center justify-center gap-1 relative ${activeTab === 'CART' ? 'text-indigo-600' : 'text-slate-400'} ${!selectedCustomer ? 'opacity-30' : ''}`}
         >
           {cart.length > 0 && <span className="absolute top-2 right-8 bg-rose-500 text-white text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center">{cart.length}</span>}
           <ShoppingCart className="h-5 w-5" />
