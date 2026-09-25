@@ -148,7 +148,7 @@ export default function CustomersPage() {
 
   const buildWhatsApp = (c: Customer) => {
     const phone = (c.phone || '').replace(/\D/g, '');
-    const msg = `Hello *${c.name}*,\n\nThis is a gentle reminder from our store.\n\nYour current outstanding *Khata balance is ₹${c.outstandingBalance.toFixed(2)}*.\n\nKindly clear at your earliest convenience.\n\nThank you! 🙏`;
+    const msg = `Hello *${c.name}*,\n\nThis is a gentle reminder from our store.\n\nYour current outstanding *Receivables balance is ₹${c.outstandingBalance.toFixed(2)}*.\n\nKindly clear at your earliest convenience.\n\nThank you! 🙏`;
     return `https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`;
   };
 
@@ -159,7 +159,7 @@ export default function CustomersPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
             <Users className="h-6 w-6 text-indigo-600" />
-            <span>Customer Accounts &amp; Khata</span>
+            <span>Customer Accounts & Directory</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">Track customer profiles, credit balances, and loyalty points</p>
         </div>
@@ -190,7 +190,7 @@ export default function CustomersPage() {
             <p className="text-[10px] text-slate-500 mt-0.5">{summary.clearedCount} Cleared</p>
           </div>
           <div className="bg-white rounded-2xl border border-rose-100 p-4 shadow-xs">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Total Khata Due</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Total Receivables</p>
             <p className="text-2xl font-black text-rose-600 mt-1">
               ₹{summary.totalOutstanding.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </p>
@@ -307,7 +307,7 @@ export default function CustomersPage() {
                             <button
                               onClick={() => openPayModal(c)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold transition shadow-xs"
-                              title="Record Khata Payment"
+                              title="Record Receivables Payment"
                             >
                               <IndianRupee className="h-3 w-3" />
                               Collect
@@ -423,7 +423,7 @@ export default function CustomersPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-base font-black text-slate-900">Collect Khata Payment</h2>
+                <h2 className="text-base font-black text-slate-900">Collect Receivables Payment</h2>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">{payCustomer.name} • {payCustomer.phone}</p>
               </div>
               <button onClick={() => setPayCustomer(null)} className="text-slate-400 hover:text-slate-600">

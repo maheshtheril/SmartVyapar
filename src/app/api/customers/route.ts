@@ -35,6 +35,9 @@ export async function GET(req: NextRequest) {
         id: true,
         name: true,
         phone: true,
+        email: true,
+        address: true,
+        pincode: true,
         gstin: true,
         stateCode: true,
         outstandingBalance: true,
@@ -83,7 +86,7 @@ export async function POST(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { name, phone, gstin, stateCode } = body;
+    const { name, phone, gstin, stateCode, email, address, pincode } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ error: "Name and phone are required" }, { status: 400 });
@@ -98,7 +101,14 @@ export async function POST(req: NextRequest) {
     if (existing) {
       customer = await prisma.customer.update({
         where: { id: existing.id },
-        data: { name, gstin: gstin || null, stateCode: stateCode || "32" },
+        data: { 
+          name, 
+          gstin: gstin || null, 
+          stateCode: stateCode || "32",
+          email: email || null,
+          address: address || null,
+          pincode: pincode || null
+        },
       });
     } else {
       
@@ -117,6 +127,9 @@ export async function POST(req: NextRequest) {
             tenantId, 
             name, 
             phone, 
+            email: email || null,
+            address: address || null,
+            pincode: pincode || null,
             gstin: gstin || null, 
             stateCode: stateCode || "32",
             accountId: arAccount.id
