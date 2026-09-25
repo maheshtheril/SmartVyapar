@@ -45,7 +45,8 @@ interface Summary {
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
-    const [territories, setTerritories] = useState<any[]>([]);
+    const [territoryEnabled, setTerritoryEnabled] = useState(false);
+    const [regions, setRegions] = useState<any[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -59,7 +60,10 @@ export default function CustomersPage() {
   const [addAddress, setAddAddress] = useState('');
   const [addPincode, setAddPincode] = useState('');
   const [addStateCode, setAddStateCode] = useState('');
+    const [addRegionId, setAddRegionId] = useState('');
+    const [addZoneId, setAddZoneId] = useState('');
     const [addTerritoryId, setAddTerritoryId] = useState('');
+    const [addBeatId, setAddBeatId] = useState('');
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -77,9 +81,12 @@ export default function CustomersPage() {
     try {
       const url = search ? `/api/customers?q=${encodeURIComponent(search)}` : '/api/customers';
       const res = await fetch(url);
-        const tRes = await fetch('/api/territories');
+        const tRes = await fetch('/api/territories/hierarchy');
         const tData = await tRes.json();
-        if (tData.success) setTerritories(tData.territories || []);
+        if (tData.success) {
+          setTerritoryEnabled(tData.enabled);
+          setRegions(tData.regions || []);
+        }
       const data = await res.json();
       if (data.success) {
         setCustomers(data.customers || []);
@@ -113,13 +120,16 @@ export default function CustomersPage() {
           address: addAddress || undefined,
           pincode: addPincode || undefined,
           stateCode: addStateCode || undefined,
+            regionId: addRegionId || undefined,
+            zoneId: addZoneId || undefined,
             territoryId: addTerritoryId || undefined,
+            beatId: addBeatId || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save');
       setShowAddModal(false);
-      setAddName(''); setAddPhone(''); setAddGstin(''); setAddEmail(''); setAddAddress(''); setAddPincode(''); setAddStateCode(''); setAddTerritoryId('');
+      setAddName(''); setAddPhone(''); setAddGstin(''); setAddEmail(''); setAddAddress(''); setAddPincode(''); setAddStateCode(''); setAddRegionId(''); setAddZoneId(''); setAddTerritoryId(''); setAddBeatId('');
       load();
     } catch (err: any) {
       setAddError(err.message);
@@ -453,21 +463,64 @@ export default function CustomersPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-4 mt-4">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">TERRITORY / BEAT (optional)</label>
-                  <select
-                    value={addTerritoryId}
-                    onChange={(e) => setAddTerritoryId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
-                  >
-                    <option value="">-- Select Territory --</option>
-                    {territories.map(t => (
-                      <option key={t.id} value={t.id}>{t.zone ? `${t.zone} - ` : ''}{t.name}</option>
-                    ))}
-                  </select>
+              
+              {territoryEnabled && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-4 space-y-3">
+                  <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">Distribution Hierarchy</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Region</label>
+                      <select
+                        value={addRegionId}
+                        onChange={(e) => { setAddRegionId(e.target.value); setAddZoneId(''); setAddTerritoryId(''); setAddBeatId(''); }}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
+                      >
+                        <option value="">-- Select Region --</option>
+                        {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Zone</label>
+                      <select
+                        value={addZoneId}
+                        onChange={(e) => { setAddZoneId(e.target.value); setAddTerritoryId(''); setAddBeatId(''); }}
+                        disabled={!addRegionId}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white disabled:opacity-50"
+                      >
+                        <option value="">-- Select Zone --</option>
+                        {regions.find(r => r.id === addRegionId)?.zones?.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Territory</label>
+                      <select
+                        value={addTerritoryId}
+                        onChange={(e) => { setAddTerritoryId(e.target.value); setAddBeatId(''); }}
+                        disabled={!addZoneId}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white disabled:opacity-50"
+                      >
+                        <option value="">-- Select Territory --</option>
+                        {regions.find(r => r.id === addRegionId)?.zones?.find(z => z.id === addZoneId)?.territories?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Route / Beat</label>
+                      <select
+                        value={addBeatId}
+                        onChange={(e) => setAddBeatId(e.target.value)}
+                        disabled={!addTerritoryId}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white disabled:opacity-50"
+                      >
+                        <option value="">-- Select Route --</option>
+                        {regions.find(r => r.id === addRegionId)?.zones?.find(z => z.id === addZoneId)?.territories?.find(t => t.id === addTerritoryId)?.beats?.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
 
               {addError && (
 

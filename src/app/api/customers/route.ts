@@ -40,6 +40,8 @@ export async function GET(req: NextRequest) {
         pincode: true,
         gstin: true,
         stateCode: true,
+        territoryId: true,
+        territory: { select: { name: true, zone: true } },
         outstandingBalance: true,
         loyaltyPoints: true,
         createdAt: true,
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { name, phone, gstin, stateCode, email, address, pincode } = body;
+    const { name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ error: "Name and phone are required" }, { status: 400 });
@@ -105,6 +107,10 @@ export async function POST(req: NextRequest) {
           name, 
           gstin: gstin || null, 
           stateCode: stateCode || "32",
+            regionId: regionId || null,
+            zoneId: zoneId || null,
+            territoryId: territoryId || null,
+            beatId: beatId || null,
           email: email || null,
           address: address || null,
           pincode: pincode || null
