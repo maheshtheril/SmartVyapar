@@ -90,7 +90,7 @@ export default function TerritoriesMaster() {
                 <button
                   key={tab}
                   onClick={() => { setActiveTab(tab); setError(''); }}
-                  className={\`flex-1 py-3 text-[10px] font-bold text-center transition \${activeTab === tab ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600' : 'text-slate-500 hover:bg-slate-50'}\`}
+                  className={`flex-1 py-3 text-[10px] font-bold text-center transition ${activeTab === tab ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600' : 'text-slate-500 hover:bg-slate-50'}`}
                 >
                   {tab}
                 </button>
@@ -131,7 +131,7 @@ export default function TerritoriesMaster() {
 
               <div>
                 <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">New {activeTab} Name</label>
-                <input required type="text" value={name} onChange={e => setName(e.target.value)} placeholder={\`e.g. \${activeTab === 'REGION' ? 'South India' : 'Ernakulam'}\`} className="w-full border rounded-xl px-3 py-2 text-xs font-bold" />
+                <input required type="text" value={name} onChange={e => setName(e.target.value)} placeholder={`e.g. ${activeTab === 'REGION' ? 'South India' : 'Ernakulam'}`} className="w-full border rounded-xl px-3 py-2 text-xs font-bold" />
               </div>
 
               {error && <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{error}</p>}
