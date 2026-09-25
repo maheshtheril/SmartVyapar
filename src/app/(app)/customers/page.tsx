@@ -64,6 +64,7 @@ export default function CustomersPage() {
     const [addZoneId, setAddZoneId] = useState('');
     const [addTerritoryId, setAddTerritoryId] = useState('');
     const [addBeatId, setAddBeatId] = useState('');
+    const [rememberHierarchy, setRememberHierarchy] = useState(true);
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -104,6 +105,46 @@ export default function CustomersPage() {
     return () => clearTimeout(t);
   }, [load]);
 
+  
+  // Flattened lists for smart auto-fill
+  const allZones = regions.flatMap(r => r.zones?.map((z: any) => ({ ...z, parentRegion: r.id })) || []);
+  const allTerritories = allZones.flatMap((z: any) => z.territories?.map((t: any) => ({ ...t, parentZone: z.id, parentRegion: z.parentRegion })) || []);
+  const allBeats = allTerritories.flatMap((t: any) => t.beats?.map((b: any) => ({ ...b, parentTerritory: t.id, parentZone: t.parentZone, parentRegion: t.parentRegion })) || []);
+
+  const handleBeatChange = (beatId: string) => {
+    setAddBeatId(beatId);
+    if (!beatId) return;
+    const beat = allBeats.find((b: any) => b.id === beatId);
+    if (beat) {
+      setAddTerritoryId(beat.parentTerritory);
+      setAddZoneId(beat.parentZone);
+      setAddRegionId(beat.parentRegion);
+    }
+  };
+
+  const handleTerritoryChange = (territoryId: string) => {
+    setAddTerritoryId(territoryId);
+    setAddBeatId('');
+    if (!territoryId) return;
+    const territory = allTerritories.find((t: any) => t.id === territoryId);
+    if (territory) {
+      setAddZoneId(territory.parentZone);
+      setAddRegionId(territory.parentRegion);
+    }
+  };
+
+  const handleZoneChange = (zoneId: string) => {
+    setAddZoneId(zoneId);
+    setAddTerritoryId('');
+    setAddBeatId('');
+    if (!zoneId) return;
+    const zone = allZones.find((z: any) => z.id === zoneId);
+    if (zone) {
+      setAddRegionId(zone.parentRegion);
+    }
+  };
+
+
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddSaving(true);
@@ -129,7 +170,9 @@ export default function CustomersPage() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save');
       setShowAddModal(false);
-      setAddName(''); setAddPhone(''); setAddGstin(''); setAddEmail(''); setAddAddress(''); setAddPincode(''); setAddStateCode(''); setAddRegionId(''); setAddZoneId(''); setAddTerritoryId(''); setAddBeatId('');
+      setAddName(''); setAddPhone(''); setAddGstin(''); setAddEmail(''); setAddAddress(''); setAddPincode(''); setAddStateCode(''); if (!rememberHierarchy) {
+              setAddRegionId(''); setAddZoneId(''); setAddTerritoryId(''); setAddBeatId('');
+            }
       load();
     } catch (err: any) {
       setAddError(err.message);
@@ -464,9 +507,24 @@ export default function CustomersPage() {
                 </div>
               </div>
               
+              
               {territoryEnabled && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-4 space-y-3">
-                  <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">Distribution Hierarchy</h3>
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 mt-4 space-y-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-800 flex items-center gap-1.5">
+                      Distribution Hierarchy
+                    </h3>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={rememberHierarchy} 
+                        onChange={e => setRememberHierarchy(e.target.checked)} 
+                        className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 h-3 w-3"
+                      />
+                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">Remember selection</span>
+                    </label>
+                  </div>
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Region</label>
@@ -475,7 +533,7 @@ export default function CustomersPage() {
                         onChange={(e) => { setAddRegionId(e.target.value); setAddZoneId(''); setAddTerritoryId(''); setAddBeatId(''); }}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
                       >
-                        <option value="">-- Select Region --</option>
+                        <option value="">-- Any Region --</option>
                         {regions.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
                       </select>
                     </div>
@@ -483,12 +541,11 @@ export default function CustomersPage() {
                       <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Zone</label>
                       <select
                         value={addZoneId}
-                        onChange={(e) => { setAddZoneId(e.target.value); setAddTerritoryId(''); setAddBeatId(''); }}
-                        disabled={!addRegionId}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white disabled:opacity-50"
+                        onChange={(e) => handleZoneChange(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
                       >
-                        <option value="">-- Select Zone --</option>
-                        {regions.find((r: any) => r.id === addRegionId)?.zones?.map((z: any) => <option key={z.id} value={z.id}>{z.name}</option>)}
+                        <option value="">-- Any Zone --</option>
+                        {(addRegionId ? regions.find((r: any) => r.id === addRegionId)?.zones : allZones)?.map((z: any) => <option key={z.id} value={z.id}>{z.name}</option>)}
                       </select>
                     </div>
                   </div>
@@ -497,29 +554,28 @@ export default function CustomersPage() {
                       <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Territory</label>
                       <select
                         value={addTerritoryId}
-                        onChange={(e) => { setAddTerritoryId(e.target.value); setAddBeatId(''); }}
-                        disabled={!addZoneId}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white disabled:opacity-50"
+                        onChange={(e) => handleTerritoryChange(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
                       >
-                        <option value="">-- Select Territory --</option>
-                        {regions.find((r: any) => r.id === addRegionId)?.zones?.find((z: any) => z.id === addZoneId)?.territories?.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        <option value="">-- Any Territory --</option>
+                        {(addZoneId ? allZones.find((z: any) => z.id === addZoneId)?.territories : allTerritories)?.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Route / Beat</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Route / Beat (Fast Select)</label>
                       <select
                         value={addBeatId}
-                        onChange={(e) => setAddBeatId(e.target.value)}
-                        disabled={!addTerritoryId}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white disabled:opacity-50"
+                        onChange={(e) => handleBeatChange(e.target.value)}
+                        className="w-full rounded-lg border-2 border-indigo-400 px-3 py-2 text-xs focus:border-indigo-600 focus:outline-none bg-white font-semibold text-indigo-900 shadow-sm"
                       >
-                        <option value="">-- Select Route --</option>
-                        {regions.find((r: any) => r.id === addRegionId)?.zones?.find((z: any) => z.id === addZoneId)?.territories?.find((t: any) => t.id === addTerritoryId)?.beats?.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        <option value="">-- Select Route to Auto-Fill --</option>
+                        {(addTerritoryId ? allTerritories.find((t: any) => t.id === addTerritoryId)?.beats : allBeats)?.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
                     </div>
                   </div>
                 </div>
               )}
+
 
 
               {addError && (
