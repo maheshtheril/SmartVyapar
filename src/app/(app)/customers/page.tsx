@@ -400,8 +400,6 @@ export default function CustomersPage() {
                   placeholder="29AAAAA0000A1Z5"
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono focus:border-indigo-500 focus:outline-none"
                 />
-              
-                </div>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
@@ -447,8 +445,7 @@ export default function CustomersPage() {
                   />
                 </div>
               </div>
-              <div className="mt-4">
-                {addError && (
+              {addError && (
 
                 <p className="text-xs text-rose-600 font-semibold bg-rose-50 px-3 py-2 rounded-lg">{addError}</p>
               )}
