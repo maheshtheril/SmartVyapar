@@ -113,6 +113,7 @@ model Tenant {
   CustomerVehicle       CustomerVehicle[]
   JobCard               JobCard[]
   LabourService         LabourService[]
+  Supplier              Supplier[]
 
   @@map("tenants")
 }
@@ -576,25 +577,27 @@ model LoyaltyTransaction {
 // 7. PURCHASE BILLS (AI SCANNED OR MANUAL RESTOCK)
 // ----------------------------------------------------
 model PurchaseBill {
-  id                String   @id @default(uuid())
+  supplierId        String?
+  supplier          Supplier? @relation(fields: [supplierId], references: [id])
+  id                String    @id @default(uuid())
   tenantId          String
   billNumber        String // Supplier's bill number
   grnNumber         String? // e.g. "GRN-2026-0001"
-  billDate          DateTime @default(now())
+  billDate          DateTime  @default(now())
   supplierName      String
   supplierGstin     String?
   warehouseId       String?
-  paymentTerms      String?  @default("CREDIT") // CREDIT, CASH, BANK_TRANSFER, UPI
+  paymentTerms      String?   @default("CREDIT") // CREDIT, CASH, BANK_TRANSFER, UPI
   notes             String?
-  totalTaxable      Decimal  @db.Decimal(10, 2)
-  cgstAmount        Decimal  @default(0.0) @db.Decimal(10, 2)
-  sgstAmount        Decimal  @default(0.0) @db.Decimal(10, 2)
-  igstAmount        Decimal  @default(0.0) @db.Decimal(10, 2)
-  totalAmount       Decimal  @db.Decimal(10, 2)
+  totalTaxable      Decimal   @db.Decimal(10, 2)
+  cgstAmount        Decimal   @default(0.0) @db.Decimal(10, 2)
+  sgstAmount        Decimal   @default(0.0) @db.Decimal(10, 2)
+  igstAmount        Decimal   @default(0.0) @db.Decimal(10, 2)
+  totalAmount       Decimal   @db.Decimal(10, 2)
   scannedFileUrl    String?
-  aiConfidenceScore Decimal? @db.Decimal(4, 2) // e.g. 0.95 (95% accuracy)
-  isConfirmed       Boolean  @default(false) // True when user confirms AI extraction
-  itcEligible       Boolean  @default(true) // Checked to claim ITC in GSTR-3B Table 4 fallback
+  aiConfidenceScore Decimal?  @db.Decimal(4, 2) // e.g. 0.95 (95% accuracy)
+  isConfirmed       Boolean   @default(false) // True when user confirms AI extraction
+  itcEligible       Boolean   @default(true) // Checked to claim ITC in GSTR-3B Table 4 fallback
 
   paymentStatus PaymentStatus @default(UNPAID)
   paidAmount    Decimal       @default(0.0) @db.Decimal(10, 2)
@@ -719,6 +722,7 @@ model Account {
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   journalLineItems JournalLineItem[]
+  supplier         Supplier?
 
   @@unique([tenantId, code])
   @@index([tenantId, classification])
@@ -1458,4 +1462,24 @@ model ServiceReminder {
 
   @@index([tenantId, status])
   @@index([tenantId, reminderDate])
+}
+
+model Supplier {
+  id        String  @id @default(uuid())
+  tenantId  String
+  name      String
+  gstin     String?
+  phone     String?
+  email     String?
+  address   String?
+  accountId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account       Account?       @relation(fields: [accountId], references: [id])
+  purchaseBills PurchaseBill[]
+
+  @@map("suppliers")
 }

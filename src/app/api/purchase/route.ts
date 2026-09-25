@@ -132,6 +132,7 @@ export async function POST(req: NextRequest) {
       supplierName,
       supplierGstin,
       billNumber,
+            supplierId: finalSupplierId,
       billDate,
       warehouseId,
       paymentTerms = "CREDIT",
@@ -272,6 +273,46 @@ export async function POST(req: NextRequest) {
 
     // Execute atomic transaction
     const result = await prisma.$transaction(async (tx) => {
+      
+      // Supplier Master & Chart of Accounts Auto-Link
+      let finalSupplierId = null;
+      if (supplierName) {
+        // Try to find existing supplier
+        let existingSupplier = await tx.supplier.findFirst({
+          where: { tenantId, name: { equals: supplierName, mode: 'insensitive' } }
+        });
+
+        if (!existingSupplier) {
+          // Create Accounts Payable Ledger
+          const vendorAccount = await tx.account.create({
+            data: {
+              tenantId,
+              code: `AP-${Date.now().toString().slice(-6)}`,
+              name: `Vendor: ${supplierName}`,
+              classification: 'LIABILITY',
+              balance: 0,
+            }
+          });
+
+          // Create Supplier Master
+          existingSupplier = await tx.supplier.create({
+            data: {
+              tenantId,
+              name: supplierName,
+              gstin: supplierGstin || null,
+              accountId: vendorAccount.id
+            }
+          });
+        } else if (supplierGstin && !existingSupplier.gstin) {
+          // Update GSTIN if missing
+          existingSupplier = await tx.supplier.update({
+            where: { id: existingSupplier.id },
+            data: { gstin: supplierGstin }
+          });
+        }
+        finalSupplierId = existingSupplier.id;
+      }
+
       // 1. Create Purchase Bill Header
       const bill = await tx.purchaseBill.create({
         data: {
