@@ -175,7 +175,13 @@ export async function GET(req: NextRequest) {
           { 
             id: "vendor-payables", 
             name: "Vendor Payables & Aging", 
-            href: "/inventory/payables", 
+            href: "/inventory/suppliers",
+              icon: "Users",
+            },
+            {
+              id: "payables",
+              name: "Accounts Payable",
+              href: "/inventory/payables", 
             icon: "CreditCard",
             badge: "Creditors",
             badgeColor: "amber"
