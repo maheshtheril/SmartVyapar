@@ -222,12 +222,18 @@ export async function GET(req: NextRequest) {
         badge: customersCount > 0 ? `${customersCount}` : undefined,
         badgeColor: "indigo",
         children: [
-          { 
-            id: "customers", 
-            name: "Customer Directory & Balance", 
-            href: "/customers", 
-            icon: "Users" 
-          },
+          {
+              id: "customers",
+              name: "Customer Directory & Balance",
+              href: "/customers",
+              icon: "Users"
+            },
+            { 
+              id: "territories-master", 
+              name: "Territories Master (FMCG)", 
+              href: "/territories", 
+              icon: "Map" 
+            },
           { 
             id: "customer-aging", 
             name: "Customer Aging & Dunning", 
