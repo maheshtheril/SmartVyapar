@@ -235,7 +235,8 @@ export default function RegisterPage() {
                   { id: 'RETAIL', label: 'Retail & POS' },
                   { id: 'DISTRIBUTION', label: 'FMCG & Distribution' },
                   { id: 'RESTAURANT', label: 'Restaurant & F&B' },
-                  { id: 'SERVICES', label: 'Services & Billing' }
+                  { id: 'SERVICES', label: 'Services & Billing' },
+                  { id: 'AUTOMOBILE', label: 'Automobile & Garage' }
                 ].map(type => (
                   <button
                     key={type.id}
