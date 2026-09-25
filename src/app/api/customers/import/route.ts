@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
     let errorCount = 0;
     const errors: string[] = [];
 
-    for (const [index, row] of customers.entries()) {
+    for (let index = 0; index < customers.length; index++) {
+      const row = customers[index];
       try {
         const name = row.name?.trim();
         const phone = row.phone?.trim();
