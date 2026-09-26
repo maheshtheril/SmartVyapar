@@ -63,7 +63,7 @@ export default function CustomersPage() {
   const [addName, setAddName] = useState('');
   const [addPhone, setAddPhone] = useState('');
     const [openingBalance, setOpeningBalance] = useState('');
-    const [addOpeningBalanceDate, setAddOpeningBalanceDate] = useState('');
+    const [addOpeningBalanceDate, setAddOpeningBalanceDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [addGstin, setAddGstin] = useState('');
   const [addEmail, setAddEmail] = useState('');
   const [addAddress, setAddAddress] = useState('');
