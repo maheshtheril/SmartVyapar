@@ -160,7 +160,7 @@ export async function PUT(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { id, name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId } = body;
+    const { id, name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, isActive } = body;
 
     if (!id || !name) {
       return NextResponse.json({ error: "ID and Name are required" }, { status: 400 });
@@ -180,6 +180,7 @@ export async function PUT(req: NextRequest) {
         zoneId: zoneId || null,
         territoryId: territoryId || null,
         beatId: beatId || null,
+        isActive: isActive !== undefined ? isActive : true,
       },
     });
 
@@ -198,6 +199,21 @@ export async function DELETE(req: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
+    }
+
+    const customer = await prisma.customer.findUnique({
+      where: { id, tenantId },
+      include: { invoices: true }
+    });
+
+    if (!customer) {
+      return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+    }
+
+    if (customer.invoices.length > 0 || Number(customer.outstandingBalance) !== 0) {
+      return NextResponse.json({ 
+        error: "Cannot delete customer because they have existing invoices or an outstanding balance. Please edit them and mark as 'Inactive' instead." 
+      }, { status: 400 });
     }
 
     await prisma.customer.delete({
