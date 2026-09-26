@@ -449,13 +449,16 @@ export default function CustomersPage() {
       </div>
 
       
+      
       {/* EDIT CUSTOMER MODAL */}
       {isEditModalOpen && editCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h2 className="text-sm font-black text-slate-800">Edit Customer</h2>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-base font-black text-slate-800">Edit Customer</h2>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             
             <form onSubmit={async (e) => {
@@ -477,44 +480,128 @@ export default function CustomersPage() {
                 }
               } catch (e: any) { setEditError(e.message || "Failed to update customer."); }
               finally { setEditSubmitting(false); }
-            }} className="p-4 overflow-y-auto space-y-4">
+            }} className="p-6 overflow-y-auto space-y-4">
               
-              {editError && <div className="p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg">{editError}</div>}
+              {editError && <div className="p-3 text-xs text-rose-700 font-semibold bg-rose-50 border border-rose-200 rounded-lg">{editError}</div>}
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Full Name *</label>
-                  <input required type="text" value={editCustomer.name || ''} onChange={(e) => setEditCustomer({...editCustomer, name: e.target.value})} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none" />
+                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Full Name *</label>
+                  <input required type="text" value={editCustomer.name || ''} onChange={(e) => setEditCustomer({...editCustomer, name: e.target.value})} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Mobile Number</label>
-                    <input type="text" value={editCustomer.phone || ''} onChange={(e) => setEditCustomer({...editCustomer, phone: e.target.value})} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none" />
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Mobile Number</label>
+                    <input type="text" value={editCustomer.phone || ''} onChange={(e) => setEditCustomer({...editCustomer, phone: e.target.value})} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">GSTIN</label>
-                    <input type="text" value={editCustomer.gstin || ''} onChange={(e) => setEditCustomer({...editCustomer, gstin: e.target.value.toUpperCase()})} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none" />
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">GSTIN</label>
+                    <input type="text" value={editCustomer.gstin || ''} onChange={(e) => setEditCustomer({...editCustomer, gstin: e.target.value.toUpperCase()})} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono focus:border-indigo-500 focus:outline-none" />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Email</label>
-                  <input type="email" value={editCustomer.email || ''} onChange={(e) => setEditCustomer({...editCustomer, email: e.target.value})} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Email (Optional)</label>
+                    <input type="email" value={editCustomer.email || ''} onChange={(e) => setEditCustomer({...editCustomer, email: e.target.value})} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">State Code</label>
+                    <input type="text" value={editCustomer.stateCode || ''} onChange={(e) => setEditCustomer({...editCustomer, stateCode: e.target.value})} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Address</label>
-                  <input type="text" value={editCustomer.address || ''} onChange={(e) => setEditCustomer({...editCustomer, address: e.target.value})} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Address</label>
+                    <input type="text" value={editCustomer.address || ''} onChange={(e) => setEditCustomer({...editCustomer, address: e.target.value})} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Pincode</label>
+                    <input type="text" value={editCustomer.pincode || ''} onChange={(e) => setEditCustomer({...editCustomer, pincode: e.target.value})} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none" />
+                  </div>
                 </div>
+
+                {territoryEnabled && (
+                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 mt-4 space-y-3">
+                    <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-800 flex items-center gap-1.5 mb-2">
+                      Distribution Hierarchy
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Region</label>
+                        <select
+                          value={editCustomer.regionId || ''}
+                          onChange={(e) => setEditCustomer({...editCustomer, regionId: e.target.value, zoneId: '', territoryId: '', beatId: ''})}
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
+                        >
+                          <option value="">-- Any Region --</option>
+                          {regions.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Zone</label>
+                        <select
+                          value={editCustomer.zoneId || ''}
+                          onChange={(e) => {
+                            const zId = e.target.value;
+                            const zone = allZones.find((z: any) => z.id === zId);
+                            setEditCustomer({...editCustomer, zoneId: zId, regionId: zone?.parentRegion || editCustomer.regionId, territoryId: '', beatId: ''});
+                          }}
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
+                        >
+                          <option value="">-- Any Zone --</option>
+                          {(editCustomer.regionId ? regions.find((r: any) => r.id === editCustomer.regionId)?.zones : allZones)?.map((z: any) => <option key={z.id} value={z.id}>{z.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Territory</label>
+                        <select
+                          value={editCustomer.territoryId || ''}
+                          onChange={(e) => {
+                            const tId = e.target.value;
+                            const territory = allTerritories.find((t: any) => t.id === tId);
+                            setEditCustomer({...editCustomer, territoryId: tId, zoneId: territory?.parentZone || editCustomer.zoneId, regionId: territory?.parentRegion || editCustomer.regionId, beatId: ''});
+                          }}
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none bg-white"
+                        >
+                          <option value="">-- Any Territory --</option>
+                          {(editCustomer.zoneId ? allZones.find((z: any) => z.id === editCustomer.zoneId)?.territories : allTerritories)?.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Route / Beat (Fast Select)</label>
+                        <select
+                          value={editCustomer.beatId || ''}
+                          onChange={(e) => {
+                            const bId = e.target.value;
+                            const beat = allBeats.find((b: any) => b.id === bId);
+                            if(beat) {
+                              setEditCustomer({...editCustomer, beatId: bId, territoryId: beat.parentTerritory, zoneId: beat.parentZone, regionId: beat.parentRegion});
+                            } else {
+                              setEditCustomer({...editCustomer, beatId: bId});
+                            }
+                          }}
+                          className="w-full rounded-lg border-2 border-indigo-400 px-3 py-2 text-xs focus:border-indigo-600 focus:outline-none bg-white font-semibold text-indigo-900 shadow-sm"
+                        >
+                          <option value="">-- Select Route to Auto-Fill --</option>
+                          {(editCustomer.territoryId ? allTerritories.find((t: any) => t.id === editCustomer.territoryId)?.beats : allBeats)?.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-4">
+              <div className="bg-slate-50 p-4 border border-slate-200 mt-2 rounded-xl">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={editCustomer?.isActive !== false} onChange={(e) => setEditCustomer({...editCustomer, isActive: e.target.checked})} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
-                  <span className="text-xs font-semibold text-slate-700">Customer Account is Active</span>
+                  <span className="text-xs font-bold text-slate-800">Customer Account is Active</span>
                 </label>
                 <p className="text-[10px] text-slate-500 mt-1 pl-6">Uncheck this to archive the customer and hide them from selection dropdowns.</p>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex gap-2">
+              <div className="pt-4 border-t border-slate-100 flex gap-3">
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2.5 rounded-xl text-xs font-bold transition">Cancel</button>
                 <button type="submit" disabled={editSubmitting} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition disabled:opacity-50">
                   {editSubmitting ? 'Saving...' : 'Save Changes'}
@@ -525,113 +612,114 @@ export default function CustomersPage() {
         </div>
       )}
 
-
       {/* Add Customer Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-indigo-600" />
                 Add New Customer
               </h2>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 transition">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <form onSubmit={handleAddCustomer} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Full Name *</label>
-                <input
-                  required
-                  type="text"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  placeholder="e.g. Rajan Enterprises"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Mobile Number (WhatsApp) *</label>
-                <input
-                  required
-                  type="tel"
-                  maxLength={10}
-                  value={addPhone}
-                  onChange={(e) => setAddPhone(e.target.value.replace(/\D/g, ''))}
-                  placeholder="10-digit mobile"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">GSTIN (optional)</label>
-                <input
-                  type="text"
-                  value={addGstin}
-                  onChange={(e) => setAddGstin(e.target.value.toUpperCase())}
-                  placeholder="29AAAAA0000A1Z5"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
+            
+            <form onSubmit={handleAddCustomer} className="p-6 overflow-y-auto space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Full Name *</label>
+                  <input
+                    required
+                    type="text"
+                    value={addName}
+                    onChange={(e) => setAddName(e.target.value)}
+                    placeholder="e.g. Rajan Enterprises"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Opening Balance (₹)</label>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Mobile Number (WhatsApp) *</label>
+                    <input
+                      required
+                      type="tel"
+                      maxLength={10}
+                      value={addPhone}
+                      onChange={(e) => setAddPhone(e.target.value.replace(/\D/g, ''))}
+                      placeholder="10-digit mobile"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">GSTIN (optional)</label>
+                    <input
+                      type="text"
+                      value={addGstin}
+                      onChange={(e) => setAddGstin(e.target.value.toUpperCase())}
+                      placeholder="29AAAAA0000A1Z5"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Opening Balance (₹)</label>
                     <input
                       type="number"
                       step="0.01"
                       value={openingBalance}
                       onChange={(e) => setOpeningBalance(e.target.value)}
                       placeholder="e.g. 1500.00"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
                     />
-                    <p className="text-[9px] text-slate-400 mt-1">Amount the customer already owes you.</p>
                   </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">EMAIL (optional)</label>
-                  <input
-                    type="email"
-                    value={addEmail}
-                    onChange={(e) => setAddEmail(e.target.value)}
-                    placeholder="e.g. raj@example.com"
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-                  />
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Email (Optional)</label>
+                    <input
+                      type="email"
+                      value={addEmail}
+                      onChange={(e) => setAddEmail(e.target.value)}
+                      placeholder="e.g. raj@example.com"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">State Code</label>
+                    <input
+                      type="text"
+                      value={addStateCode}
+                      onChange={(e) => setAddStateCode(e.target.value)}
+                      placeholder="e.g. 32"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Pincode</label>
+                    <input
+                      type="text"
+                      value={addPincode}
+                      onChange={(e) => setAddPincode(e.target.value)}
+                      placeholder="e.g. 682001"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">STATE CODE (optional)</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Address</label>
                   <input
                     type="text"
-                    value={addStateCode}
-                    onChange={(e) => setAddStateCode(e.target.value)}
-                    placeholder="e.g. 32"
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">ADDRESS (optional)</label>
-                  <textarea
-                    rows={2}
                     value={addAddress}
                     onChange={(e) => setAddAddress(e.target.value)}
                     placeholder="Full physical address"
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs resize-none focus:border-indigo-500 focus:outline-none"
-                  ></textarea>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">PINCODE (optional)</label>
-                  <input
-                    type="text"
-                    value={addPincode}
-                    onChange={(e) => setAddPincode(e.target.value)}
-                    placeholder="e.g. 682001"
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
               </div>
-              
-              
+
               {territoryEnabled && (
                 <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 mt-4 space-y-3">
                   <div className="flex items-center justify-between mb-2">
@@ -642,13 +730,12 @@ export default function CustomersPage() {
                       <input 
                         type="checkbox" 
                         checked={rememberHierarchy} 
-                        onChange={e => setRememberHierarchy(e.target.checked)} 
-                        className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 h-3 w-3"
+                        onChange={(e) => setRememberHierarchy(e.target.value === 'true' || e.target.checked)} 
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3 h-3" 
                       />
-                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">Remember selection</span>
+                      <span className="text-[9px] font-bold text-slate-600 uppercase">Remember Selection</span>
                     </label>
                   </div>
-                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Region</label>
@@ -700,135 +787,27 @@ export default function CustomersPage() {
                 </div>
               )}
 
-
-
               {addError && (
-
                 <p className="text-xs text-rose-600 font-semibold bg-rose-50 px-3 py-2 rounded-lg">{addError}</p>
               )}
-              <div className="flex gap-3 pt-1">
+              
+              <div className="flex gap-3 pt-4 border-t border-slate-100 mt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={addSaving}
-                  className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition disabled:opacity-60"
+                  className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition disabled:opacity-60"
                 >
                   {addSaving ? 'Saving...' : 'Save Customer'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Record Payment Modal */}
-      {payCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-base font-black text-slate-900">Collect Receivables Payment</h2>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">{payCustomer.name} • {payCustomer.phone}</p>
-              </div>
-              <button onClick={() => setPayCustomer(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Outstanding summary */}
-            <div className="bg-rose-50 border border-rose-100 rounded-xl px-4 py-3 mb-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Outstanding Balance</p>
-              <p className="text-2xl font-black text-rose-600 mt-0.5">
-                ₹{payCustomer.outstandingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-
-            {paySuccess ? (
-              <div className="flex flex-col items-center py-6 space-y-2">
-                <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-                <p className="text-sm font-black text-emerald-700 text-center">{paySuccess}</p>
-              </div>
-            ) : (
-              <form onSubmit={handleRecordPayment} className="space-y-3">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Amount Received (₹)</label>
-                  <input
-                    required
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    max={payCustomer.outstandingBalance}
-                    value={payAmount}
-                    onChange={(e) => setPayAmount(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-black text-slate-900 focus:border-indigo-500 focus:outline-none text-right"
-                  />
-                </div>
-
-                {/* Payment Mode */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Payment Mode</label>
-                  <div className="flex gap-2">
-                    {(['CASH', 'UPI', 'CARD'] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setPayMode(m)}
-                        className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl border text-[11px] font-bold transition ${
-                          payMode === m
-                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                            : 'border-slate-200 text-slate-600 hover:border-indigo-300'
-                        }`}
-                      >
-                        {m === 'CASH' && <Banknote className="h-4 w-4" />}
-                        {m === 'UPI' && <QrCode className="h-4 w-4" />}
-                        {m === 'CARD' && <CreditCard className="h-4 w-4" />}
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Notes (optional)</label>
-                  <input
-                    type="text"
-                    value={payNotes}
-                    onChange={(e) => setPayNotes(e.target.value)}
-                    placeholder="e.g. Partial payment via Paytm"
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-
-                {payError && (
-                  <p className="text-xs text-rose-600 font-semibold bg-rose-50 px-3 py-2 rounded-lg">
-                    <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />{payError}
-                  </p>
-                )}
-
-                <div className="flex gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setPayCustomer(null)}
-                    className="flex-1 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={payLoading}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition disabled:opacity-60 shadow-sm"
-                  >
-                    {payLoading ? 'Recording...' : '✓ Record Payment'}
-                  </button>
-                </div>
-              </form>
-            )}
           </div>
         </div>
       )}
