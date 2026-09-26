@@ -105,23 +105,9 @@ export async function POST(req: NextRequest) {
     });
 
     let customer;
-    if (existing) {
-      customer = await prisma.customer.update({
-        where: { id: existing.id },
-        data: { 
-          name, 
-          gstin: gstin || null, 
-          stateCode: stateCode || "32",
-            regionId: regionId || null,
-            zoneId: zoneId || null,
-            territoryId: territoryId || null,
-            beatId: beatId || null,
-          email: email || null,
-          address: address || null,
-          pincode: pincode || null
-        },
-      });
-    } else {
+          if (existing) {
+        return NextResponse.json({ error: "A customer with this phone number already exists. Please use the Edit button to update their balance or details." }, { status: 400 });
+      } else {
       
       customer = await prisma.$transaction(async (tx) => {
         const arAccount = await tx.account.create({
