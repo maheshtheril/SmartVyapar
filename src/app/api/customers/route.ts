@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
         outstandingBalance: true,
         loyaltyPoints: true,
         createdAt: true,
+          openingBalanceDate: true,
         _count: { select: { invoices: true } },
       },
     });
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, openingBalance } = body;
+    const { name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, openingBalance, openingBalanceDate } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ error: "Name and phone are required" }, { status: 400 });
@@ -168,7 +169,7 @@ export async function PUT(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { id, name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, isActive, outstandingBalance } = body;
+    const { id, name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, isActive, outstandingBalance, openingBalanceDate } = body;
 
     if (!id || !name) {
       return NextResponse.json({ error: "ID and Name are required" }, { status: 400 });
@@ -190,6 +191,7 @@ export async function PUT(req: NextRequest) {
           territoryId: territoryId || null,
           beatId: beatId || null,
           isActive: isActive !== undefined ? isActive : true,
+          ...(openingBalanceDate !== undefined && { openingBalanceDate: openingBalanceDate ? new Date(openingBalanceDate) : null }),
           ...(outstandingBalance !== undefined && { outstandingBalance: parseFloat(outstandingBalance) || 0 })
         },
       });

@@ -342,6 +342,7 @@ model Customer {
   pincode            String?  @default("682001")
   territoryId        String?
   outstandingBalance Decimal  @default(0.0) @db.Decimal(10, 2) // Positive means customer owes money
+  openingBalanceDate DateTime?
   accountId          String?  @unique
   loyaltyPoints      Int      @default(0)
     isActive           Boolean  @default(true)
