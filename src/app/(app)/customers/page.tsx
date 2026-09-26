@@ -54,6 +54,10 @@ export default function CustomersPage() {
 
   // Add customer modal
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editCustomer, setEditCustomer] = useState<any>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState('');
   const [addName, setAddName] = useState('');
   const [addPhone, setAddPhone] = useState('');
     const [openingBalance, setOpeningBalance] = useState('');
