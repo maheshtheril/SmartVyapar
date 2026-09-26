@@ -105,7 +105,10 @@ export default function SupplierMasterPage() {
                 {suppliers.map(s => (
                   <tr key={s.id} className="hover:bg-slate-50 transition">
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-slate-800">{s.name}</div>
+                      <div className="flex items-center gap-2">
+    <div className="font-semibold text-slate-800">{s.name}</div>
+    {s.isActive === false && <span className="px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase bg-rose-100 text-rose-700 rounded border border-rose-200">Inactive</span>}
+  </div>
                     </td>
                     <td className="px-4 py-3">
                       {s.gstin ? (
@@ -127,7 +130,17 @@ export default function SupplierMasterPage() {
                     <td className="px-4 py-3 text-sm text-slate-600">
                       <div className="flex items-center gap-2">
                         <button onClick={() => { setEditSupplier(s); setIsEditModalOpen(true); }} className="text-slate-400 hover:text-indigo-600 p-1"><Edit2 className="h-4 w-4" /></button>
-                        <button onClick={async () => { if(window.confirm('Delete supplier?')) { await fetch('/api/suppliers?id='+s.id, {method:'DELETE'}); loadSuppliers(); } }} className="text-slate-400 hover:text-rose-600 p-1"><Trash2 className="h-4 w-4" /></button>
+                        <button onClick={async () => {
+    if(window.confirm('Delete supplier?')) {
+      const res = await fetch('/api/suppliers?id='+s.id, {method:'DELETE'});
+      const data = await res.json().catch(()=>null);
+      if(!res.ok || (data && !data.success)) {
+        alert(data?.error || "Failed to delete supplier.");
+      } else {
+        loadSuppliers();
+      }
+    }
+  }} className="text-slate-400 hover:text-rose-600 p-1"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -171,7 +184,13 @@ export default function SupplierMasterPage() {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Physical Address</label>
                 <textarea rows={3} value={address} onChange={e => setAddress(e.target.value)} placeholder="Full street address..." className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"></textarea>
               </div>
-              <div className="pt-2 flex justify-end gap-2">
+              <div>
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input type="checkbox" checked={editSupplier?.isActive !== false} onChange={(e) => setEditSupplier({...editSupplier, isActive: e.target.checked})} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+      <span className="text-xs font-semibold text-slate-700">Supplier is Active</span>
+    </label>
+  </div>
+  <div className="pt-2 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50">
                   {submitting ? 'Saving...' : 'Save Supplier'}

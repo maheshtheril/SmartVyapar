@@ -71,7 +71,7 @@ export async function PUT(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { id, name, phone, gstin, email, address } = body;
+    const { id, name, phone, gstin, email, address, isActive } = body;
 
     if (!id || !name) {
       return NextResponse.json({ error: "ID and Name are required" }, { status: 400 });
@@ -83,10 +83,9 @@ export async function PUT(req: NextRequest) {
         name,
         phone: phone || null,
         gstin: gstin || null,
-        
         email: email || null,
         address: address || null,
-        
+        isActive: isActive !== undefined ? isActive : true,
       },
     });
 
@@ -105,6 +104,22 @@ export async function DELETE(req: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
+    }
+
+    // Check if supplier has linked purchase bills
+    const supplier = await prisma.supplier.findUnique({
+      where: { id, tenantId },
+      include: { purchaseBills: true }
+    });
+
+    if (!supplier) {
+      return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
+    }
+
+    if (supplier.purchaseBills.length > 0) {
+      return NextResponse.json({ 
+        error: "Cannot delete supplier because they have existing purchase bills. Please edit the supplier and mark them as 'Inactive' instead." 
+      }, { status: 400 });
     }
 
     await prisma.supplier.delete({
