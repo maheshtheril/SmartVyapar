@@ -10,6 +10,7 @@ export default function SupplierMasterPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editSupplier, setEditSupplier] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
   
   // Form State
   const [name, setName] = useState('');
@@ -41,14 +42,15 @@ export default function SupplierMasterPage() {
     e.preventDefault();
     if (!name) return;
     setSubmitting(true);
+    setFormError('');
     try {
       const res = await fetch('/api/suppliers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, gstin, phone, email, address })
       });
-      const data = await res.json();
-      if (data.success) {
+      const data = await res.json().catch(() => null);
+      if (data && data.success) {
         setIsModalOpen(false);
         setName('');
         setGstin('');
@@ -57,10 +59,10 @@ export default function SupplierMasterPage() {
         setAddress('');
         loadSuppliers();
       } else {
-        alert(data.error);
+        setFormError(data?.error || "Server returned an invalid response.");
       }
-    } catch (err) {
-      alert("Failed to save");
+    } catch (err: any) {
+      setFormError(err.message || "Network error. Failed to save.");
     } finally {
       setSubmitting(false);
     }
@@ -74,7 +76,7 @@ export default function SupplierMasterPage() {
           <p className="text-slate-500 text-sm">Manage your vendors and accounts payable</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => { setIsModalOpen(true); setFormError(''); }}
           className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Add New Supplier
@@ -147,6 +149,7 @@ export default function SupplierMasterPage() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                {formError && <div className="p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg">{formError}</div>}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier Name *</label>
                 <input required type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Acme Corp" className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
