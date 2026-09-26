@@ -34,6 +34,7 @@ interface Customer {
   outstandingBalance: number;
   loyaltyPoints: number;
   totalBills: number;
+  isActive?: boolean;
 }
 
 interface Summary {
