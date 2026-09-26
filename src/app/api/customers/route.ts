@@ -40,6 +40,10 @@ export async function GET(req: NextRequest) {
         pincode: true,
         gstin: true,
         stateCode: true,
+        regionId: true,
+        zoneId: true,
+        beatId: true,
+        isActive: true,
         territoryId: true,
         territory: { select: { name: true, zone: true } },
         outstandingBalance: true,
@@ -160,28 +164,39 @@ export async function PUT(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { id, name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, isActive } = body;
+    const { id, name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, isActive, outstandingBalance } = body;
 
     if (!id || !name) {
       return NextResponse.json({ error: "ID and Name are required" }, { status: 400 });
     }
 
-    const updated = await prisma.customer.update({
-      where: { id, tenantId },
-      data: {
-        name,
-        phone: phone || null,
-        gstin: gstin || null,
-        stateCode: stateCode || "32",
-        email: email || null,
-        address: address || null,
-        pincode: pincode || null,
-        regionId: regionId || null,
-        zoneId: zoneId || null,
-        territoryId: territoryId || null,
-        beatId: beatId || null,
-        isActive: isActive !== undefined ? isActive : true,
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      const customer = await tx.customer.update({
+        where: { id, tenantId },
+        data: {
+          name,
+          phone: phone || null,
+          gstin: gstin || null,
+          stateCode: stateCode || "32",
+          email: email || null,
+          address: address || null,
+          pincode: pincode || null,
+          regionId: regionId || null,
+          zoneId: zoneId || null,
+          territoryId: territoryId || null,
+          beatId: beatId || null,
+          isActive: isActive !== undefined ? isActive : true,
+          ...(outstandingBalance !== undefined && { outstandingBalance: parseFloat(outstandingBalance) || 0 })
+        },
+      });
+
+      if (outstandingBalance !== undefined && customer.accountId) {
+        await tx.account.update({
+          where: { id: customer.accountId },
+          data: { balance: parseFloat(outstandingBalance) || 0 }
+        });
+      }
+      return customer;
     });
 
     return NextResponse.json({ success: true, customer: updated });
