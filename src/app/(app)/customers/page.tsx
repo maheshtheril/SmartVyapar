@@ -22,6 +22,8 @@ import {
   Star,
   UserPlus,
   ChevronRight,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 
 interface Customer {
