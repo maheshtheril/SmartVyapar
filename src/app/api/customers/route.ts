@@ -132,20 +132,24 @@ export async function POST(req: NextRequest) {
             balance: parseFloat(openingBalance) || 0,
           }
         });
-        return await tx.customer.create({
-          data: { 
-            tenantId, 
-            name, 
-            phone, 
-            email: email || null,
-            address: address || null,
-            pincode: pincode || null,
-            gstin: gstin || null, 
-            stateCode: stateCode || "32",
-            accountId: arAccount.id,
-              outstandingBalance: parseFloat(openingBalance) || 0
-          },
-        });
+                  return await tx.customer.create({
+            data: { 
+              tenantId, 
+              name, 
+              phone, 
+              email: email || null,
+              address: address || null,
+              pincode: pincode || null,
+              gstin: gstin || null, 
+              stateCode: stateCode || "32",
+              accountId: arAccount.id,
+              outstandingBalance: parseFloat(openingBalance) || 0,
+              regionId: regionId || null,
+              zoneId: zoneId || null,
+              territoryId: territoryId || null,
+              beatId: beatId || null
+            },
+          });
       });
 
     }
