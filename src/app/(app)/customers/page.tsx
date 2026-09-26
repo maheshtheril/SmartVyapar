@@ -392,7 +392,7 @@ export default function CustomersPage() {
         if(!res.ok || (data && !data.success)) {
           alert(data?.error || "Failed to delete customer.");
         } else {
-          fetchCustomers();
+          load();
         }
       }
     }} className="p-1 text-slate-400 hover:text-rose-600 transition" title="Delete Customer"><Trash2 className="h-4 w-4" /></button>
@@ -430,7 +430,7 @@ export default function CustomersPage() {
     if(!res.ok || (data && !data.success)) {
       alert(data?.error || "Failed to delete customer.");
     } else {
-      fetchCustomers();
+      load();
     }
   }
 }} className="p-1 text-slate-400 hover:text-rose-600 transition mr-2" title="Delete Customer"><Trash2 className="h-4 w-4" /></button>
@@ -478,7 +478,7 @@ export default function CustomersPage() {
                 const data = await res.json().catch(()=>null);
                 if (res.ok && data?.success) {
                   setIsEditModalOpen(false);
-                  fetchCustomers();
+                  load();
                 } else {
                   setEditError(data?.error || "Failed to update customer.");
                 }
