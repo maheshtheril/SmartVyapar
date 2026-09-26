@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
     const suppliers = await prisma.supplier.findMany({
       where: { tenantId },
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' }, select: { id: true, name: true, gstin: true, phone: true, email: true, address: true, isActive: true, outstandingBalance: true, openingBalanceDate: true, _count: { select: { purchaseBills: true } } }
     });
 
     return NextResponse.json({ success: true, suppliers });
@@ -28,23 +28,21 @@ export async function POST(req: NextRequest) {
     const tenantId = auth.tenantId;
 
     const body = await req.json();
-    const { name, gstin, phone, email, address } = body;
+    const { name, gstin, phone, email, address, openingBalance, openingBalanceDate } = body;
 
     if (!name) return NextResponse.json({ success: false, error: "Name is required" }, { status: 400 });
 
     const result = await prisma.$transaction(async (tx) => {
-      // Create AP Ledger
       const vendorAccount = await tx.account.create({
         data: {
           tenantId,
           code: `AP-${Date.now().toString().slice(-6)}`,
           name: `Vendor: ${name}`,
           classification: 'LIABILITY',
-          balance: 0,
+          balance: parseFloat(openingBalance) || 0,
         }
       });
 
-      // Create Supplier
       const newSupplier = await tx.supplier.create({
         data: {
           tenantId,
@@ -53,7 +51,9 @@ export async function POST(req: NextRequest) {
           phone: phone || null,
           email: email || null,
           address: address || null,
-          accountId: vendorAccount.id
+          accountId: vendorAccount.id,
+          outstandingBalance: parseFloat(openingBalance) || 0,
+          ...(openingBalanceDate !== undefined && { openingBalanceDate: openingBalanceDate ? new Date(openingBalanceDate) : null })
         }
       });
       return newSupplier;

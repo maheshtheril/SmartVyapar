@@ -18,6 +18,8 @@ export default function SupplierMasterPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [addOpeningBalance, setAddOpeningBalance] = useState('');
+  const [addOpeningBalanceDate, setAddOpeningBalanceDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const loadSuppliers = async () => {
     setLoading(true);
@@ -47,7 +49,7 @@ export default function SupplierMasterPage() {
       const res = await fetch('/api/suppliers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, gstin, phone, email, address })
+        body: JSON.stringify({ name, gstin, phone, email, address, openingBalance: addOpeningBalance ? parseFloat(addOpeningBalance) : 0, openingBalanceDate: addOpeningBalanceDate || undefined })
       });
       const data = await res.json().catch(() => null);
       if (data && data.success) {

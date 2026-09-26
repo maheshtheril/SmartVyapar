@@ -1561,6 +1561,8 @@ model Supplier {
   address   String?
   accountId String? @unique
   isActive  Boolean @default(true)
+  outstandingBalance Decimal  @default(0.0) @db.Decimal(10, 2)
+  openingBalanceDate DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
