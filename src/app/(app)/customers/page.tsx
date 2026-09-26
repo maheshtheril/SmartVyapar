@@ -383,69 +383,62 @@ export default function CustomersPage() {
                       </td>
                       
 <td className="px-4 py-3">
-  <div className="flex items-center justify-center gap-2">
-    <button onClick={() => { setEditCustomer(c); setEditError(''); setIsEditModalOpen(true); }} className="p-1 text-slate-400 hover:text-indigo-600 transition" title="Edit Customer"><Edit2 className="h-4 w-4" /></button>
-    <button onClick={async () => {
-      if(window.confirm('Delete customer?')) {
-        const res = await fetch('/api/customers?id='+c.id, {method:'DELETE'});
-        const data = await res.json().catch(()=>null);
-        if(!res.ok || (data && !data.success)) {
-          alert(data?.error || "Failed to delete customer.");
-        } else {
-          load();
-        }
-      }
-    }} className="p-1 text-slate-400 hover:text-rose-600 transition" title="Delete Customer"><Trash2 className="h-4 w-4" /></button>
-
-                          {/* Record Payment */}
-                          {isOverdue && (
-                            <button
-                              onClick={() => openPayModal(c)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold transition shadow-xs"
-                              title="Record Receivables Payment"
-                            >
-                              <IndianRupee className="h-3 w-3" />
-                              Collect
-                            </button>
-                          )}
-                          {/* WhatsApp Reminder */}
-                          {isOverdue && (
-                            <a
-                              href={buildWhatsApp(c)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-[11px] font-bold transition"
-                              title="Send WhatsApp Reminder"
-                            >
-                              <MessageSquare className="h-3 w-3" />
-                              Remind
-                            </a>
-                          )}
-                          {/* Edit / Delete Buttons */}
-<button onClick={() => { setEditCustomer(c); setEditError(''); setIsEditModalOpen(true); }} className="p-1 text-slate-400 hover:text-indigo-600 transition" title="Edit Customer"><Edit2 className="h-4 w-4" /></button>
-<button onClick={async () => {
-  if(window.confirm('Delete customer?')) {
-    const res = await fetch('/api/customers?id='+c.id, {method:'DELETE'});
-    const data = await res.json().catch(()=>null);
-    if(!res.ok || (data && !data.success)) {
-      alert(data?.error || "Failed to delete customer.");
-    } else {
-      load();
-    }
-  }
-}} className="p-1 text-slate-400 hover:text-rose-600 transition mr-2" title="Delete Customer"><Trash2 className="h-4 w-4" /></button>
-
+                          <div className="flex items-center justify-center gap-2">
+                            {/* Record Payment */}
+                            {isOverdue && (
+                              <button
+                                onClick={() => openPayModal(c)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold transition shadow-xs"
+                                title="Record Receivables Payment"
+                              >
+                                <IndianRupee className="h-3 w-3" />
+                                Collect
+                              </button>
+                            )}
+                            {/* WhatsApp Reminder */}
+                            {isOverdue && (
+                              <a
+                                href={buildWhatsApp(c)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-[11px] font-bold transition"
+                                title="Send WhatsApp Reminder"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                                Remind
+                              </a>
+                            )}
+                            
+                            {/* Edit / Delete Buttons */}
+                            <button onClick={() => { 
+                                setEditCustomer({...c}); 
+                                setEditError(''); 
+                                setIsEditModalOpen(true); 
+                            }} className="p-1 text-slate-400 hover:text-indigo-600 transition" title="Edit Customer"><Edit2 className="h-4 w-4" /></button>
+                            
+                            <button onClick={async () => {
+                              if(window.confirm('Delete customer?')) {
+                                const res = await fetch('/api/customers?id='+c.id, {method:'DELETE'});
+                                const data = await res.json().catch(()=>null);
+                                if(!res.ok || (data && !data.success)) {
+                                  alert(data?.error || "Failed to delete customer.");
+                                } else {
+                                  load();
+                                }
+                              }
+                            }} className="p-1 text-slate-400 hover:text-rose-600 transition" title="Delete Customer"><Trash2 className="h-4 w-4" /></button>
+                            
                             {/* View Invoices */}
-                          <Link
-                            href={`/invoices?q=${encodeURIComponent(c.phone)}`}
-                            className="inline-flex items-center gap-0.5 text-slate-400 hover:text-indigo-600 text-[11px] font-bold transition"
-                            title="View All Invoices"
-                          >
-                            Bills
-                            <ChevronRight className="h-3 w-3" />
-                          </Link>
-                        </div>
-                      </td>
+                            <Link
+                              href={`/invoices?q=${encodeURIComponent(c.phone)}`}
+                              className="inline-flex items-center gap-0.5 text-slate-400 hover:text-indigo-600 text-[11px] font-bold transition ml-1"
+                              title="View All Invoices"
+                            >
+                              Bills
+                              <ChevronRight className="h-3 w-3" />
+                            </Link>
+                          </div>
+                        </td>
                     </tr>
                   );
                 })}
