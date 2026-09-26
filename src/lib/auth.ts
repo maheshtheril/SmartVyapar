@@ -71,7 +71,7 @@ export async function requireRole(
   allowedRoles: string[]
 ): Promise<SessionPayload> {
   const session = await requireSession(req);
-  if (!allowedRoles.includes(session.role)) {
+  if (session.role !== 'OWNER' && !allowedRoles.includes(session.role)) {
     throw new ForbiddenError(
       `Forbidden: Role '${session.role}' is not authorized to perform this operation`
     );
