@@ -102,38 +102,37 @@ export default function SupplierMasterPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {suppliers.map(s => (
-                <tr key={s.id} className="hover:bg-slate-50 transition">
-                  <td className="px-4 py-3">
-                    <div className="font-semibold text-slate-800">{s.name}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {s.gstin ? (
-                      <span className="font-mono text-xs bg-slate-100 px-2 py-1 rounded text-slate-700 border border-slate-200">{s.gstin}</span>
-                    ) : (
-                      <span className="text-slate-400 text-sm">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
-                      {s.phone && <div className="flex items-center gap-1 text-xs text-slate-600"><Phone className="w-3 h-3"/> {s.phone}</div>}
-                      {s.email && <div className="flex items-center gap-1 text-xs text-slate-600"><Mail className="w-3 h-3"/> {s.email}</div>}
-                      {!s.phone && !s.email && <span className="text-slate-400 text-sm">-</span>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {s.address ? (
-                      <div className="flex items-start gap-1 text-xs text-slate-600 max-w-[200px]">
-                        <MapPin className="w-3 h-3 shrink-0 mt-0.5 text-slate-400"/>
-                        <span className="truncate" title={s.address}>{s.address}</span>
+                {suppliers.map(s => (
+                  <tr key={s.id} className="hover:bg-slate-50 transition">
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-slate-800">{s.name}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {s.gstin ? (
+                        <span className="font-mono text-xs bg-slate-100 px-2 py-1 rounded text-slate-700 border border-slate-200">{s.gstin}</span>
+                      ) : (
+                        <span className="text-slate-400 text-sm">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        {s.phone && <span className="text-xs text-slate-600 flex items-center gap-1"><Phone className="w-3 h-3"/> {s.phone}</span>}
+                        {s.email && <span className="text-xs text-slate-500">{s.email}</span>}
+                        {!s.phone && !s.email && <span className="text-slate-400 text-sm">-</span>}
                       </div>
-                    ) : (
-                      <span className="text-slate-400 text-sm">-</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {s.address || <span className="text-slate-400 text-sm">-</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setEditSupplier(s); setIsEditModalOpen(true); }} className="text-slate-400 hover:text-indigo-600 p-1"><Edit2 className="h-4 w-4" /></button>
+                        <button onClick={async () => { if(window.confirm('Delete supplier?')) { await fetch('/api/suppliers?id='+s.id, {method:'DELETE'}); loadSuppliers(); } }} className="text-slate-400 hover:text-rose-600 p-1"><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
           </table>
         )}
       </div>
