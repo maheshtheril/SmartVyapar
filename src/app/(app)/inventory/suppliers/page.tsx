@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Search, MapPin, Phone, Mail } from 'lucide-react';
+import { Plus, X, Search, MapPin, Phone, Mail, Edit2, Trash2 } from 'lucide-react';
 
 export default function SupplierMasterPage() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
