@@ -330,7 +330,10 @@ export default function CustomersPage() {
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/50 transition">
                       <td className="px-4 py-3">
-                        <div className="font-bold text-slate-900">{c.name}</div>
+                        <div className="flex items-center gap-2">
+    <div className="font-bold text-slate-900">{c.name}</div>
+    {c.isActive === false && <span className="px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase bg-rose-100 text-rose-700 rounded border border-rose-200">Inactive</span>}
+  </div>
                           {c.territory && <div className="text-[10px] text-indigo-500 font-bold">{c.territory.name}</div>}
                         {c.gstin && (
                           <div className="text-[10px] text-slate-400 font-mono">{c.gstin}</div>
@@ -397,7 +400,21 @@ export default function CustomersPage() {
                               Remind
                             </a>
                           )}
-                          {/* View Invoices */}
+                          {/* Edit / Delete Buttons */}
+<button onClick={() => { setEditCustomer(c); setEditError(''); setIsEditModalOpen(true); }} className="p-1 text-slate-400 hover:text-indigo-600 transition" title="Edit Customer"><Edit2 className="h-4 w-4" /></button>
+<button onClick={async () => {
+  if(window.confirm('Delete customer?')) {
+    const res = await fetch('/api/customers?id='+c.id, {method:'DELETE'});
+    const data = await res.json().catch(()=>null);
+    if(!res.ok || (data && !data.success)) {
+      alert(data?.error || "Failed to delete customer.");
+    } else {
+      fetchCustomers();
+    }
+  }
+}} className="p-1 text-slate-400 hover:text-rose-600 transition mr-2" title="Delete Customer"><Trash2 className="h-4 w-4" /></button>
+
+                            {/* View Invoices */}
                           <Link
                             href={`/invoices?q=${encodeURIComponent(c.phone)}`}
                             className="inline-flex items-center gap-0.5 text-slate-400 hover:text-indigo-600 text-[11px] font-bold transition"
