@@ -166,6 +166,7 @@ export default function CustomersPage() {
           name: addName,
           phone: addPhone,
             openingBalance: openingBalance ? parseFloat(openingBalance) : 0,
+            openingBalanceDate: addOpeningBalanceDate || undefined,
           gstin: addGstin || undefined,
           email: addEmail || undefined,
           address: addAddress || undefined,
