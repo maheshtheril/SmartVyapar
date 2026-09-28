@@ -21,6 +21,8 @@ import {
   CreditCard,
   Building2,
   Trash2,
+  Pencil,
+  Save,
 } from 'lucide-react';
 
 interface Account {
@@ -90,6 +92,9 @@ export default function AccountingVouchersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedVoucherForSlip, setSelectedVoucherForSlip] = useState<Voucher | null>(null);
+  const [editingVoucher, setEditingVoucher] = useState<any>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Modal State
   const [voucherType, setVoucherType] = useState<'PAYMENT' | 'RECEIPT' | 'CONTRA' | 'JOURNAL'>('PAYMENT');
@@ -124,16 +129,43 @@ export default function AccountingVouchersPage() {
       const accData = await accRes.json();
       const vchData = await vchRes.json();
 
-      if (accData.success) {
-        setAccounts(accData.accounts || []);
-      }
-      if (vchData.success) {
-        setVouchers(vchData.vouchers || []);
-      }
+      if (accData.success) setAccounts(accData.accounts || []);
+      if (vchData.success) setVouchers(vchData.vouchers || []);
     } catch (err) {
       console.error('Failed to load accounting data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveEditedVoucher = async () => {
+    if (!editingVoucher) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/accounting/vouchers/${editingVoucher.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date:        editingVoucher.date,
+          narration:   editingVoucher.narration,
+          referenceNo: editingVoucher.referenceNo,
+          lines:       editingVoucher.lines.map((l: any) => ({
+            accountId: l.accountId || l.account?.id,
+            debit:     l.debit,
+            credit:    l.credit,
+            narration: l.narration,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save');
+      setEditingVoucher(null);
+      loadData();
+    } catch (err: any) {
+      setEditError(err.message);
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -535,6 +567,13 @@ export default function AccountingVouchersPage() {
                         >
                           <Printer className="h-3 w-3 text-slate-500" />
                           <span>Print Slip</span>
+                        </button>
+                        <button
+                          onClick={() => { setEditingVoucher(JSON.parse(JSON.stringify(v))); setEditError(null); }}
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-[11px] shadow-2xs transition"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          <span>Edit</span>
                         </button>
                       </td>
                     </tr>
@@ -1039,6 +1078,148 @@ export default function AccountingVouchersPage() {
           </div>
         </div>
       )}
+      {/* EDIT VOUCHER MODAL */}
+      {editingVoucher && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[94vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-amber-50 rounded-t-2xl">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-amber-600" />
+                  Edit Voucher — {editingVoucher.voucherNumber}
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{editingVoucher.voucherType}</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">Old ledger entries will be reversed and re-posted with new values</p>
+              </div>
+              <button onClick={() => setEditingVoucher(null)} className="p-2 hover:bg-amber-100 rounded-full cursor-pointer">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            {/* Header Fields */}
+            <div className="px-6 py-4 border-b border-slate-100 grid grid-cols-3 gap-4 text-xs font-sans">
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Date</label>
+                <input type="date" className="w-full border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-amber-400 outline-none"
+                  value={editingVoucher.date?.substring(0, 10) || ''}
+                  onChange={e => setEditingVoucher((v: any) => ({ ...v, date: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Reference No.</label>
+                <input className="w-full border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-amber-400 outline-none"
+                  value={editingVoucher.referenceNo || ''}
+                  onChange={e => setEditingVoucher((v: any) => ({ ...v, referenceNo: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Narration</label>
+                <input className="w-full border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-amber-400 outline-none"
+                  value={editingVoucher.narration || ''}
+                  onChange={e => setEditingVoucher((v: any) => ({ ...v, narration: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Journal Lines */}
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <table className="w-full text-xs font-sans border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-600 uppercase tracking-wide text-[10px]">
+                    <th className="py-2 px-3 text-left rounded-l">Account</th>
+                    <th className="py-2 px-3 text-right">Debit (₹)</th>
+                    <th className="py-2 px-3 text-right">Credit (₹)</th>
+                    <th className="py-2 px-3 text-left rounded-r">Line Narration</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(editingVoucher.lines || []).map((line: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-amber-50/30">
+                      <td className="py-2 px-3">
+                        <select
+                          className="w-full border border-slate-300 rounded px-2 py-1 focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={line.accountId || line.account?.id || ''}
+                          onChange={e => setEditingVoucher((v: any) => {
+                            const lines = [...v.lines];
+                            lines[idx] = { ...lines[idx], accountId: e.target.value };
+                            return { ...v, lines };
+                          })}
+                        >
+                          <option value="">— Select Account —</option>
+                          {accounts.map((a: any) => (
+                            <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-2 px-3">
+                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={line.debit || ''}
+                          onChange={e => setEditingVoucher((v: any) => {
+                            const lines = [...v.lines];
+                            lines[idx] = { ...lines[idx], debit: e.target.value, credit: e.target.value ? '' : lines[idx].credit };
+                            return { ...v, lines };
+                          })} />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={line.credit || ''}
+                          onChange={e => setEditingVoucher((v: any) => {
+                            const lines = [...v.lines];
+                            lines[idx] = { ...lines[idx], credit: e.target.value, debit: e.target.value ? '' : lines[idx].debit };
+                            return { ...v, lines };
+                          })} />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input className="w-full border border-slate-300 rounded px-2 py-1 focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={line.narration || ''}
+                          onChange={e => setEditingVoucher((v: any) => {
+                            const lines = [...v.lines];
+                            lines[idx] = { ...lines[idx], narration: e.target.value };
+                            return { ...v, lines };
+                          })} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-50 font-bold text-xs">
+                    <td className="py-2 px-3 text-slate-600">Totals</td>
+                    <td className="py-2 px-3 text-right text-emerald-700">
+                      ₹{(editingVoucher.lines || []).reduce((s: number, l: any) => s + Number(l.debit || 0), 0).toFixed(2)}
+                    </td>
+                    <td className="py-2 px-3 text-right text-rose-700">
+                      ₹{(editingVoucher.lines || []).reduce((s: number, l: any) => s + Number(l.credit || 0), 0).toFixed(2)}
+                    </td>
+                    <td className="py-2 px-3">
+                      {Math.abs(
+                        (editingVoucher.lines || []).reduce((s: number, l: any) => s + Number(l.debit || 0), 0) -
+                        (editingVoucher.lines || []).reduce((s: number, l: any) => s + Number(l.credit || 0), 0)
+                      ) < 0.01
+                        ? <span className="text-emerald-600 font-semibold">✓ Balanced</span>
+                        : <span className="text-rose-600 font-semibold">⚠ Unbalanced</span>
+                      }
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {editError && (
+              <div className="mx-6 mb-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">{editError}</div>
+            )}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-4">
+              <p className="text-xs text-slate-500">Old debit/credit balances are reversed and new entries posted atomically.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setEditingVoucher(null)} className="px-5 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition cursor-pointer">Cancel</button>
+                <button onClick={saveEditedVoucher} disabled={editSaving}
+                  className="px-6 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-bold rounded-lg text-sm flex items-center gap-2 transition cursor-pointer">
+                  {editSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {editSaving ? 'Saving...' : 'Save & Update Ledger'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
