@@ -941,122 +941,244 @@ export default function InvoicesPage() {
           </div>
         </div>
       )}
-      {/* EDIT INVOICE MODAL */}
-      {editingInvoice && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-blue-50 rounded-t-2xl">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2"><Pencil className="w-4 h-4 text-blue-600" /> Edit Invoice #{editingInvoice.invoiceNumber}</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Changes will reverse old ledger entries and re-post with updated values</p>
+      {/* EDIT INVOICE MODAL — Full-Screen ERP Workspace */}
+      {editingInvoice && (() => {
+        // Live totals
+        let eTaxable = 0, eCgst = 0, eSgst = 0, eIgst = 0;
+        const eIsInter = editingInvoice.isInterState;
+        (editingInvoice.items || []).forEach((it: any) => {
+          const linePrice = Number(it.unitPrice || 0) * (1 - Number(it.discountPercent || 0) / 100);
+          const taxable = Math.round(linePrice * Number(it.quantity || 1) * 100) / 100;
+          const tax = Math.round(taxable * Number(it.gstRate || 0) / 100 * 100) / 100;
+          eTaxable += taxable;
+          if (eIsInter) eIgst += tax; else { eCgst += tax / 2; eSgst += tax / 2; }
+        });
+        const eGrand = Math.round((eTaxable + eCgst + eSgst + eIgst) * 100) / 100;
+        const eDue = Math.max(0, Math.round((eGrand - Number(editingInvoice.paidAmount || 0)) * 100) / 100);
+
+        const updateItem = (idx: number, field: string, value: any) => {
+          setEditingInvoice((b: any) => {
+            const items = [...b.items];
+            items[idx] = { ...items[idx], [field]: value };
+            return { ...b, items };
+          });
+        };
+
+        return (
+        <div className="fixed inset-0 z-[999] bg-black/80 backdrop-blur-xs flex items-center justify-center p-0 md:p-2 animate-in fade-in duration-150">
+          <div className="bg-slate-50 overflow-hidden flex flex-col w-[98vw] max-w-[1600px] h-[95vh] rounded-2xl border border-slate-300 shadow-2xl">
+
+            {/* Dark Top Header */}
+            <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900 text-white shrink-0 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
+                  <Receipt className="h-5 w-5 text-blue-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-white flex items-center gap-2">
+                    Edit Sales Invoice
+                    <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                      #{editingInvoice.invoiceNumber}
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
+                      editingInvoice.paymentStatus === 'PAID'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    }`}>
+                      {editingInvoice.paymentStatus}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">
+                    Ledger Reversal &bull; Re-Post &bull; Customer Balance Adjust
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setEditingInvoice(null)} className="p-2 hover:bg-blue-100 rounded-full cursor-pointer"><X className="w-5 h-5 text-slate-600" /></button>
+              <div className="flex items-center gap-3">
+                <div className="hidden xl:flex text-[11px] font-mono text-amber-400 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
+                  ⚠ Old journal entries reversed &amp; re-posted on save
+                </div>
+                <button onClick={() => setEditingInvoice(null)} className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 p-2 rounded-lg transition cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Customer & Payment Fields */}
-            <div className="px-6 py-4 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-sans">
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Customer Name</label>
-                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
-                  value={editingInvoice.customerName || ''}
-                  onChange={e => setEditingInvoice((b: any) => ({ ...b, customerName: e.target.value }))} />
+            {/* Scrollable Body */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto px-6 py-4 space-y-3.5">
+
+              {/* Customer & Payment Metadata Grid */}
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                  <div className="md:col-span-3">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Customer Name</label>
+                    <input className="w-full text-xs font-semibold border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={editingInvoice.customerName || ''}
+                      onChange={e => setEditingInvoice((b: any) => ({ ...b, customerName: e.target.value }))} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Phone</label>
+                    <input className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={editingInvoice.customerPhone || ''}
+                      onChange={e => setEditingInvoice((b: any) => ({ ...b, customerPhone: e.target.value }))} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Customer GSTIN</label>
+                    <input className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-mono outline-none"
+                      value={editingInvoice.customerGstin || ''}
+                      onChange={e => setEditingInvoice((b: any) => ({ ...b, customerGstin: e.target.value.toUpperCase() }))} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Payment Status</label>
+                    <select className="w-full text-xs border border-slate-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-medium outline-none"
+                      value={editingInvoice.paymentStatus || 'UNPAID'}
+                      onChange={e => setEditingInvoice((b: any) => ({ ...b, paymentStatus: e.target.value }))}>
+                      <option value="PAID">Paid</option>
+                      <option value="PARTIAL">Partial</option>
+                      <option value="UNPAID">Unpaid</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Payment Mode</label>
+                    <select className="w-full text-xs border border-slate-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-medium outline-none"
+                      value={editingInvoice.paymentMode || 'CASH'}
+                      onChange={e => setEditingInvoice((b: any) => ({ ...b, paymentMode: e.target.value }))}>
+                      <option value="CASH">Cash</option>
+                      <option value="UPI">UPI</option>
+                      <option value="CARD">Card</option>
+                      <option value="BANK_TRANSFER">Bank Transfer</option>
+                      <option value="CREDIT">Credit</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Paid (₹)</label>
+                    <input type="number" min="0" step="0.01" className="w-full text-xs border border-slate-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-mono font-bold outline-none"
+                      value={editingInvoice.paidAmount || 0}
+                      onChange={e => setEditingInvoice((b: any) => ({ ...b, paidAmount: e.target.value }))} />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Phone</label>
-                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
-                  value={editingInvoice.customerPhone || ''}
-                  onChange={e => setEditingInvoice((b: any) => ({ ...b, customerPhone: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Customer GSTIN</label>
-                <input className="w-full border border-slate-300 rounded px-3 py-1.5 font-mono text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
-                  value={editingInvoice.customerGstin || ''}
-                  onChange={e => setEditingInvoice((b: any) => ({ ...b, customerGstin: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Payment Status</label>
-                <select className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
-                  value={editingInvoice.paymentStatus || 'UNPAID'}
-                  onChange={e => setEditingInvoice((b: any) => ({ ...b, paymentStatus: e.target.value }))}>
-                  <option value="PAID">Paid</option>
-                  <option value="PARTIAL">Partial</option>
-                  <option value="UNPAID">Unpaid</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Payment Mode</label>
-                <select className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
-                  value={editingInvoice.paymentMode || 'CASH'}
-                  onChange={e => setEditingInvoice((b: any) => ({ ...b, paymentMode: e.target.value }))}>
-                  <option value="CASH">Cash</option>
-                  <option value="UPI">UPI</option>
-                  <option value="CARD">Card</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="CREDIT">Credit</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Paid Amount (₹)</label>
-                <input type="number" min="0" step="0.01" className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
-                  value={editingInvoice.paidAmount || 0}
-                  onChange={e => setEditingInvoice((b: any) => ({ ...b, paidAmount: e.target.value }))} />
+
+              {/* Line Items Table */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 min-h-[280px] flex flex-col">
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[11px]">
+                        <th className="py-2.5 px-2 w-8 text-center text-slate-400">#</th>
+                        <th className="py-2.5 px-3 min-w-[220px]">Product</th>
+                        <th className="py-2.5 px-2 w-16 text-center">Qty</th>
+                        <th className="py-2.5 px-2 w-32 text-right bg-blue-900 text-blue-100 border-x border-blue-800">Unit Price (₹)</th>
+                        <th className="py-2.5 px-2 w-16 text-right">Disc %</th>
+                        <th className="py-2.5 px-2 w-16 text-center">GST %</th>
+                        <th className="py-2.5 px-2 w-28 text-right">Taxable (₹)</th>
+                        <th className="py-2.5 px-3 w-28 text-right font-black">Line Total (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {(editingInvoice.items || []).map((item: any, idx: number) => {
+                        const linePrice = Number(item.unitPrice || 0) * (1 - Number(item.discountPercent || 0) / 100);
+                        const taxable = Math.round(linePrice * Number(item.quantity || 1) * 100) / 100;
+                        const tax = Math.round(taxable * Number(item.gstRate || 0) / 100 * 100) / 100;
+                        const lineTotal = Math.round((taxable + tax) * 100) / 100;
+                        return (
+                          <tr key={idx} className="hover:bg-blue-50/30 transition group">
+                            <td className="py-2 px-2 font-mono text-slate-400 text-center align-middle">{idx + 1}</td>
+                            <td className="py-2 px-3 align-middle font-semibold text-slate-800">{item.productName}</td>
+                            <td className="py-2 px-2 align-middle">
+                              <input type="number" min="0.1" step="any" value={item.quantity} onFocus={e => e.target.select()}
+                                onChange={e => updateItem(idx, 'quantity', e.target.value)}
+                                className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold" />
+                            </td>
+                            <td className="py-2 px-2 align-middle bg-blue-50/40">
+                              <div className="relative">
+                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-blue-600 pointer-events-none">₹</span>
+                                <input type="number" min="0" step="any" value={item.unitPrice} onFocus={e => e.target.select()}
+                                  onChange={e => updateItem(idx, 'unitPrice', e.target.value)}
+                                  className="w-full text-right border border-blue-300 rounded pl-4 pr-1.5 py-1.5 text-xs font-mono font-bold text-blue-700 bg-white" />
+                              </div>
+                            </td>
+                            <td className="py-2 px-2 align-middle">
+                              <input type="number" min="0" max="100" step="any" value={item.discountPercent || 0} onFocus={e => e.target.select()}
+                                onChange={e => updateItem(idx, 'discountPercent', e.target.value)}
+                                className="w-full text-right border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono" />
+                            </td>
+                            <td className="py-2 px-2 align-middle">
+                              <select value={item.gstRate || 0} onChange={e => updateItem(idx, 'gstRate', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-1 py-1.5 text-xs font-mono font-bold bg-white text-center">
+                                {[0,5,12,18,28].map(r => <option key={r} value={r}>{r}%</option>)}
+                              </select>
+                            </td>
+                            <td className="py-2 px-2 text-right font-mono text-slate-700 align-middle">
+                              ₹{taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono font-black text-slate-900 align-middle">
+                              ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
-            {/* Line Items */}
-            <div className="flex-1 overflow-auto px-6 py-4">
-              <table className="w-full text-xs font-sans border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-600 uppercase tracking-wide text-[10px]">
-                    <th className="py-2 px-2 text-left rounded-l">Product</th>
-                    <th className="py-2 px-2 text-right">Qty</th>
-                    <th className="py-2 px-2 text-right">Unit Price (₹)</th>
-                    <th className="py-2 px-2 text-right rounded-r">GST%</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {(editingInvoice.items || []).map((item: any, idx: number) => (
-                    <tr key={idx} className="hover:bg-blue-50/30">
-                      <td className="py-1.5 px-2 font-semibold text-slate-800">{item.productName}</td>
-                      <td className="py-1.5 px-2">
-                        <input type="number" min="0" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-blue-400 outline-none"
-                          value={item.quantity}
-                          onChange={e => setEditingInvoice((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], quantity: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-blue-400 outline-none"
-                          value={item.unitPrice}
-                          onChange={e => setEditingInvoice((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], unitPrice: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input type="number" min="0" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-blue-400 outline-none"
-                          value={item.gstRate || 0}
-                          onChange={e => setEditingInvoice((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], gstRate: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {editError && (
-              <div className="mx-6 mb-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">{editError}</div>
-            )}
-            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-4">
-              <p className="text-xs text-slate-500">Saving reverses old journal entries and re-posts with new totals. Customer outstanding balance is adjusted automatically.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setEditingInvoice(null)} className="px-5 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition cursor-pointer">Cancel</button>
+            {/* Sticky Financial Footer */}
+            <div className="px-6 py-3.5 border-t border-slate-200 bg-white shadow-2xl shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4 z-20">
+              <div className="flex flex-wrap items-center gap-6 text-xs font-mono">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Items</span>
+                  <span className="font-bold text-slate-800">{(editingInvoice.items || []).length} Lines</span>
+                </div>
+                <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Taxable</span>
+                  <span className="font-bold text-slate-800">₹{eTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+                {!eIsInter ? (
+                  <>
+                    <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">CGST</span>
+                      <span className="font-bold text-emerald-700">₹{eCgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">SGST</span>
+                      <span className="font-bold text-emerald-700">₹{eSgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">IGST</span>
+                    <span className="font-bold text-emerald-700">₹{eIgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Grand Total</span>
+                  <span className="text-xl font-black text-slate-900">₹{eGrand.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500 block">Balance Due</span>
+                  <span className={`text-lg font-black ${eDue > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    ₹{eDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {editError && <span className="text-xs text-rose-600 font-semibold max-w-xs">{editError}</span>}
+                <button onClick={() => setEditingInvoice(null)} className="px-5 py-2.5 border border-slate-300 rounded-xl text-sm text-slate-600 hover:bg-slate-100 transition font-semibold cursor-pointer">Cancel</button>
                 <button onClick={saveEditedInvoice} disabled={editSaving}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-lg text-sm flex items-center gap-2 transition cursor-pointer">
+                  className="px-7 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-black rounded-xl text-sm flex items-center gap-2 transition cursor-pointer shadow-md shadow-blue-100">
                   {editSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {editSaving ? 'Saving...' : 'Save & Update Ledger'}
+                  {editSaving ? 'Posting to Ledger...' : 'Save & Update Ledger'}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
+
+
+
 
     </div>
   );
