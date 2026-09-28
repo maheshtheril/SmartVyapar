@@ -18,7 +18,10 @@ import {
   FileCode,
   FileCheck2,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  Pencil,
+  Save,
+  X
 } from 'lucide-react';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
 import CreditNoteModal from '@/components/CreditNoteModal';
@@ -37,6 +40,9 @@ export default function InvoicesPage() {
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [editingInvoice, setEditingInvoice] = useState<any>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [business, setBusiness] = useState<any>({
     name: "Ziona Tech & Electricals",
     gstin: "32AAAAA0000A1Z5",
@@ -86,6 +92,37 @@ export default function InvoicesPage() {
       console.error("Error loading invoices:", err);
     } finally {
       setLoadingInvoices(false);
+    }
+  };
+
+  const saveEditedInvoice = async () => {
+    if (!editingInvoice) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/invoices/${editingInvoice.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName:      editingInvoice.customerName,
+          customerPhone:     editingInvoice.customerPhone,
+          customerGstin:     editingInvoice.customerGstin,
+          customerStateCode: editingInvoice.customerStateCode,
+          paymentStatus:     editingInvoice.paymentStatus,
+          paymentMode:       editingInvoice.paymentMode,
+          paidAmount:        editingInvoice.paidAmount,
+          notes:             editingInvoice.notes,
+          items:             editingInvoice.items,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save');
+      setEditingInvoice(null);
+      loadInvoices();
+    } catch (err: any) {
+      setEditError(err.message);
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -672,6 +709,16 @@ export default function InvoicesPage() {
                         <div className="flex items-center space-x-1.5">
                           <button
                             type="button"
+                            onClick={() => { setEditingInvoice(JSON.parse(JSON.stringify(inv))); setEditError(null); }}
+                            className="inline-flex items-center space-x-1 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-blue-700 hover:bg-blue-100 transition shadow-xs font-semibold text-xs"
+                            title="Edit Invoice"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            <span>Edit</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => handleOpenReceipt(inv)}
                             className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition shadow-xs font-semibold"
                             title="Print Thermal ESC/POS Receipt"
@@ -894,6 +941,123 @@ export default function InvoicesPage() {
           </div>
         </div>
       )}
+      {/* EDIT INVOICE MODAL */}
+      {editingInvoice && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-blue-50 rounded-t-2xl">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2"><Pencil className="w-4 h-4 text-blue-600" /> Edit Invoice #{editingInvoice.invoiceNumber}</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Changes will reverse old ledger entries and re-post with updated values</p>
+              </div>
+              <button onClick={() => setEditingInvoice(null)} className="p-2 hover:bg-blue-100 rounded-full cursor-pointer"><X className="w-5 h-5 text-slate-600" /></button>
+            </div>
+
+            {/* Customer & Payment Fields */}
+            <div className="px-6 py-4 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-sans">
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Customer Name</label>
+                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
+                  value={editingInvoice.customerName || ''}
+                  onChange={e => setEditingInvoice((b: any) => ({ ...b, customerName: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Phone</label>
+                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
+                  value={editingInvoice.customerPhone || ''}
+                  onChange={e => setEditingInvoice((b: any) => ({ ...b, customerPhone: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Customer GSTIN</label>
+                <input className="w-full border border-slate-300 rounded px-3 py-1.5 font-mono text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
+                  value={editingInvoice.customerGstin || ''}
+                  onChange={e => setEditingInvoice((b: any) => ({ ...b, customerGstin: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Payment Status</label>
+                <select className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
+                  value={editingInvoice.paymentStatus || 'UNPAID'}
+                  onChange={e => setEditingInvoice((b: any) => ({ ...b, paymentStatus: e.target.value }))}>
+                  <option value="PAID">Paid</option>
+                  <option value="PARTIAL">Partial</option>
+                  <option value="UNPAID">Unpaid</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Payment Mode</label>
+                <select className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
+                  value={editingInvoice.paymentMode || 'CASH'}
+                  onChange={e => setEditingInvoice((b: any) => ({ ...b, paymentMode: e.target.value }))}>
+                  <option value="CASH">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="CARD">Card</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="CREDIT">Credit</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Paid Amount (₹)</label>
+                <input type="number" min="0" step="0.01" className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-blue-400 outline-none"
+                  value={editingInvoice.paidAmount || 0}
+                  onChange={e => setEditingInvoice((b: any) => ({ ...b, paidAmount: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Line Items */}
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <table className="w-full text-xs font-sans border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-600 uppercase tracking-wide text-[10px]">
+                    <th className="py-2 px-2 text-left rounded-l">Product</th>
+                    <th className="py-2 px-2 text-right">Qty</th>
+                    <th className="py-2 px-2 text-right">Unit Price (₹)</th>
+                    <th className="py-2 px-2 text-right rounded-r">GST%</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(editingInvoice.items || []).map((item: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-blue-50/30">
+                      <td className="py-1.5 px-2 font-semibold text-slate-800">{item.productName}</td>
+                      <td className="py-1.5 px-2">
+                        <input type="number" min="0" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-blue-400 outline-none"
+                          value={item.quantity}
+                          onChange={e => setEditingInvoice((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], quantity: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-blue-400 outline-none"
+                          value={item.unitPrice}
+                          onChange={e => setEditingInvoice((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], unitPrice: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <input type="number" min="0" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-blue-400 outline-none"
+                          value={item.gstRate || 0}
+                          onChange={e => setEditingInvoice((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], gstRate: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {editError && (
+              <div className="mx-6 mb-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">{editError}</div>
+            )}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-4">
+              <p className="text-xs text-slate-500">Saving reverses old journal entries and re-posts with new totals. Customer outstanding balance is adjusted automatically.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setEditingInvoice(null)} className="px-5 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition cursor-pointer">Cancel</button>
+                <button onClick={saveEditedInvoice} disabled={editSaving}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-lg text-sm flex items-center gap-2 transition cursor-pointer">
+                  {editSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {editSaving ? 'Saving...' : 'Save & Update Ledger'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
