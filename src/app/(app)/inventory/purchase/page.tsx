@@ -137,6 +137,9 @@ export default function PurchaseInwardPage() {
   // Selected Bill for Purchase Return / Supplier Debit Note Modal
   const [selectedBillForReturn, setSelectedBillForReturn] = useState<any>(null);
 
+  // Selected Bill for View Details Modal
+  const [selectedBillForView, setSelectedBillForView] = useState<any>(null);
+
   // New Purchase Bill Form State
   const [supplierName, setSupplierName] = useState('');
   const [supplierGstin, setSupplierGstin] = useState('');
@@ -936,6 +939,13 @@ export default function PurchaseInwardPage() {
                         </td>
                         <td className="py-3 px-4 text-center font-sans">
                           <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => setSelectedBillForView(bill)}
+                              className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                              title="View Bill Details"
+                            >
+                              <FileText className="w-3 h-3 text-blue-600" /> View
+                            </button>
                             <button
                               onClick={() => setSelectedBillForGrn(bill)}
                               className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
@@ -2156,6 +2166,113 @@ export default function PurchaseInwardPage() {
           loadBills();
         }}
       />
+      {/* MODAL 4: VIEW PURCHASE BILL DETAILS */}
+      {selectedBillForView && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSelectedBillForView(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-2xl">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Purchase Bill Details</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {selectedBillForView.grnNumber} &nbsp;·&nbsp; Supplier Bill #{selectedBillForView.billNumber} &nbsp;·&nbsp;
+                  {new Date(selectedBillForView.billDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              <button onClick={() => setSelectedBillForView(null)} className="p-2 hover:bg-slate-200 rounded-full transition cursor-pointer">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            {/* Supplier Info */}
+            <div className="px-6 py-3 bg-blue-50/60 border-b border-blue-100 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-sans">
+              <div>
+                <p className="text-slate-500 font-medium uppercase tracking-wide text-[10px]">Supplier</p>
+                <p className="font-bold text-slate-900">{selectedBillForView.supplierName}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 font-medium uppercase tracking-wide text-[10px]">GSTIN</p>
+                <p className="font-mono text-slate-800">{selectedBillForView.supplierGstin || '—'}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 font-medium uppercase tracking-wide text-[10px]">Payment</p>
+                <p className="font-semibold text-slate-800">{selectedBillForView.paymentMode || 'Credit'}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 font-medium uppercase tracking-wide text-[10px]">Godown</p>
+                <p className="font-semibold text-slate-800">{selectedBillForView.warehouseName || '—'}</p>
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <table className="w-full text-xs font-sans border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-600 uppercase tracking-wide text-[10px]">
+                    <th className="py-2 px-3 text-left rounded-l">#</th>
+                    <th className="py-2 px-3 text-left">Product</th>
+                    <th className="py-2 px-3 text-left">HSN</th>
+                    <th className="py-2 px-3 text-left">Batch</th>
+                    <th className="py-2 px-3 text-left">Expiry</th>
+                    <th className="py-2 px-3 text-right">Qty</th>
+                    <th className="py-2 px-3 text-right">Unit</th>
+                    <th className="py-2 px-3 text-right">Rate</th>
+                    <th className="py-2 px-3 text-right">Disc%</th>
+                    <th className="py-2 px-3 text-right">GST%</th>
+                    <th className="py-2 px-3 text-right">MRP</th>
+                    <th className="py-2 px-3 text-right rounded-r">Line Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(selectedBillForView.items || []).map((item: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-slate-50">
+                      <td className="py-2 px-3 text-slate-500">{idx + 1}</td>
+                      <td className="py-2 px-3 font-semibold text-slate-900 max-w-[180px]">{item.productName}</td>
+                      <td className="py-2 px-3 font-mono text-slate-600">{item.hsnCode || '—'}</td>
+                      <td className="py-2 px-3 text-slate-600">{item.batchNumber || '—'}</td>
+                      <td className="py-2 px-3 text-slate-600">{item.expiryDate || '—'}</td>
+                      <td className="py-2 px-3 text-right text-slate-800">{item.quantity}</td>
+                      <td className="py-2 px-3 text-right text-slate-600">{item.unit}</td>
+                      <td className="py-2 px-3 text-right text-slate-800">₹{Number(item.purchasePrice || 0).toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right text-orange-600">{Number(item.discountPercent || 0) > 0 ? `${Number(item.discountPercent).toFixed(2)}%` : '—'}</td>
+                      <td className="py-2 px-3 text-right text-slate-600">{item.gstRate ?? 18}%</td>
+                      <td className="py-2 px-3 text-right text-slate-600">₹{Number(item.mrp || 0).toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right font-bold text-slate-900">₹{Number(item.lineTotal || 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totals Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex flex-wrap items-center justify-between gap-4 text-xs font-sans">
+              <div className="flex gap-6">
+                <div>
+                  <p className="text-slate-500 uppercase text-[10px] font-medium">Taxable</p>
+                  <p className="font-bold text-slate-900 text-sm">₹{Number(selectedBillForView.totalTaxable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500 uppercase text-[10px] font-medium">CGST</p>
+                  <p className="font-semibold text-slate-700">₹{Number(selectedBillForView.cgstAmount || 0).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500 uppercase text-[10px] font-medium">SGST</p>
+                  <p className="font-semibold text-slate-700">₹{Number(selectedBillForView.sgstAmount || 0).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500 uppercase text-[10px] font-medium">IGST</p>
+                  <p className="font-semibold text-slate-700">₹{Number(selectedBillForView.igstAmount || 0).toFixed(2)}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-500 uppercase text-[10px] font-medium">Grand Total</p>
+                <p className="font-extrabold text-blue-700 text-xl">₹{Number(selectedBillForView.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
