@@ -3,6 +3,9 @@ import { requireSession } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { scanPurchaseInvoiceWithGemini, cleanHumanReadableAiError } from "@/lib/ai-invoice-scanner";
 
+// Tell Vercel to allow up to 60 seconds for this function (AI scan needs time)
+export const maxDuration = 60;
+
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",

@@ -14,7 +14,7 @@ services:
       - PORT=3005
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
     env_file:
       - .env
     healthcheck:
