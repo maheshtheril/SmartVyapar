@@ -2316,144 +2316,291 @@ export default function PurchaseInwardPage() {
         </div>
       )}
 
-      {/* MODAL 5: EDIT PURCHASE BILL */}
-      {editingBill && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-amber-50 rounded-t-2xl">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2"><Pencil className="w-4 h-4 text-amber-600" /> Edit Purchase Bill</h2>
-                <p className="text-xs text-slate-500 mt-0.5">{editingBill.grnNumber} — changes will reverse & re-post chart of accounts</p>
+      {/* MODAL 5: EDIT PURCHASE BILL — Full-Screen ERP Workspace */}
+      {editingBill && (() => {
+        // Live totals for footer
+        let eTaxable = 0, eCgst = 0, eSgst = 0, eIgst = 0;
+        const eIsInter = editingBill.supplierGstin?.length >= 2 && tenant?.stateCode
+          ? editingBill.supplierGstin.substring(0, 2) !== tenant.stateCode : false;
+        (editingBill.items || []).forEach((it: any) => {
+          const cost = Number(it.purchasePrice || 0) * (1 - Number(it.discountPercent || 0) / 100);
+          const taxable = Math.round(cost * Number(it.quantity || 0) * 100) / 100;
+          const gst = Number(it.gstRate || 18);
+          const tax = Math.round(taxable * gst / 100 * 100) / 100;
+          eTaxable += taxable;
+          if (eIsInter) eIgst += tax; else { eCgst += tax / 2; eSgst += tax / 2; }
+        });
+        const eGrand = Math.round((eTaxable + eCgst + eSgst + eIgst) * 100) / 100;
+
+        const updateEditItem = (idx: number, field: string, value: any) => {
+          setEditingBill((b: any) => {
+            const items = b.items.map((it: any, i: number) => {
+              if (i !== idx) return it;
+              const row = { ...it, [field]: value };
+              if (field === 'purchasePrice' || field === 'discountPercent' || field === 'marginPercent') {
+                const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
+                row.sellingPrice = Math.round(cost * (1 + Number(row.marginPercent || 0) / 100) * 100) / 100;
+                if (!row.mrp || Number(row.mrp) < row.sellingPrice) row.mrp = row.sellingPrice;
+              } else if (field === 'sellingPrice') {
+                const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
+                if (cost > 0) row.marginPercent = Math.round(((Number(value) - cost) / cost) * 1000) / 10;
+                if (!row.mrp || Number(row.mrp) < Number(value)) row.mrp = value;
+              }
+              return row;
+            });
+            return { ...b, items };
+          });
+        };
+
+        return (
+        <div className="fixed inset-0 z-[999] bg-black/80 backdrop-blur-xs flex items-center justify-center p-0 md:p-2 animate-in fade-in duration-150">
+          <div className="bg-slate-50 overflow-hidden flex flex-col w-[98vw] max-w-[1720px] h-[95vh] rounded-2xl border border-slate-300 shadow-2xl">
+
+            {/* Dark Top Header — identical to new-bill form */}
+            <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900 text-white shrink-0 z-20 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-amber-600/20 text-amber-400 rounded-xl flex items-center justify-center border border-amber-500/30">
+                  <Pencil className="h-5 w-5 text-amber-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
+                    Edit Purchase Bill
+                    <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                      {editingBill.grnNumber}
+                    </span>
+                    <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                      {editingBill.billNumber}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">
+                    Ledger Reversal &bull; Re-Post &bull; Audit Trail
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setEditingBill(null)} className="p-2 hover:bg-amber-100 rounded-full transition cursor-pointer">
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="hidden xl:flex items-center gap-2 text-[11px] font-mono text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
+                  <span className="text-amber-400 font-semibold">⚠ Old ledger entries will be reversed and re-posted on save</span>
+                </div>
+                <button onClick={() => setEditingBill(null)} className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 p-2 rounded-lg transition cursor-pointer" title="Close">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Header Fields */}
-            <div className="px-6 py-4 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-sans">
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Supplier Name</label>
-                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
-                  value={editingBill.supplierName || ''}
-                  onChange={e => setEditingBill((b: any) => ({ ...b, supplierName: e.target.value }))} />
+            {/* Scrollable body */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto px-6 py-4 space-y-3.5">
+
+              {/* Bill Header Metadata Grid */}
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                  <div className="md:col-span-4">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Supplier / Vendor Name <span className="text-rose-500">*</span></label>
+                    <input className="w-full text-xs font-semibold border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-amber-500 outline-none"
+                      value={editingBill.supplierName || ''}
+                      onChange={e => setEditingBill((b: any) => ({ ...b, supplierName: e.target.value }))} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Supplier GSTIN</label>
+                    <input className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-amber-500 font-mono outline-none"
+                      value={editingBill.supplierGstin || ''}
+                      onChange={e => setEditingBill((b: any) => ({ ...b, supplierGstin: e.target.value.toUpperCase() }))} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Supplier Bill / Inv # <span className="text-rose-500">*</span></label>
+                    <input className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-amber-500 font-mono font-bold outline-none"
+                      value={editingBill.billNumber || ''}
+                      onChange={e => setEditingBill((b: any) => ({ ...b, billNumber: e.target.value }))} />
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Bill Date</label>
+                    <input type="date" className="w-full text-xs border border-slate-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-amber-500 font-mono outline-none"
+                      value={editingBill.billDate?.substring(0, 10) || ''}
+                      onChange={e => setEditingBill((b: any) => ({ ...b, billDate: e.target.value }))} />
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Payment</label>
+                    <select className="w-full text-xs border border-slate-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-amber-500 font-medium outline-none"
+                      value={editingBill.paymentTerms || 'CREDIT'}
+                      onChange={e => setEditingBill((b: any) => ({ ...b, paymentTerms: e.target.value }))}>
+                      <option value="CREDIT">Credit (A/c 2000)</option>
+                      <option value="BANK_TRANSFER">Bank (A/c 1100)</option>
+                      <option value="UPI">UPI (A/c 1100)</option>
+                      <option value="CASH">Cash (A/c 1000)</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Internal Notes / PO Ref</label>
+                    <input className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-amber-500 outline-none"
+                      placeholder="e.g. PO-2026-88"
+                      value={editingBill.notes || ''}
+                      onChange={e => setEditingBill((b: any) => ({ ...b, notes: e.target.value }))} />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Supplier GSTIN</label>
-                <input className="w-full border border-slate-300 rounded px-3 py-1.5 font-mono text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
-                  value={editingBill.supplierGstin || ''}
-                  onChange={e => setEditingBill((b: any) => ({ ...b, supplierGstin: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Supplier Bill #</label>
-                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
-                  value={editingBill.billNumber || ''}
-                  onChange={e => setEditingBill((b: any) => ({ ...b, billNumber: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Bill Date</label>
-                <input type="date" className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
-                  value={editingBill.billDate?.substring(0, 10) || ''}
-                  onChange={e => setEditingBill((b: any) => ({ ...b, billDate: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Payment Mode</label>
-                <select className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
-                  value={editingBill.paymentTerms || 'CREDIT'}
-                  onChange={e => setEditingBill((b: any) => ({ ...b, paymentTerms: e.target.value }))}>
-                  <option value="CREDIT">Credit</option>
-                  <option value="CASH">Cash</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="UPI">UPI</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-slate-500 font-medium mb-1">Notes</label>
-                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
-                  value={editingBill.notes || ''}
-                  onChange={e => setEditingBill((b: any) => ({ ...b, notes: e.target.value }))} />
+
+              {/* Full-width 14-column Line Items Table */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 min-h-[300px] flex flex-col">
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full text-left text-xs border-collapse min-w-[1300px]">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[11px] border-b border-slate-950">
+                        <th className="py-2.5 px-2 w-8 text-center text-slate-400">#</th>
+                        <th className="py-2.5 px-3 min-w-[220px]">Product Description</th>
+                        <th className="py-2.5 px-2 w-20 text-center">HSN</th>
+                        <th className="py-2.5 px-2 w-24">Batch #</th>
+                        <th className="py-2.5 px-2 w-28">Expiry</th>
+                        <th className="py-2.5 px-2 w-16 text-center">Qty</th>
+                        <th className="py-2.5 px-2 w-18 text-center">Unit</th>
+                        <th className="py-2.5 px-2 w-24 text-right">Cost (₹)</th>
+                        <th className="py-2.5 px-2 w-16 text-right">Disc %</th>
+                        <th className="py-2.5 px-2 w-24 text-right bg-blue-900 text-blue-100 border-x border-blue-800">Margin %</th>
+                        <th className="py-2.5 px-2 w-32 text-right bg-emerald-900 text-emerald-100 border-r border-emerald-800">Selling (₹)</th>
+                        <th className="py-2.5 px-2 w-18 text-center">GST %</th>
+                        <th className="py-2.5 px-2 w-24 text-right">Taxable (₹)</th>
+                        <th className="py-2.5 px-3 w-28 text-right font-black">Total (₹)</th>
+                        <th className="py-2.5 px-2 w-10 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {(editingBill.items || []).map((row: any, idx: number) => {
+                        const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
+                        const sp = Number(row.sellingPrice || 0);
+                        const unitProfit = Math.round((sp - cost) * 100) / 100;
+                        const taxable = Math.round(cost * Number(row.quantity || 0) * 100) / 100;
+                        const gst = Number(row.gstRate || 18);
+                        const lineTotal = Math.round(taxable * (1 + gst / 100) * 100) / 100;
+                        return (
+                          <tr key={idx} className="hover:bg-amber-50/30 transition group">
+                            <td className="py-2 px-2 font-mono text-slate-400 text-center align-middle">{idx + 1}</td>
+                            <td className="py-2 px-3 align-middle font-semibold text-slate-800 max-w-[220px] truncate">{row.productName}</td>
+                            <td className="py-2 px-2 align-middle">
+                              <input type="text" value={row.hsnCode || ''} onChange={e => updateEditItem(idx, 'hsnCode', e.target.value)}
+                                className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono" />
+                            </td>
+                            <td className="py-2 px-2 align-middle">
+                              <input type="text" value={row.batchNumber || ''} onChange={e => updateEditItem(idx, 'batchNumber', e.target.value)}
+                                className="w-full uppercase border border-slate-300 rounded px-2 py-1.5 text-xs font-mono font-bold" />
+                            </td>
+                            <td className="py-2 px-2 align-middle">
+                              <input type="date" value={row.expiryDate?.substring(0, 10) || ''} onChange={e => updateEditItem(idx, 'expiryDate', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-1.5 py-1.5 text-xs" />
+                            </td>
+                            <td className="py-2 px-2 align-middle">
+                              <input type="number" min="0.1" step="any" value={row.quantity} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'quantity', e.target.value)}
+                                className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold" />
+                            </td>
+                            <td className="py-2 px-2 align-middle">
+                              <select value={row.unit || 'PCS'} onChange={e => updateEditItem(idx, 'unit', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-1 py-1.5 text-xs font-semibold bg-white text-center">
+                                {['PCS','CAN','BOX','SET','KG','LTR','MTR'].map(u => <option key={u}>{u}</option>)}
+                              </select>
+                            </td>
+                            <td className="py-2 px-2 align-middle">
+                              <input type="number" min="0" step="any" value={row.purchasePrice} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'purchasePrice', e.target.value)}
+                                className="w-full text-right border border-slate-300 rounded px-2 py-1.5 text-xs font-mono font-bold" />
+                            </td>
+                            <td className="py-2 px-2 align-middle">
+                              <input type="number" min="0" max="100" step="any" value={row.discountPercent || 0} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'discountPercent', e.target.value)}
+                                className="w-full text-right border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono" />
+                            </td>
+                            <td className="py-2 px-2 align-middle bg-blue-50/40">
+                              <div className="relative">
+                                <input type="number" step="0.1" value={row.marginPercent || 0} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'marginPercent', e.target.value)}
+                                  className="w-full text-right border border-blue-300 rounded pl-1.5 pr-4 py-1.5 text-xs font-mono font-bold text-blue-700 bg-white" />
+                                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-bold text-blue-500 pointer-events-none">%</span>
+                              </div>
+                            </td>
+                            <td className="py-2 px-2 align-middle bg-emerald-50/40">
+                              <div>
+                                <div className="relative">
+                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-600 pointer-events-none">₹</span>
+                                  <input type="number" step="any" value={row.sellingPrice || 0} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'sellingPrice', e.target.value)}
+                                    className="w-full text-right border border-emerald-300 rounded pl-4 pr-1.5 py-1.5 text-xs font-mono font-bold text-emerald-700 bg-white" />
+                                </div>
+                                {unitProfit !== 0 && (
+                                  <div className={`text-[10px] text-right font-mono font-semibold mt-0.5 ${unitProfit > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    {unitProfit > 0 ? `+₹${unitProfit.toFixed(1)}/unit` : `-₹${Math.abs(unitProfit).toFixed(1)}/unit`}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2 px-2 align-middle">
+                              <select value={row.gstRate || 18} onChange={e => updateEditItem(idx, 'gstRate', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-1 py-1.5 text-xs font-mono font-bold bg-white text-center">
+                                {[0,5,12,18,28].map(r => <option key={r} value={r}>{r}%</option>)}
+                              </select>
+                            </td>
+                            <td className="py-2 px-2 text-right font-mono text-slate-700 align-middle">
+                              ₹{taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono font-black text-slate-900 align-middle">
+                              ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-2 px-2 text-center align-middle">
+                              <button type="button" onClick={() => setEditingBill((b: any) => ({ ...b, items: b.items.filter((_: any, i: number) => i !== idx) }))}
+                                disabled={(editingBill.items || []).length <= 1}
+                                className="text-slate-400 hover:text-rose-600 transition disabled:opacity-20 p-1 cursor-pointer" title="Remove Line">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
-            {/* Items Table */}
-            <div className="flex-1 overflow-auto px-6 py-4">
-              <table className="w-full text-xs font-sans border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-600 uppercase tracking-wide text-[10px]">
-                    <th className="py-2 px-2 text-left rounded-l">Product</th>
-                    <th className="py-2 px-2 text-right">Qty</th>
-                    <th className="py-2 px-2 text-right">Rate (₹)</th>
-                    <th className="py-2 px-2 text-right">Disc%</th>
-                    <th className="py-2 px-2 text-right">GST%</th>
-                    <th className="py-2 px-2 text-right">MRP (₹)</th>
-                    <th className="py-2 px-2 text-right">Selling (₹)</th>
-                    <th className="py-2 px-2 text-right rounded-r">Batch</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {(editingBill.items || []).map((item: any, idx: number) => (
-                    <tr key={idx} className="hover:bg-amber-50/40">
-                      <td className="py-1.5 px-2 font-semibold text-slate-800 max-w-[160px] truncate">{item.productName}</td>
-                      <td className="py-1.5 px-2">
-                        <input type="number" min="0" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
-                          value={item.quantity}
-                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], quantity: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
-                          value={item.purchasePrice}
-                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], purchasePrice: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input type="number" min="0" max="100" step="0.01" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
-                          value={item.discountPercent || 0}
-                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], discountPercent: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input type="number" min="0" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
-                          value={item.gstRate || 18}
-                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], gstRate: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
-                          value={item.mrp || 0}
-                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], mrp: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
-                          value={item.sellingPrice || 0}
-                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], sellingPrice: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input type="text" className="w-24 border border-slate-300 rounded px-2 py-1 focus:ring-1 focus:ring-amber-400 outline-none"
-                          value={item.batchNumber || ''}
-                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], batchNumber: e.target.value }; return { ...b, items }; })} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Error + Footer */}
-            {editError && (
-              <div className="mx-6 mb-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">{editError}</div>
-            )}
-            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-4">
-              <p className="text-xs text-slate-500">Saving will reverse old ledger entries and re-post with new values.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setEditingBill(null)} className="px-5 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition cursor-pointer">Cancel</button>
+            {/* Sticky Financial Footer — identical style to new-bill form */}
+            <div className="px-6 py-3.5 border-t border-slate-200 bg-white shadow-2xl shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4 z-20">
+              <div className="flex flex-wrap items-center gap-6 text-xs font-mono">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Lines</span>
+                  <span className="font-bold text-slate-800">{(editingBill.items || []).length} Parts</span>
+                </div>
+                <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Taxable Subtotal</span>
+                  <span className="font-bold text-slate-800">₹{eTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+                {!eIsInter ? (
+                  <>
+                    <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">CGST</span>
+                      <span className="font-bold text-emerald-700">₹{eCgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">SGST</span>
+                      <span className="font-bold text-emerald-700">₹{eSgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">IGST</span>
+                    <span className="font-bold text-emerald-700">₹{eIgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                <div className="space-y-0.5 border-l border-slate-200 pl-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Grand Total</span>
+                  <span className="text-xl font-black text-slate-900">₹{eGrand.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {editError && <span className="text-xs text-rose-600 font-semibold">{editError}</span>}
+                <button onClick={() => setEditingBill(null)} className="px-5 py-2.5 border border-slate-300 rounded-xl text-sm text-slate-600 hover:bg-slate-100 transition font-semibold cursor-pointer">Cancel</button>
                 <button onClick={saveEditedBill} disabled={editSaving}
-                  className="px-6 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-bold rounded-lg text-sm flex items-center gap-2 transition cursor-pointer">
+                  className="px-7 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-black rounded-xl text-sm flex items-center gap-2 transition cursor-pointer shadow-md shadow-amber-100">
                   {editSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {editSaving ? 'Saving...' : 'Save & Update Ledger'}
+                  {editSaving ? 'Posting to Ledger...' : 'Save & Update Ledger'}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
+
+
 
     </div>
   );
