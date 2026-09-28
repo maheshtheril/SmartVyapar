@@ -487,7 +487,7 @@ export default function PurchaseInwardPage() {
             quantity: Number(it.quantity || 1),
             packageSize: Number(it.packageSize || 1),
             purchasePrice: cost,
-            discountPercent: 0,
+            discountPercent: Number(it.discountPercent || 0),
             marginPercent: margin,
             sellingPrice: sp,
             mrp: Number(it.mrp || sp),

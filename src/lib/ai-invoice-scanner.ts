@@ -12,6 +12,7 @@ export const ScannedPurchaseItemSchema = z.object({
   baseUnit: z.string().trim().default("PCS"),
   baseQuantity: z.coerce.number().positive().default(1),
   purchasePrice: z.coerce.number().nonnegative().default(0),
+  discountPercent: z.coerce.number().nonnegative().default(0),
   baseCostPrice: z.coerce.number().nonnegative().default(0),
   mrp: z.coerce.number().nonnegative().optional().nullable(),
   gstRate: z.coerce.number().nonnegative().default(18),
@@ -108,8 +109,9 @@ RULES:
      - "packageSize": Multiplier if packaging unit (e.g. if 1 Box has 10 Strips, packageSize is 10. If loose/single unit, packageSize is 1)
      - "baseUnit": Atomic base inventory unit (e.g. "STRIP", "TAB", "PCS", "NOS")
      - "baseQuantity": Effective atomic quantity entering inventory (= quantity * packageSize)
-     - "purchasePrice": Billed unit rate before tax
-     - "baseCostPrice": Cost per atomic base unit (= purchasePrice / packageSize)
+     - "purchasePrice": Billed unit rate before discount and tax
+     - "discountPercent": Trade/cash discount percentage on the line item (e.g. 37.08 if "Disc%" column shows 37.08; 0 if no discount)
+     - "baseCostPrice": Cost per atomic base unit after discount (= purchasePrice * (1 - discountPercent/100) / packageSize)
      - "mrp": Maximum Retail Price if listed (numeric)
      - "gstRate": Applicable GST slab (e.g. 0, 5, 12, 18, 28)
      - "lineTotal": Total item amount
@@ -139,6 +141,7 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
       "baseUnit": "PCS",
       "baseQuantity": 50,
       "purchasePrice": 1200.0,
+      "discountPercent": 0.0,
       "baseCostPrice": 120.0,
       "mrp": 150.0,
       "gstRate": 18.0,
