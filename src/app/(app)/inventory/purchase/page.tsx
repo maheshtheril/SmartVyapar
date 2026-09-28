@@ -32,7 +32,9 @@ import {
   Maximize2,
   Minimize2,
   RotateCcw,
-  ScanBarcode
+  ScanBarcode,
+  Pencil,
+  Save
 } from 'lucide-react';
 import BarcodeSvg from '@/components/BarcodeSvg';
 import PurchaseReturnModal from '@/components/PurchaseReturnModal';
@@ -139,6 +141,11 @@ export default function PurchaseInwardPage() {
 
   // Selected Bill for View Details Modal
   const [selectedBillForView, setSelectedBillForView] = useState<any>(null);
+
+  // Edit Bill State
+  const [editingBill, setEditingBill] = useState<any>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // New Purchase Bill Form State
   const [supplierName, setSupplierName] = useState('');
@@ -381,6 +388,35 @@ export default function PurchaseInwardPage() {
       console.error('Failed to load purchase bills:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveEditedBill = async () => {
+    if (!editingBill) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/purchase/${editingBill.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supplierName:  editingBill.supplierName,
+          supplierGstin: editingBill.supplierGstin,
+          billNumber:    editingBill.billNumber,
+          billDate:      editingBill.billDate?.substring(0, 10),
+          paymentTerms:  editingBill.paymentTerms,
+          notes:         editingBill.notes,
+          items:         editingBill.items,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save');
+      setEditingBill(null);
+      loadBills();
+    } catch (err: any) {
+      setEditError(err.message);
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -945,6 +981,13 @@ export default function PurchaseInwardPage() {
                               title="View Bill Details"
                             >
                               <FileText className="w-3 h-3 text-blue-600" /> View
+                            </button>
+                            <button
+                              onClick={() => { setEditingBill(JSON.parse(JSON.stringify(bill))); setEditError(null); }}
+                              className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-md text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                              title="Edit Bill"
+                            >
+                              <Pencil className="w-3 h-3 text-amber-600" /> Edit
                             </button>
                             <button
                               onClick={() => setSelectedBillForGrn(bill)}
@@ -2267,6 +2310,145 @@ export default function PurchaseInwardPage() {
               <div className="text-right">
                 <p className="text-slate-500 uppercase text-[10px] font-medium">Grand Total</p>
                 <p className="font-extrabold text-blue-700 text-xl">₹{Number(selectedBillForView.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: EDIT PURCHASE BILL */}
+      {editingBill && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-amber-50 rounded-t-2xl">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2"><Pencil className="w-4 h-4 text-amber-600" /> Edit Purchase Bill</h2>
+                <p className="text-xs text-slate-500 mt-0.5">{editingBill.grnNumber} — changes will reverse & re-post chart of accounts</p>
+              </div>
+              <button onClick={() => setEditingBill(null)} className="p-2 hover:bg-amber-100 rounded-full transition cursor-pointer">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            {/* Header Fields */}
+            <div className="px-6 py-4 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-sans">
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Supplier Name</label>
+                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
+                  value={editingBill.supplierName || ''}
+                  onChange={e => setEditingBill((b: any) => ({ ...b, supplierName: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Supplier GSTIN</label>
+                <input className="w-full border border-slate-300 rounded px-3 py-1.5 font-mono text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
+                  value={editingBill.supplierGstin || ''}
+                  onChange={e => setEditingBill((b: any) => ({ ...b, supplierGstin: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Supplier Bill #</label>
+                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
+                  value={editingBill.billNumber || ''}
+                  onChange={e => setEditingBill((b: any) => ({ ...b, billNumber: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Bill Date</label>
+                <input type="date" className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
+                  value={editingBill.billDate?.substring(0, 10) || ''}
+                  onChange={e => setEditingBill((b: any) => ({ ...b, billDate: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Payment Mode</label>
+                <select className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
+                  value={editingBill.paymentTerms || 'CREDIT'}
+                  onChange={e => setEditingBill((b: any) => ({ ...b, paymentTerms: e.target.value }))}>
+                  <option value="CREDIT">Credit</option>
+                  <option value="CASH">Cash</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="UPI">UPI</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-500 font-medium mb-1">Notes</label>
+                <input className="w-full border border-slate-300 rounded px-3 py-1.5 text-slate-800 focus:ring-1 focus:ring-amber-400 outline-none"
+                  value={editingBill.notes || ''}
+                  onChange={e => setEditingBill((b: any) => ({ ...b, notes: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <table className="w-full text-xs font-sans border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-600 uppercase tracking-wide text-[10px]">
+                    <th className="py-2 px-2 text-left rounded-l">Product</th>
+                    <th className="py-2 px-2 text-right">Qty</th>
+                    <th className="py-2 px-2 text-right">Rate (₹)</th>
+                    <th className="py-2 px-2 text-right">Disc%</th>
+                    <th className="py-2 px-2 text-right">GST%</th>
+                    <th className="py-2 px-2 text-right">MRP (₹)</th>
+                    <th className="py-2 px-2 text-right">Selling (₹)</th>
+                    <th className="py-2 px-2 text-right rounded-r">Batch</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(editingBill.items || []).map((item: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-amber-50/40">
+                      <td className="py-1.5 px-2 font-semibold text-slate-800 max-w-[160px] truncate">{item.productName}</td>
+                      <td className="py-1.5 px-2">
+                        <input type="number" min="0" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={item.quantity}
+                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], quantity: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={item.purchasePrice}
+                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], purchasePrice: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <input type="number" min="0" max="100" step="0.01" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={item.discountPercent || 0}
+                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], discountPercent: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <input type="number" min="0" className="w-16 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={item.gstRate || 18}
+                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], gstRate: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={item.mrp || 0}
+                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], mrp: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <input type="number" min="0" step="0.01" className="w-24 border border-slate-300 rounded px-2 py-1 text-right focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={item.sellingPrice || 0}
+                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], sellingPrice: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <input type="text" className="w-24 border border-slate-300 rounded px-2 py-1 focus:ring-1 focus:ring-amber-400 outline-none"
+                          value={item.batchNumber || ''}
+                          onChange={e => setEditingBill((b: any) => { const items = [...b.items]; items[idx] = { ...items[idx], batchNumber: e.target.value }; return { ...b, items }; })} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Error + Footer */}
+            {editError && (
+              <div className="mx-6 mb-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">{editError}</div>
+            )}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-4">
+              <p className="text-xs text-slate-500">Saving will reverse old ledger entries and re-post with new values.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setEditingBill(null)} className="px-5 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition cursor-pointer">Cancel</button>
+                <button onClick={saveEditedBill} disabled={editSaving}
+                  className="px-6 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-bold rounded-lg text-sm flex items-center gap-2 transition cursor-pointer">
+                  {editSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {editSaving ? 'Saving...' : 'Save & Update Ledger'}
+                </button>
               </div>
             </div>
           </div>
