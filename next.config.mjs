@@ -30,8 +30,20 @@ const nextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            // A moderate baseline CSP tailored for Next.js and Sentry
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self' https://*.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';",
+            // A moderate baseline CSP tailored for Next.js + Razorpay + Resend
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://api.razorpay.com",
+              "style-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
+              "img-src 'self' blob: data: https://checkout.razorpay.com https://api.razorpay.com https://razorpay.com",
+              "font-src 'self' data: https://checkout.razorpay.com",
+              "connect-src 'self' https://*.sentry.io https://api.razorpay.com https://checkout.razorpay.com https://lumberjack.razorpay.com",
+              "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+            ].join("; "),
           },
         ],
       },
