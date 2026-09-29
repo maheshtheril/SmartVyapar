@@ -95,7 +95,7 @@ export function buildPasswordResetEmailHtml({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset your SmartVyapar Password</title>
+  <title>Reset your Ziona POS Password</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 16px;">
@@ -105,13 +105,13 @@ export function buildPasswordResetEmailHtml({
           <!-- Header -->
           <tr>
             <td style="padding: 32px 32px 24px; text-align: center; border-bottom: 1px solid #f1f5f9;">
-              <div style="display: inline-block; background-color: #4f46e5; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px;">
-                <span style="color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">SV</span>
+              <div style="display: inline-block; background-color: #0f172a; border-radius: 12px; padding: 10px 16px; margin-bottom: 12px;">
+                <span style="color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">Z</span>
               </div>
               <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
-                Smart<span style="color: #4f46e5;">Vyapar</span>
+                Ziona <span style="color: #4f46e5;">POS</span>
               </h1>
-              <p style="margin: 4px 0 0; font-size: 13px; color: #64748b;">Indian GST ERP & Billing Engine</p>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #64748b;">Multi-Tenant GST ERP &amp; Billing Platform</p>
             </td>
           </tr>
 
@@ -125,7 +125,7 @@ export function buildPasswordResetEmailHtml({
                 Hello <strong>${userName}</strong>,
               </p>
               <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #334155;">
-                We received a request to reset the password for your SmartVyapar account. Click the secure button below to choose a new password:
+                We received a request to reset the password for your Ziona POS account. Click the secure button below to choose a new password:
               </p>
 
               <!-- CTA Button -->
@@ -164,7 +164,7 @@ export function buildPasswordResetEmailHtml({
           <tr>
             <td style="padding: 20px 32px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center;">
               <p style="margin: 0; font-size: 11px; color: #94a3b8;">
-                &copy; ${new Date().getFullYear()} SmartVyapar. All rights reserved.
+                &copy; ${new Date().getFullYear()} Ziona POS by ZaayaSoft. All rights reserved.
               </p>
             </td>
           </tr>
