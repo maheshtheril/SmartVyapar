@@ -348,11 +348,16 @@ function SettingsContent() {
       };
 
       if (typeof window !== 'undefined' && !(window as any).Razorpay) {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.async = true;
-        document.body.appendChild(script);
-        await new Promise((resolve) => (script.onload = resolve));
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load Razorpay checkout. Please disable any ad blockers and try again.'));
+          const timeout = setTimeout(() => reject(new Error('Razorpay gateway timed out. Please check your internet connection and try again.')), 10000);
+          script.onload = () => { clearTimeout(timeout); resolve(); };
+          document.body.appendChild(script);
+        });
       }
 
       const rzp = new (window as any).Razorpay(options);
