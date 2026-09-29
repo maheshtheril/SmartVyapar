@@ -146,7 +146,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       if (oldJournal) {
         // Reverse each line: debit ↔ credit
         for (const line of oldJournal.lines) {
-          const delta = line.debit - line.credit; // positive = was a debit
+          const delta = Number(line.debit) - Number(line.credit); // positive = was a debit
           await tx.account.update({
             where: { id: line.accountId },
             data: { balance: { decrement: delta } }, // undo original impact

@@ -75,7 +75,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
 
       // ── 2. Delete old lines ─────────────────────────────────────────────────
-      await tx.journalEntryLine.deleteMany({
+      await tx.journalLineItem.deleteMany({
         where: { journalEntryId: params.id },
       });
 
