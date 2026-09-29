@@ -481,6 +481,15 @@ export default function PurchaseInwardPage() {
       });
 
       const json = await res.json();
+
+      // Plan gate — clear upgrade message
+      if (res.status === 403 && json.error === 'PRO_FEATURE') {
+        setIsScanningInvoice(false);
+        setIsNewBillOpen(false);
+        setScanError('__UPGRADE__');
+        return;
+      }
+
       if (!res.ok || !json.success) {
         throw new Error(json.error || 'AI invoice scan failed');
       }
@@ -854,6 +863,11 @@ export default function PurchaseInwardPage() {
           <button
             type="button"
             onClick={() => {
+              if (tenant?.subscriptionTier === 'FREE') {
+                setScanError('__UPGRADE__');
+                setIsNewBillOpen(true);
+                return;
+              }
               setIsNewBillOpen(true);
               fileInputRef.current?.click();
             }}
@@ -1070,12 +1084,18 @@ export default function PurchaseInwardPage() {
                 {/* AI Quick Scan Trigger */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    if (tenant?.subscriptionTier === 'FREE') {
+                      setScanError('__UPGRADE__');
+                      return;
+                    }
+                    fileInputRef.current?.click();
+                  }}
                   disabled={isScanningInvoice}
                   className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
                 >
                   <Sparkles className={`w-3.5 h-3.5 ${isScanningInvoice ? 'animate-spin' : 'animate-pulse text-amber-300'}`} />
-                  {isScanningInvoice ? 'Scanning...' : '⚡ AI Scan Bill'}
+                  {tenant?.subscriptionTier === 'FREE' ? '⚡ AI Scan (Pro)' : isScanningInvoice ? 'Scanning...' : '⚡ AI Scan Bill'}
                 </button>
 
                 {/* Godown Indicator */}
@@ -1144,7 +1164,32 @@ export default function PurchaseInwardPage() {
                 </div>
               )}
 
-              {scanError && (
+              {scanError === '__UPGRADE__' && (
+                <div className="p-5 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 shadow-sm space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-900 text-sm">AI Purchase Bill Scanner — Pro Feature</div>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        Instantly extract supplier details, line items, GST, batch numbers, and totals from any invoice photo. Available on <strong>Ziona POS Pro</strong>.
+                      </p>
+                    </div>
+                    <button onClick={() => setScanError(null)} className="ml-auto text-slate-400 hover:text-slate-600 cursor-pointer shrink-0"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
+                    {['Unlimited AI OCR Scans','NIC E-Way Bill Bulk Generator','Excel / CSV Inventory Import','MCA Audit Trail Logs'].map(f => (
+                      <div key={f} className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />{f}</div>
+                    ))}
+                  </div>
+                  <a href="/settings?tab=billing" className="inline-flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5" /> Upgrade to Pro — ₹499/mo
+                  </a>
+                </div>
+              )}
+
+              {scanError && scanError !== '__UPGRADE__' && (
                 <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-900 space-y-2.5 text-xs shadow-xs">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-2.5">
