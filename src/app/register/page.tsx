@@ -42,6 +42,30 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  
+  const getInputClass = (fieldName: string) => {
+    const base = "w-full rounded-xl border px-3 py-2 text-xs focus:outline-none transition ";
+    if (fieldErrors[fieldName]) {
+      return base + "border-rose-500 bg-rose-50 text-rose-900 focus:border-rose-600 focus:ring-1 focus:ring-rose-500";
+    }
+    return base + "border-slate-200 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white";
+  };
+
+  const getPasswordStrength = (pass: string) => {
+    if (!pass) return 0;
+    let score = 0;
+    if (pass.length >= 6) score += 1;
+    if (pass.length >= 8) score += 1;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+    return Math.min(score, 4);
+  };
+  const strength = getPasswordStrength(password);
+  const strengthColors = ["bg-slate-200", "bg-rose-500", "bg-amber-400", "bg-emerald-400", "bg-emerald-600"];
+  const strengthLabels = ["", "Weak", "Fair", "Good", "Strong"];
 
   // Auto-detect state code and state name when GSTIN is entered
   useEffect(() => {
@@ -71,6 +95,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     setLoading(true);
 
     try {
@@ -98,7 +123,10 @@ export default function RegisterPage() {
 
       if (!res.ok || !data.success) {
         if (data.details && Array.isArray(data.details)) {
-          throw new Error(data.details.map((i: any) => `${i.field}: ${i.message}`).join(" | "));
+          const errs: Record<string, string> = {};
+          data.details.forEach((i: any) => { errs[i.field] = i.message; });
+          setFieldErrors(errs);
+          throw new Error("Please correct the highlighted fields below.");
         }
         if (data.message) {
           throw new Error(data.message);
@@ -162,7 +190,7 @@ export default function RegisterPage() {
                     placeholder="e.g. Apex Electricals & Hardware"
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                    className={getInputClass('businessName')}
                   />
                 </div>
 
@@ -177,7 +205,7 @@ export default function RegisterPage() {
                       placeholder="e.g. 32AAAAA0000A1Z5"
                       value={gstin}
                       onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs uppercase text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                      className={getInputClass('gstin') + ' uppercase'}
                     />
                     {detectedState && (
                       <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-600">
@@ -197,7 +225,7 @@ export default function RegisterPage() {
                         setStateCode(e.target.value);
                         setStateName(INDIAN_STATES[e.target.value] || "Other");
                       }}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                      className={getInputClass('ownerName')}
                     >
                       {Object.entries(INDIAN_STATES).map(([code, name]) => (
                         <option key={code} value={code}>
@@ -286,7 +314,7 @@ export default function RegisterPage() {
                   placeholder="e.g. apexstore@okaxis"
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value.toLowerCase())}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                  className={getInputClass('phone')}
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
                   Used to generate Bharat dynamic payment QR codes on print receipts.
@@ -315,7 +343,7 @@ export default function RegisterPage() {
                       placeholder="e.g. Rahul Sharma"
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                      className={getInputClass('email')}
                     />
                   </div>
 
@@ -329,7 +357,7 @@ export default function RegisterPage() {
                       placeholder="e.g. 9876543210"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                      className={getInputClass('address')}
                     />
                   </div>
                 </div>
@@ -345,7 +373,7 @@ export default function RegisterPage() {
                       placeholder="owner@yourstore.in"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                      className={getInputClass('upiId')}
                     />
                   </div>
 
@@ -361,7 +389,7 @@ export default function RegisterPage() {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-3 pr-9 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                        className={getInputClass('password') + ' pl-3 pr-9'}
                       />
                       <button
                         type="button"
@@ -369,8 +397,21 @@ export default function RegisterPage() {
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      
                       </button>
                     </div>
+                    {password.length > 0 && (
+                      <div className="mt-2">
+                        <div className="flex h-1.5 w-full gap-1 rounded-full overflow-hidden bg-slate-100">
+                          {[1, 2, 3, 4].map(level => (
+                            <div key={level} className={`h-full flex-1 transition-all duration-300 ${strength >= level ? strengthColors[strength] : 'bg-transparent'}`} />
+                          ))}
+                        </div>
+                        <p className={`text-[10px] mt-1 font-medium ${strength < 2 ? 'text-rose-500' : strength < 3 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          Password strength: {strengthLabels[strength]}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -383,7 +424,7 @@ export default function RegisterPage() {
                     placeholder="e.g. Shop #4, Commercial Complex, MG Road"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                    className={getInputClass('stateCode')}
                   />
                 </div>
               </div>
@@ -391,6 +432,11 @@ export default function RegisterPage() {
 
             {/* Submit Button */}
             <div className="pt-2">
+              {error && (
+                <div className="mb-4 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-semibold text-rose-700 text-center">
+                  {error}
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={loading}
