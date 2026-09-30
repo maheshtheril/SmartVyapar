@@ -1203,52 +1203,9 @@ export default function PurchaseInwardPage() {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="p-3 bg-white rounded-lg border border-amber-200/80 space-y-2">
-                    <div className="text-[11px] font-semibold text-slate-700">
-                      To enable 100% accurate AI OCR, enter your active Google Gemini API Key below, or simply enter items manually in the form:
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <input
-                        type="text"
-                        autoComplete="off"
-                        autoCapitalize="none"
-                        spellCheck={false}
-                        placeholder="Paste your Google Gemini API Key (e.g. AIzaSy...)"
-                        value={customApiKeyInput}
-                        onChange={(e) => setCustomApiKeyInput(e.target.value)}
-                        className="flex-1 bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 font-mono focus:bg-white focus:ring-1 focus:ring-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={saveCustomApiKey}
-                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded text-xs transition cursor-pointer shrink-0"
-                      >
-                        Save API Key
-                      </button>
-                      {customApiKeyInput && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCustomApiKeyInput('');
-                            if (typeof window !== 'undefined') {
-                              localStorage.removeItem('smartvyapar_gemini_api_key');
-                            }
-                            setScanError(null);
-                          }}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 font-semibold rounded text-xs transition cursor-pointer shrink-0 border border-slate-200"
-                          title="Clear key and reset to system default"
-                        >
-                          Clear
-                        </button>
-                      )}
-                      <a
-                        href="https://aistudio.google.com/app/apikey"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-600 hover:underline text-xs font-semibold shrink-0 py-1.5 flex items-center gap-1"
-                      >
-                        Get Free Key &rarr;
-                      </a>
+                  <div className="p-3 bg-white rounded-lg border border-amber-200/80 space-y-2 text-center">
+                    <div className="text-xs font-semibold text-slate-700">
+                      The AI Scanner is temporarily unavailable due to server capacity limits. Please enter items manually for this invoice.
                     </div>
                   </div>
                   <div className="text-[11px] text-amber-800 font-medium">
