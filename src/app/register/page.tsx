@@ -126,7 +126,7 @@ export default function RegisterPage() {
           const errs: Record<string, string> = {};
           data.details.forEach((i: any) => { errs[i.field] = i.message; });
           setFieldErrors(errs);
-          throw new Error("Please correct the highlighted fields below.");
+          throw new Error("Please review and correct the highlighted fields.");
         }
         if (data.message) {
           throw new Error(data.message);
