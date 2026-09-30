@@ -16,11 +16,12 @@ export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown-ip";
     
-    // Rate limit: 3 registrations per hour per IP to prevent abuse
-    const rateLimit = checkRateLimit(`register-ip:${ip}`, 3, 60 * 60 * 1000);
+    // Rate limit: 5 registrations per 5 minutes per IP to prevent abuse
+    const rateLimit = checkRateLimit(`register-ip:${ip}`, 5, 5 * 60 * 1000);
     if (!rateLimit.allowed) {
+      const minutes = Math.ceil(rateLimit.resetInSeconds / 60);
       return NextResponse.json(
-        { error: "Too many registration attempts. Please try again later." },
+        { error: `Too many registration attempts. Please try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.` },
         { status: 429, headers: { "Retry-After": String(rateLimit.resetInSeconds) } }
       );
     }
