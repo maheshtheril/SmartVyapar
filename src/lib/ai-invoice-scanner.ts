@@ -79,7 +79,7 @@ export async function scanPurchaseInvoiceWithGemini(
     throw new Error("AI Scanner is not configured. Please contact support.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: finalApiKey });
+  const ai = new GoogleGenAI({ apiKey: finalApiKey, apiVersion: "v1" });
 
   const prompt = `
 You are an expert Purchase Invoice and Bill OCR auditor with specialized knowledge across wholesale, pharmaceutical/medical, retail, and manufacturing sectors.
@@ -150,9 +150,9 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 `;
 
   const CANDIDATE_MODELS = [
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
   ];
 
   let rawText = "";
