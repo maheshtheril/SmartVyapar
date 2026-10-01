@@ -72,7 +72,8 @@ export async function scanPurchaseInvoiceWithGemini(
   mimeType: string,
   apiKey?: string
 ): Promise<ScannedInvoiceResult> {
-  const validCustomKey = apiKey && apiKey.trim().startsWith("AIzaSy") ? apiKey.trim() : undefined;
+  const isValidKey = (k: string) => k.startsWith("AIzaSy") || k.startsWith("AQ.");
+  const validCustomKey = apiKey && isValidKey(apiKey.trim()) ? apiKey.trim() : undefined;
   const finalApiKey = validCustomKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!finalApiKey || finalApiKey.trim() === "") {
     throw new Error(
