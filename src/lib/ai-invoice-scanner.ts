@@ -38,40 +38,33 @@ export type ScannedInvoiceResult = z.infer<typeof ScannedInvoiceResultSchema>;
 
 export function cleanHumanReadableAiError(error: any): string {
   if (!error) {
-    return "AI scanning service is currently unavailable. Please verify your Google API key or enter items manually.";
+    return "AI Scanner is temporarily unavailable. Please enter items manually.";
   }
   const msg = typeof error === "string" ? error : error.message || String(error);
 
-  // If already sanitized, preserve directly
-  if (
-    msg.includes("Google Gemini API key") ||
-    msg.includes("Google Cloud access denied") ||
-    msg.includes("requested Google AI model is currently unavailable") ||
-    msg.includes("Google AI rate limit")
-  ) {
-    return msg;
-  }
-
   if (/API_KEY_INVALID|API key not valid/i.test(msg)) {
-    return "Google Gemini API key is invalid. Please verify your key in Settings or paste an active key below.";
+    return "AI Scanner configuration error. Please contact support.";
   }
   if (/PERMISSION_DENIED|denied access|403/i.test(msg)) {
-    return "Google Cloud access denied (Permission Denied). Please ensure Generative Language API is enabled on your Google project or paste an active Gemini key below.";
+    return "AI Scanner is temporarily unavailable. Please enter items manually.";
   }
   if (/RESOURCE_EXHAUSTED|quota|429/i.test(msg)) {
-    return "Google AI rate limit or quota exceeded. Please wait a minute or use a custom API key below.";
+    return "AI Scanner is busy right now. Please wait a moment and try again, or enter items manually.";
   }
   if (/not found|404|no longer available/i.test(msg)) {
-    return "The requested Google AI model is currently unavailable. Please verify your Google AI Studio key.";
+    return "AI Scanner service is temporarily unavailable. Please enter items manually.";
   }
   if (/timed out|timeout/i.test(msg)) {
-    return "AI invoice processing timed out. Please check your network connection or upload a clearer, smaller image.";
+    return "AI scan took too long. Please try a clearer or smaller image, or enter items manually.";
   }
   if (/not configured|missing|empty/i.test(msg)) {
-    return "Google Gemini API key is not configured. Please paste your Gemini API key below or enter invoice items manually.";
+    return "AI Scanner is not configured. Please contact support.";
+  }
+  if (/fetch|network|ECONNREFUSED/i.test(msg)) {
+    return "AI Scanner is temporarily unavailable. Please enter items manually.";
   }
 
-  return "Unable to scan this invoice document. Please ensure the document is clear and legible, or enter the bill items manually below.";
+  return "Unable to scan this invoice. Please ensure the image is clear, or enter items manually.";
 }
 
 export async function scanPurchaseInvoiceWithGemini(
