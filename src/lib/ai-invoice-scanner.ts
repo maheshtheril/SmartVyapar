@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 export const ScannedPurchaseItemSchema = z.object({
@@ -76,12 +76,10 @@ export async function scanPurchaseInvoiceWithGemini(
   const validCustomKey = apiKey && isValidKey(apiKey.trim()) ? apiKey.trim() : undefined;
   const finalApiKey = validCustomKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!finalApiKey || finalApiKey.trim() === "") {
-    throw new Error(
-      "Google Gemini API key is not configured. Please paste your Gemini API key below to scan invoices, or enter the bill items manually."
-    );
+    throw new Error("AI Scanner is not configured. Please contact support.");
   }
 
-  const genAI = new GoogleGenerativeAI(finalApiKey);
+  const ai = new GoogleGenAI({ apiKey: finalApiKey });
 
   const prompt = `
 You are an expert Purchase Invoice and Bill OCR auditor with specialized knowledge across wholesale, pharmaceutical/medical, retail, and manufacturing sectors.
@@ -151,18 +149,10 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 }
 `;
 
-  const imagePart = {
-    inlineData: {
-      data: base64Data,
-      mimeType: mimeType || "image/jpeg",
-    },
-  };
-
   const CANDIDATE_MODELS = [
     "gemini-2.5-flash",
-    "gemini-flash-latest",
-    "gemini-2.5-pro",
-    "gemini-pro-latest",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
   ];
 
   let rawText = "";
@@ -170,18 +160,26 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 
   for (const modelName of CANDIDATE_MODELS) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const timeoutMs = 12_000;
+      const timeoutMs = 30_000;
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error(`Gemini AI OCR (${modelName}) timed out`)), timeoutMs);
       });
 
-      const response = (await Promise.race([
-        model.generateContent([prompt, imagePart]),
-        timeoutPromise,
-      ])) as any;
+      const scanPromise = ai.models.generateContent({
+        model: modelName,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType: mimeType || "image/jpeg", data: base64Data } },
+            ],
+          },
+        ],
+      });
 
-      rawText = response.response.text();
+      const response = await Promise.race([scanPromise, timeoutPromise]) as any;
+      rawText = response.text ?? response.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
       if (rawText) break;
     } catch (err: any) {
       lastError = err;
@@ -194,7 +192,6 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
   }
 
   try {
-    // Clean JSON response (strip any ```json ``` wrapper if returned)
     let cleanJson = rawText.trim();
     if (cleanJson.startsWith("```json")) {
       cleanJson = cleanJson.replace(/^```json/, "").replace(/```$/, "").trim();
@@ -209,3 +206,4 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
     throw new Error("Unable to parse structured line items from this invoice image. Please verify image clarity or enter items manually.");
   }
 }
+
