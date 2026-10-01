@@ -1190,27 +1190,12 @@ export default function PurchaseInwardPage() {
               )}
 
               {scanError && scanError !== '__UPGRADE__' && (
-                <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-900 space-y-2.5 text-xs shadow-xs">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-2.5">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                      <div>
-                        <strong className="block text-amber-950 font-bold text-sm">Live AI OCR Unavailable:</strong>
-                        <span className="text-amber-800 leading-relaxed">{scanError}</span>
-                      </div>
-                    </div>
-                    <button onClick={() => setScanError(null)} className="text-amber-600 hover:text-amber-900 cursor-pointer p-1">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="p-3 bg-white rounded-lg border border-amber-200/80 space-y-2 text-center">
-                    <div className="text-xs font-semibold text-slate-700">
-                      The AI Scanner is temporarily unavailable due to server capacity limits. Please enter items manually for this invoice.
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-amber-800 font-medium">
-                    &bull; Note: No fake or placeholder items will ever be entered. You can immediately enter supplier details and line items directly in the table below.
-                  </div>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span className="flex-1">AI scan failed. Please enter bill items manually in the table below.</span>
+                  <button onClick={() => setScanError(null)} className="text-rose-400 hover:text-rose-700 cursor-pointer shrink-0">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               )}
 
