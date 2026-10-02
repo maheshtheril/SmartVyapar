@@ -275,6 +275,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       for (const journal of oldJournals) {
         for (const line of journal.lines) {
           const acc = await tx.account.findUnique({ where: { id: line.accountId } });
+          if (!acc) continue;
           const isAssetExp = acc.classification === "ASSET" || acc.classification === "EXPENSE";
           const delta = isAssetExp ? Number(line.debit) - Number(line.credit) : Number(line.credit) - Number(line.debit);
           await tx.account.update({
