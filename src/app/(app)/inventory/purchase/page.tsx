@@ -550,12 +550,7 @@ export default function PurchaseInwardPage() {
       if (Array.isArray(data.items) && data.items.length > 0) {
         const mappedRows: PurchaseItemRow[] = data.items.map((it: any) => {
           // Attempt catalog match by name or SKU
-          const match = products.find(
-            (p) =>
-              p.name.toLowerCase().includes(it.productName.toLowerCase()) ||
-              it.productName.toLowerCase().includes(p.name.toLowerCase()) ||
-              (p.sku && it.productName.toLowerCase().includes(p.sku.toLowerCase()))
-          );
+          const match = products.find((p) => (p.partNumber && it.partNumber && p.partNumber.trim().toLowerCase() === it.partNumber.trim().toLowerCase()) || (it.suggestedDisplayName && p.name.trim().toLowerCase() === it.suggestedDisplayName.trim().toLowerCase()) || p.name.toLowerCase().includes(it.productName.toLowerCase()) || it.productName.toLowerCase().includes(p.name.toLowerCase()) || (p.sku && it.productName.toLowerCase().includes(p.sku.toLowerCase())));
 
           const cost = Number(it.purchasePrice || 0);
           let sp = 0;
