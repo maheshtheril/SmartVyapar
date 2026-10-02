@@ -656,6 +656,15 @@ export default function InventoryPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center space-x-1.5">
                           <button
+                              type="button"
+                              onClick={() => openEditModal(item)}
+                              className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition"
+                              title="Edit full product details"
+                            >
+                              <Pencil className="h-3 w-3 text-blue-600" />
+                              <span>Edit</span>
+                            </button>
+                            <button
                             type="button"
                             onClick={() => {
                               setSelectedProductForAdjust(item);
