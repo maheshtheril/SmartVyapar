@@ -429,6 +429,7 @@ export async function GET(req: NextRequest) {
         pincode: tenant.pincode,
         upiId: tenant.upiId,
         businessType: tenant.businessType || "RETAIL",
+          isComposition: tenant.isComposition,
         subscriptionTier: tenant.subscriptionTier,
         currency: tenant.currency,
       },
@@ -527,3 +528,4 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message || "Failed to update profile" }, { status: 500 });
   }
 }
+

@@ -399,6 +399,9 @@ function SettingsContent() {
       }
 
       setProfileMsg({ type: 'success', text: 'Company profile and logo updated successfully!' });
+        if (typeof window !== 'undefined' && (window as any).alert) {
+          (window as any).alert('Success: Company profile and settings updated successfully!');
+        }
       setTimeout(() => setProfileMsg(null), 4000);
     } catch (err: any) {
       setProfileMsg({ type: 'error', text: err.message || 'Error updating profile' });
