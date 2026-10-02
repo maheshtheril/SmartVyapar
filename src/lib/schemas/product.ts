@@ -4,6 +4,7 @@ import { hsnCodeSchema } from "./common";
 export const CreateProductSchema = z
   .object({
     name: z.string().trim().min(2, "Product name must be at least 2 characters"),
+    displayName: z.string().trim().optional().nullable(),
     sku: z.string().trim().optional().nullable(),
     barcode: z.string().trim().optional().nullable(),
     hsnCode: hsnCodeSchema,
@@ -60,3 +61,4 @@ export const CreateProductSchema = z
   });
 
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
+
