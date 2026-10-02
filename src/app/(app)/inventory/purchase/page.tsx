@@ -530,52 +530,53 @@ export default function PurchaseInwardPage() {
     setScanSuccessInfo(null);
 
     try {
-      const formData = new FormData();
+      const customApiKey = typeof window !== 'undefined' ? localStorage.getItem('smartvyapar_gemini_api_key') : null;
+        const headers: Record<string, string> = {};
+        if (customApiKey && (customApiKey.startsWith('AIzaSy') || customApiKey.startsWith('AQ.'))) {
+          headers['x-gemini-api-key'] = customApiKey;
+        }
+  
+        let mergedData: any = {
+          supplierName: '', supplierGstin: '', billNumber: '', billDate: '', totalAmount: 0, confidenceScore: 1, items: []
+        };
+        let isProGate = false;
+
+        // Process images sequentially to completely avoid Vercel 10s Serverless Timeout limits
         for (let i = 0; i < e.target.files.length; i++) {
           const originalFile = e.target.files[i];
           const compressed = await compressImage(originalFile);
+          
+          const formData = new FormData();
           formData.append('file', compressed);
+
+          const res = await fetch('/api/scan-purchase', { method: 'POST', headers, body: formData });
+          let json;
+          try {
+            json = await res.json();
+          } catch (err) {
+            throw new Error("AI scan timed out. Try 1 page at a time.");
+          }
+          if (res.status === 403 && json.error === 'PRO_FEATURE') {
+            isProGate = true; break;
+          }
+          if (!res.ok || !json.success) {
+            throw new Error(json.error || 'AI invoice scan failed on page ' + (i+1));
+          }
+          const data = json.data;
+          if (!mergedData.supplierName && data.supplierName && data.supplierName !== 'Unknown Vendor') mergedData.supplierName = data.supplierName;
+          if (!mergedData.supplierGstin && data.supplierGstin) mergedData.supplierGstin = data.supplierGstin;
+          if (!mergedData.billNumber && data.billNumber && data.billNumber !== 'BILL-001') mergedData.billNumber = data.billNumber;
+          if (!mergedData.billDate && data.billDate) mergedData.billDate = data.billDate;
+          if (data.totalAmount > mergedData.totalAmount) mergedData.totalAmount = data.totalAmount;
+          mergedData.confidenceScore = Math.min(mergedData.confidenceScore, data.confidenceScore || 0.9);
+          if (data.items) mergedData.items.push(...data.items);
         }
 
-      const customApiKey = typeof window !== 'undefined' ? localStorage.getItem('smartvyapar_gemini_api_key') : null;
-      const headers: Record<string, string> = {};
-      if (customApiKey && (customApiKey.startsWith('AIzaSy') || customApiKey.startsWith('AQ.'))) {
-        headers['x-gemini-api-key'] = customApiKey;
-      }
-
-      const res = await fetch('/api/scan-purchase', {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-
-      let json;
-      try {
-        json = await res.json();
-      } catch (e) {
-        if (res.status === 413) {
-          throw new Error("File is too large (max 4.5MB). Please compress the PDF or scan 1 page at a time.");
-        } else if (res.status === 504) {
-          throw new Error("AI scan timed out. Multiple massive images take too long to upload/process. We have applied auto-compression, but if this still happens, try 1-2 pages at a time.");
-        } else {
-          const text = await res.text().catch(() => "");
-          throw new Error("Server error (" + res.status + "): " + (text.substring(0, 50) || "AI service unavailable."));
+        if (isProGate) {
+          setIsScanningInvoice(false); setIsNewBillOpen(false); setScanError('__UPGRADE__'); return;
         }
-      }
 
-      // Plan gate — clear upgrade message
-      if (res.status === 403 && json.error === 'PRO_FEATURE') {
-        setIsScanningInvoice(false);
-        setIsNewBillOpen(false);
-        setScanError('__UPGRADE__');
-        return;
-      }
-
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'AI invoice scan failed');
-      }
-
-      const data = json.data;
+        const data = mergedData;
       if (data.supplierName) setSupplierName(data.supplierName);
       if (data.supplierGstin) setSupplierGstin(data.supplierGstin);
       if (data.billNumber) setBillNumber(data.billNumber);
