@@ -751,8 +751,18 @@ export default function InvoicesPage() {
                             title="Issue GST Credit Note / Sales Return"
                           >
                             <RotateCcw className="h-3 w-3 text-amber-600" />
-                            <span>Return</span>
-                          </button>
+                              <span>Return</span>
+                            </button>
+                            
+                            <button
+                              type="button"
+                              onClick={() => deleteInvoice(inv.id)}
+                              className="inline-flex items-center space-x-1 rounded-lg border border-red-200 bg-red-50/80 px-2 py-1 text-red-800 hover:bg-red-100 transition shadow-xs font-semibold"
+                              title="Securely Delete Invoice completely"
+                            >
+                              <Trash2 className="h-3 w-3 text-red-600" />
+                              <span>Delete</span>
+                            </button>
 
                           <button
                             type="button"

@@ -1043,6 +1043,13 @@ export default function PurchaseInwardPage() {
                             >
                               <RotateCcw className="w-3 h-3 text-rose-600" /> Return
                             </button>
+                            <button
+                              onClick={() => deletePurchase(bill.id)}
+                              className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-md text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                              title="Delete Purchase completely"
+                            >
+                              <Trash2 className="w-3 h-3 text-red-600" /> Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
