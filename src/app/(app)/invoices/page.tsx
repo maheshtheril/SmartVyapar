@@ -21,7 +21,8 @@ import {
   CheckCircle2,
   Pencil,
   Save,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
 import CreditNoteModal from '@/components/CreditNoteModal';
@@ -62,6 +63,22 @@ export default function InvoicesPage() {
   });
   const [selectedInvoiceForReturn, setSelectedInvoiceForReturn] = useState<any | null>(null);
   const [showCreditNoteModal, setShowCreditNoteModal] = useState(false);
+
+  const deleteInvoice = async (invoiceId: string) => {
+    if (!confirm('Are you sure you want to completely delete this invoice? This will reverse all ledger entries and stock quantities. This action cannot be undone.')) return;
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete invoice.');
+        return;
+      }
+      alert('Invoice deleted successfully.');
+      loadInvoices();
+    } catch (err: any) {
+      alert('An error occurred while deleting the invoice.');
+    }
+  };
 
   const loadInvoices = async () => {
     setLoadingInvoices(true);
