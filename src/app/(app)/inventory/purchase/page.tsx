@@ -372,7 +372,19 @@ export default function PurchaseInwardPage() {
     if (!confirm('Are you sure you want to completely delete this purchase bill? This will reverse all ledger entries and stock quantities. This action cannot be undone.')) return;
     try {
       const res = await fetch(`/api/purchase/${billId}`, { method: 'DELETE' });
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        if (res.status === 413) {
+          throw new Error("File is too large (max 4.5MB). Please compress the PDF or scan 1 page at a time.");
+        } else if (res.status === 504) {
+          throw new Error("AI scan timed out after 10 seconds (Vercel limit). Please try a smaller file.");
+        } else {
+          const text = await res.text().catch(() => "");
+          throw new Error("Server error (" + res.status + "): " + (text.substring(0, 50) || "AI service unavailable."));
+        }
+      }
       if (!res.ok) {
         alert(data.error || 'Failed to delete purchase.');
         return;
