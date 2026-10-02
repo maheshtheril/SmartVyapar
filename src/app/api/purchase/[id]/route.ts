@@ -117,7 +117,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           await tx.purchaseBillItem.update({
             where: { id: item.id },
             data: {
-              purchasePrice:  Number(item.purchasePrice  || 0),
+              productId: item.productId || undefined,
+                purchasePrice:  Number(item.purchasePrice  || 0),
               discountPercent:Number(item.discountPercent|| 0),
               baseCostPrice:  item.baseCostPrice,
               sellingPrice:   item.sellingPrice  ? Number(item.sellingPrice)  : undefined,
@@ -393,4 +394,5 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
