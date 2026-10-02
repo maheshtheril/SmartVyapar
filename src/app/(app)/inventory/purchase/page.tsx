@@ -498,9 +498,11 @@ export default function PurchaseInwardPage() {
 
     try {
       const formData = new FormData();
-      for (let i = 0; i < e.target.files.length; i++) {
-        formData.append('file', e.target.files[i]);
-      }
+        for (let i = 0; i < e.target.files.length; i++) {
+          const originalFile = e.target.files[i];
+          const compressed = await compressImage(originalFile);
+          formData.append('file', compressed);
+        }
 
       const customApiKey = typeof window !== 'undefined' ? localStorage.getItem('smartvyapar_gemini_api_key') : null;
       const headers: Record<string, string> = {};
@@ -521,7 +523,7 @@ export default function PurchaseInwardPage() {
         if (res.status === 413) {
           throw new Error("File is too large (max 4.5MB). Please compress the PDF or scan 1 page at a time.");
         } else if (res.status === 504) {
-          throw new Error("AI scan timed out after 10 seconds. Please try a smaller file or a clearer image.");
+          throw new Error("AI scan timed out. Multiple massive images take too long to upload/process. We have applied auto-compression, but if this still happens, try 1-2 pages at a time.");
         } else {
           const text = await res.text().catch(() => "");
           throw new Error("Server error (" + res.status + "): " + (text.substring(0, 50) || "AI service unavailable."));
