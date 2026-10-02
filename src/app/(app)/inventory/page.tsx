@@ -80,6 +80,10 @@ export default function InventoryPage() {
   const [conversionFactor, setConversionFactor] = useState("10");
   const [initialStock, setInitialStock] = useState("0");
   const [minStockAlert, setMinStockAlert] = useState("5");
+  const [partNumber, setPartNumber] = useState("");
+  const [oemNumber, setOemNumber] = useState("");
+  const [compatibleMakes, setCompatibleMakes] = useState("");
+  const [compatibleModels, setCompatibleModels] = useState("");
   const [hasBatchTracking, setHasBatchTracking] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -183,6 +187,10 @@ export default function InventoryPage() {
     setEditingProductId(item.id);
     setName(item.name || "");
     setCategory(item.category || "");
+    setPartNumber(item.partNumber || "");
+    setOemNumber(item.oemNumber || "");
+    setCompatibleMakes(item.compatibleMakes || "");
+    setCompatibleModels(item.compatibleModels || "");
     setProductType(item.productType || "RETAIL_ITEM");
     setHsnCode(item.hsnCode || "9983");
     setSku(item.sku || "");
@@ -243,6 +251,10 @@ export default function InventoryPage() {
         body: JSON.stringify({
           name: name.trim(),
           category: category.trim() || undefined,
+            partNumber: partNumber.trim() || undefined,
+            oemNumber: oemNumber.trim() || undefined,
+            compatibleMakes: compatibleMakes.trim() || undefined,
+            compatibleModels: compatibleModels.trim() || undefined,
           productType,
           sku: sku.trim() || undefined,
           barcode: barcode.trim() || undefined,
@@ -277,6 +289,10 @@ export default function InventoryPage() {
       // Reset form
       setName("");
       setCategory("");
+    setPartNumber("");
+    setOemNumber("");
+    setCompatibleMakes("");
+    setCompatibleModels("");
       setImageUrl("");
       setImagePreview(null);
       setProductType("RETAIL_ITEM");
@@ -421,6 +437,10 @@ export default function InventoryPage() {
     setEditingProductId(null);
     setName("");
     setCategory("");
+    setPartNumber("");
+    setOemNumber("");
+    setCompatibleMakes("");
+    setCompatibleModels("");
     setProductType("RETAIL_ITEM");
     setHsnCode("9983");
     setSku("");
@@ -537,6 +557,10 @@ export default function InventoryPage() {
     setEditingProductId(null);
     setName("");
     setCategory("");
+    setPartNumber("");
+    setOemNumber("");
+    setCompatibleMakes("");
+    setCompatibleModels("");
     setProductType("RETAIL_ITEM");
     setHsnCode("9983");
     setSku("");

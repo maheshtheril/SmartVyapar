@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
         isActive: true,
         OR: [
           { name: { contains: trimmedQuery, mode: "insensitive" } },
+          { category: { contains: trimmedQuery, mode: "insensitive" } },
           { brand: { contains: trimmedQuery, mode: "insensitive" } },
           { compatibleMakes: { contains: trimmedQuery, mode: "insensitive" } },
           { compatibleModels: { contains: trimmedQuery, mode: "insensitive" } },
