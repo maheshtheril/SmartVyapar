@@ -154,6 +154,7 @@ model Product {
   id       String  @id @default(uuid())
   tenantId String
   name     String
+  displayName String?
   sku      String?
   barcode  String?
   hsnCode  String
