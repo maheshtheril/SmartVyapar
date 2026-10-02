@@ -186,8 +186,11 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
       if (rawText) break;
     } catch (err: any) {
       lastError = err;
-      console.warn(`[AI Invoice Scanner] Model ${modelName} failed (${err.message}). Trying next candidate...`);
-    }
+        console.warn(`[AI Invoice Scanner] Model ${modelName} failed (${err.message}).`);
+        if (/RESOURCE_EXHAUSTED|quota|429/i.test(err.message)) {
+          break; // Stop hammering the API if we are rate limited
+        }
+      }
   }
 
   if (!rawText) {
