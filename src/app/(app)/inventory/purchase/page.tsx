@@ -144,7 +144,7 @@ export default function PurchaseInwardPage() {
   const saveCustomApiKey = () => {
     if (typeof window !== 'undefined') {
       const trimmed = customApiKeyInput.trim();
-      if (trimmed && trimmed.startsWith('AIzaSy')) {
+      if (trimmed && (trimmed.startsWith('AIzaSy') || trimmed.startsWith('AQ.'))) {
         localStorage.setItem('smartvyapar_gemini_api_key', trimmed);
         setKeySavedBanner(true);
         setTimeout(() => setKeySavedBanner(false), 4000);
@@ -539,7 +539,7 @@ export default function PurchaseInwardPage() {
 
       const customApiKey = typeof window !== 'undefined' ? localStorage.getItem('smartvyapar_gemini_api_key') : null;
       const headers: Record<string, string> = {};
-      if (customApiKey && customApiKey.startsWith('AIzaSy')) {
+      if (customApiKey && (customApiKey.startsWith('AIzaSy') || customApiKey.startsWith('AQ.'))) {
         headers['x-gemini-api-key'] = customApiKey;
       }
 
