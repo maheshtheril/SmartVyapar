@@ -1,9 +1,19 @@
 const fs = require('fs');
-let p = 'C:\\2035-HMS\\ZionaPOS\\src\\app\\(app)\\inventory\\purchase\\page.tsx';
-let c = fs.readFileSync(p, 'utf8');
+const path = 'src/app/api/purchase/[id]/route.ts';
+let c = fs.readFileSync(path, 'utf8');
 
-c = c.replace(/const DEFAULT_SUPPLIERS[\s\S]*?\];/, 'const DEFAULT_SUPPLIERS: SupplierOption[] = [];');
-c = c.replace(/Presets: Bosch Castrol Exide/, 'Vendor Search');
+c = c.replace(
+  `// Clean up orphaned products
+      for (const item of bill.items) {
+        if (!item.productId) continue;
+        const otherUses = await tx.purchaseBillItem.count({ where: { productId: item.productId } });
+        const salesUses = await tx.invoiceItem.count({ where: { productId: item.productId } });
+        if (otherUses === 0 && salesUses === 0) {
+          await tx.product.delete({ where: { id: item.productId } });
+        }
+      }`,
+  `// (Removed auto-delete of orphaned products to prevent FK transaction aborts)`
+);
 
-fs.writeFileSync(p, c, 'utf8');
-console.log('Fixed purchase page');
+fs.writeFileSync(path, c);
+console.log("Updated");
