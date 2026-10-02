@@ -94,8 +94,7 @@ export async function POST(req: NextRequest) {
       undefined;
 
     const extractedData = await scanPurchaseInvoiceWithGemini(
-      base64Data,
-      mimeType,
+      processedFiles,
       customApiKey || undefined
     );
 
