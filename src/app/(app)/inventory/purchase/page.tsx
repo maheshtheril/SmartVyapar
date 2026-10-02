@@ -1679,23 +1679,19 @@ export default function PurchaseInwardPage() {
 
                               {/* Internal Display Name Column */}
                               <td className="py-2 px-1 align-middle relative">
-                                <input
-                                  type="text"
-                                  placeholder="Clean Name (e.g. Swift Shock)"
-                                  value={row.suggestedDisplayName || ''}
-                                  onChange={(e) => updateItem(idx, 'suggestedDisplayName', e.target.value)}
-                                  className="w-full border border-indigo-200 rounded px-2.5 py-1.5 text-[11px] font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 bg-indigo-50/30"
-                                />
-                                {row.productId ? (
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shadow-sm whitespace-nowrap">
-                                    ✅ SAVED ITEM
-                                  </span>
-                                ) : (
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shadow-sm whitespace-nowrap">
-                                    ✨ NEW
-                                  </span>
-                                )}
-                              </td>
+                                  <input
+                                    type="text"
+                                    placeholder="Clean Name (e.g. Swift Shock)"
+                                    value={row.suggestedDisplayName || ''}
+                                    onChange={(e) => updateItem(idx, 'suggestedDisplayName', e.target.value)}
+                                    className={`w-full border rounded px-2.5 py-1.5 text-[11px] font-bold focus:ring-2 transition-colors ${
+                                      row.productId 
+                                        ? 'border-slate-200 bg-white text-slate-900 focus:ring-slate-400' 
+                                        : 'border-amber-300 bg-amber-50/60 text-amber-900 focus:ring-amber-500'
+                                    }`}
+                                    title={row.productId ? 'Saved Item (Matched in Database)' : 'New Item (Will be created)'}
+                                  />
+                                </td>
 
                               {/* Part Number Column */}
                               <td className="py-2 px-1 align-middle">
