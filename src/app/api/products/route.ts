@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
         data: {
           tenantId,
           name: data.name,
+          displayName: data.displayName,
           sku: data.sku,
           barcode: data.barcode,
           hsnCode: data.hsnCode,
@@ -139,3 +140,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

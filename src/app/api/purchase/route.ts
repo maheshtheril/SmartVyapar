@@ -358,7 +358,8 @@ export async function POST(req: NextRequest) {
           product = await tx.product.create({
             data: {
               tenantId,
-              name: item.suggestedDisplayName || item.productName,
+              name: item.productName,
+              displayName: item.suggestedDisplayName || null,
                 partNumber: item.partNumber || undefined,
               hsnCode: item.hsnCode,
               baseUnit: item.unit,

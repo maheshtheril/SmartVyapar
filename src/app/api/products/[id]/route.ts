@@ -20,6 +20,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       where: { id: params.id },
       data: {
         name: body.name,
+        displayName: body.displayName,
         category: body.category,
         productType: body.productType,
         sku: body.sku,
@@ -83,3 +84,4 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

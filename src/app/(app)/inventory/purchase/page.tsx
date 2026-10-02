@@ -550,7 +550,7 @@ export default function PurchaseInwardPage() {
       if (Array.isArray(data.items) && data.items.length > 0) {
         const mappedRows: PurchaseItemRow[] = data.items.map((it: any) => {
           // Attempt catalog match by name or SKU
-          const match = products.find((p) => (p.partNumber && it.partNumber && p.partNumber.trim().toLowerCase() === it.partNumber.trim().toLowerCase()) || (it.suggestedDisplayName && p.name.trim().toLowerCase() === it.suggestedDisplayName.trim().toLowerCase()) || p.name.toLowerCase().includes(it.productName.toLowerCase()) || it.productName.toLowerCase().includes(p.name.toLowerCase()) || (p.sku && it.productName.toLowerCase().includes(p.sku.toLowerCase())));
+          const match = products.find((p) => (p.partNumber && it.partNumber && p.partNumber.trim().toLowerCase() === it.partNumber.trim().toLowerCase()) || (it.suggestedDisplayName && p.displayName && p.displayName.trim().toLowerCase() === it.suggestedDisplayName.trim().toLowerCase()) || p.name.toLowerCase().includes(it.productName.toLowerCase()) || it.productName.toLowerCase().includes(p.name.toLowerCase()) || (p.sku && it.productName.toLowerCase().includes(p.sku.toLowerCase())));
 
           const cost = Number(it.purchasePrice || 0);
           let sp = 0;
@@ -1586,7 +1586,7 @@ export default function PurchaseInwardPage() {
                                               // Auto-fill everything when an existing product is clicked
                                               updateItem(idx, 'productId', prod.id);
                                               updateItem(idx, 'productName', row.productName); // Keep the supplier's raw name for the mapping!
-                                              updateItem(idx, 'suggestedDisplayName', prod.name); // Fill clean name
+                                              updateItem(idx, 'suggestedDisplayName', prod.displayName || prod.name); // Fill clean name
                                               if (prod.partNumber) updateItem(idx, 'partNumber', prod.partNumber);
                                               if (prod.hsnCode) updateItem(idx, 'hsnCode', prod.hsnCode);
                                               if (prod.baseUnit) updateItem(idx, 'unit', prod.baseUnit);
@@ -2658,3 +2658,5 @@ export default function PurchaseInwardPage() {
     </div>
   );
 }
+
+
