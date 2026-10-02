@@ -1499,7 +1499,9 @@ export default function PurchaseInwardPage() {
                     <thead className="sticky top-0 z-10 shadow-xs">
                       <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[11px] border-b border-slate-950">
                         <th className="py-2.5 px-2 w-8 text-center text-slate-400">#</th>
-                        <th className="py-2.5 px-3 min-w-[280px]">Product Description &amp; SKU</th>
+                        <th className="py-2.5 px-3 min-w-[220px]">Supplier Invoice Name</th>
+                          <th className="py-2.5 px-3 min-w-[200px]">POS Display Name</th>
+                          <th className="py-2.5 px-2 w-24">Part / OEM #</th>
                         <th className="py-2.5 px-2 w-20 text-center">HSN</th>
                         <th className="py-2.5 px-2 w-24">Batch #</th>
                         <th className="py-2.5 px-2 w-28">Expiry</th>
@@ -1531,96 +1533,99 @@ export default function PurchaseInwardPage() {
 
                             {/* 2. Product Name / SKU Combobox */}
                             <td className="py-2 px-3 align-middle relative">
-                              <div className="relative">
-                                <input
-                                  type="text"
-                                  required
-                                  placeholder="Search catalog or type item..."
-                                  value={row.productName}
-                                  onFocus={() => setActiveItemDropdownIdx(idx)}
-                                  onBlur={() => setTimeout(() => setActiveItemDropdownIdx(null), 150)}
-                                  onChange={(e) => {
-                                    updateItem(idx, 'productName', e.target.value);
-                                    setActiveItemDropdownIdx(idx);
-                                  }}
-                                  className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs font-medium focus:ring-2 focus:ring-blue-500 bg-white"
-                                />
-                                {row.productId && (
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                    Catalog SKU
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Searchable Dropdown for Catalog Items */}
-                              {activeItemDropdownIdx === idx && (
-                                <div className="absolute z-50 left-3 right-3 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-2xl max-h-60 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/5">
-                                  {getFilteredProducts(row.productName).length > 0 ? (
-                                    <>
-                                      <div className="px-3 py-1.5 bg-slate-100 text-[10px] font-bold uppercase text-slate-600 tracking-wider flex justify-between items-center">
-                                        <span>Matching Catalog Products ({products.length} in store)</span>
-                                        <span className="text-[9px] text-slate-400 font-normal">Click to auto-fill</span>
-                                      </div>
-                                      {getFilteredProducts(row.productName).map((prod) => (
-                                        <div
-                                          key={prod.id}
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            updateItem(idx, 'productId', prod.id);
-                                            setActiveItemDropdownIdx(null);
-                                          }}
-                                          className="p-2.5 hover:bg-blue-50 cursor-pointer flex items-center justify-between transition text-xs"
-                                        >
-                                          <div>
-                                            <span className="font-bold text-slate-800">{prod.name}</span>
-                                            <div className="text-[10px] text-slate-500 font-mono">
-                                              SKU: {prod.sku || 'N/A'} | HSN: {prod.hsnCode || 'N/A'} | Unit: {prod.baseUnit}
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. QH-TSM70031MS2..."
+                                    value={row.productName}
+                                    onFocus={() => setActiveItemDropdownIdx(idx)}
+                                    onBlur={() => setTimeout(() => setActiveItemDropdownIdx(null), 150)}
+                                    onChange={(e) => {
+                                      updateItem(idx, 'productName', e.target.value);
+                                      setActiveItemDropdownIdx(idx);
+                                    }}
+                                    className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-[11px] font-mono focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                                  />
+                                </div>
+                                {/* Searchable Dropdown for Catalog Items */}
+                                {activeItemDropdownIdx === idx && (
+                                  <div className="absolute z-50 left-3 right-3 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-2xl max-h-60 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/5">
+                                    {getFilteredProducts(row.productName).length > 0 ? (
+                                      <>
+                                        <div className="px-3 py-1.5 bg-slate-100 text-[10px] font-bold uppercase text-slate-600 tracking-wider flex justify-between items-center">
+                                          <span>Matching Catalog Products ({products.length} in store)</span>
+                                          <span className="text-[9px] text-slate-400 font-normal">Click to auto-fill</span>
+                                        </div>
+                                        {getFilteredProducts(row.productName).map((prod) => (
+                                          <div
+                                            key={prod.id}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              // Auto-fill everything when an existing product is clicked
+                                              updateItem(idx, 'productId', prod.id);
+                                              updateItem(idx, 'productName', row.productName); // Keep the supplier's raw name for the mapping!
+                                              updateItem(idx, 'suggestedDisplayName', prod.name); // Fill clean name
+                                              if (prod.partNumber) updateItem(idx, 'partNumber', prod.partNumber);
+                                              if (prod.hsnCode) updateItem(idx, 'hsnCode', prod.hsnCode);
+                                              if (prod.baseUnit) updateItem(idx, 'unit', prod.baseUnit);
+                                              if (prod.purchasePrice && Number(prod.purchasePrice) > 0) updateItem(idx, 'purchasePrice', prod.purchasePrice);
+                                              if (prod.sellingPrice) updateItem(idx, 'sellingPrice', prod.sellingPrice);
+                                              if (prod.mrp) updateItem(idx, 'mrp', prod.mrp);
+                                              if (prod.gstRate) updateItem(idx, 'gstRate', prod.gstRate);
+                                              
+                                              setActiveItemDropdownIdx(null);
+                                            }}
+                                            className="p-3 hover:bg-indigo-50 cursor-pointer flex justify-between items-center group transition"
+                                          >
+                                            <div>
+                                              <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-700">{prod.name}</p>
+                                              <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                                                SKU: {prod.sku || 'N/A'} | Stock: {prod.currentStock} {prod.baseUnit} | MRP: ₹{prod.mrp}
+                                              </p>
+                                            </div>
+                                            <div className="text-right">
+                                              <p className="text-xs font-bold text-slate-700">₹{prod.sellingPrice}</p>
+                                              <span className="text-[9px] font-bold text-indigo-500 uppercase">Select</span>
                                             </div>
                                           </div>
-                                          <div className="text-right">
-                                            <span className="font-mono font-bold text-slate-800">₹{Number(prod.purchasePrice || 0).toFixed(2)}</span>
-                                            <div className="text-[10px] text-emerald-600 font-semibold">Stock: {Number(prod.currentStock || 0)} {prod.baseUnit}</div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </>
-                                  ) : (
-                                    <div className="p-3 bg-slate-50/50">
-                                      <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                        New Item Entry: &quot;{row.productName}&quot;
+                                        ))}
+                                      </>
+                                    ) : (
+                                      <div className="p-4 text-center text-xs text-slate-500">
+                                        No matching products found. Will create new item.
                                       </div>
-                                      <p className="text-[11px] text-slate-600 mt-1">
-                                        This item is not yet in your current store catalog. Proceeding with inwarding will automatically register the product and record its stock batch.
-                                      </p>
-                                      {products.length > 0 && (
-                                        <div className="mt-2.5 pt-2 border-t border-slate-200">
-                                          <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">
-                                            Or choose from your current inventory ({products.length} items):
-                                          </div>
-                                          <div className="space-y-1">
-                                            {products.slice(0, 3).map((p) => (
-                                              <div
-                                                key={p.id}
-                                                onMouseDown={(e) => {
-                                                  e.preventDefault();
-                                                  updateItem(idx, 'productId', p.id);
-                                                  setActiveItemDropdownIdx(null);
-                                                }}
-                                                className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded text-xs text-slate-700 cursor-pointer flex justify-between items-center"
-                                              >
-                                                <span className="font-semibold text-slate-800">{p.name}</span>
-                                                <span className="font-mono text-[11px] text-slate-600 font-medium">₹{Number(p.purchasePrice || 0)}</span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </td>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Internal Display Name Column */}
+                              <td className="py-2 px-1 align-middle relative">
+                                <input
+                                  type="text"
+                                  placeholder="Clean Name (e.g. Swift Shock)"
+                                  value={row.suggestedDisplayName || ''}
+                                  onChange={(e) => updateItem(idx, 'suggestedDisplayName', e.target.value)}
+                                  className="w-full border border-indigo-200 rounded px-2.5 py-1.5 text-[11px] font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 bg-indigo-50/30"
+                                />
+                                {row.productId && (
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
+                                    LINKED
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Part Number Column */}
+                              <td className="py-2 px-1 align-middle">
+                                <input
+                                  type="text"
+                                  placeholder="OEM #"
+                                  value={row.partNumber || ''}
+                                  onChange={(e) => updateItem(idx, 'partNumber', e.target.value)}
+                                  className="w-full border border-slate-300 rounded px-2 py-1.5 text-[11px] font-mono focus:ring-2 focus:ring-blue-500 bg-white"
+                                />
+                              </td>
 
                             {/* 3. HSN Code */}
                             <td className="py-2 px-2 align-middle">
