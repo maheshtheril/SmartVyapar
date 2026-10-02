@@ -243,3 +243,154 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// DELETE /api/purchase/[id] - Reverses a purchase entirely if no stock was consumed
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await requireRole(req, ["OWNER", "MANAGER"]);
+    const tenantId = session.tenantId;
+
+    const bill = await prisma.purchaseBill.findUnique({
+      where: { id: params.id, tenantId },
+      include: { items: true },
+    });
+    if (!bill) return NextResponse.json({ error: "Bill not found" }, { status: 404 });
+
+    // 1. Verify stock has not been consumed
+    for (const item of bill.items) {
+      if (!item.productId) continue;
+      
+      const batch = await prisma.batch.findFirst({
+        where: { tenantId, productId: item.productId, batchNumber: item.batchNumber || "" }
+      });
+      
+      // If batch exists and current stock is LESS than what we purchased, stock was consumed.
+      if (batch && Number(batch.currentStock) < Number(item.baseQuantity)) {
+        return NextResponse.json(
+          { error: `Cannot delete: Stock for ${item.productName} has already been consumed or sold.` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 2. Perform deletion in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Revert Stock and Batches
+      for (const item of bill.items) {
+        if (!item.productId) continue;
+
+        // Decrement Product Stock
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { currentStock: { decrement: item.baseQuantity } },
+        });
+
+        // Decrement Batch Stock
+        const batch = await tx.batch.findFirst({
+          where: { tenantId, productId: item.productId, batchNumber: item.batchNumber || "" }
+        });
+        if (batch) {
+          await tx.batch.update({
+            where: { id: batch.id },
+            data: { currentStock: { decrement: item.baseQuantity } },
+          });
+        }
+
+        // Decrement Warehouse Stock
+        if (bill.warehouseId) {
+          const whStock = await tx.warehouseStock.findUnique({
+            where: { warehouseId_productId: { warehouseId: bill.warehouseId, productId: item.productId } }
+          });
+          if (whStock) {
+            await tx.warehouseStock.update({
+              where: { id: whStock.id },
+              data: { quantity: { decrement: item.baseQuantity } },
+            });
+          }
+        }
+
+        // Delete Stock Logs for this bill
+        await tx.stockLog.deleteMany({
+          where: { tenantId, referenceId: bill.billNumber, type: "PURCHASE_IN" }
+        });
+      }
+
+      // Reverse Accounts
+      const accounts = await tx.account.findMany({
+        where: { tenantId, code: { in: ["1200", "1410", "1420", "1430", "2000", "1000", "1010"] } }
+      });
+      const accountMap = new Map(accounts.map((a) => [a.code, a]));
+      
+      if (accountMap.get("1200")) {
+        await tx.account.update({ where: { id: accountMap.get("1200")!.id }, data: { balance: { decrement: bill.totalTaxable } } });
+      }
+      if (accountMap.get("1410") && Number(bill.cgstAmount) > 0) {
+        await tx.account.update({ where: { id: accountMap.get("1410")!.id }, data: { balance: { decrement: bill.cgstAmount } } });
+      }
+      if (accountMap.get("1420") && Number(bill.sgstAmount) > 0) {
+        await tx.account.update({ where: { id: accountMap.get("1420")!.id }, data: { balance: { decrement: bill.sgstAmount } } });
+      }
+      if (accountMap.get("1430") && Number(bill.igstAmount) > 0) {
+        await tx.account.update({ where: { id: accountMap.get("1430")!.id }, data: { balance: { decrement: bill.igstAmount } } });
+      }
+
+      const paymentTerms = bill.paymentTerms;
+      const totalAmount = bill.totalAmount;
+      if (paymentTerms === "CREDIT" && accountMap.get("2000")) {
+        await tx.account.update({ where: { id: accountMap.get("2000")!.id }, data: { balance: { decrement: totalAmount } } });
+      } else if (paymentTerms === "CASH" && accountMap.get("1000")) {
+        await tx.account.update({ where: { id: accountMap.get("1000")!.id }, data: { balance: { increment: totalAmount } } });
+      } else if ((paymentTerms === "BANK_TRANSFER" || paymentTerms === "UPI") && accountMap.get("1010")) {
+        await tx.account.update({ where: { id: accountMap.get("1010")!.id }, data: { balance: { increment: totalAmount } } });
+      }
+
+      // Delete Bill Items
+      await tx.purchaseBillItem.deleteMany({ where: { purchaseBillId: bill.id } });
+      
+      // Delete Bill
+      await tx.purchaseBill.delete({ where: { id: bill.id } });
+
+      // Clean up orphaned products
+      for (const item of bill.items) {
+        if (!item.productId) continue;
+        const otherUses = await tx.purchaseBillItem.count({ where: { productId: item.productId } });
+        const salesUses = await tx.invoiceItem.count({ where: { productId: item.productId } });
+        if (otherUses === 0 && salesUses === 0) {
+          await tx.product.delete({ where: { id: item.productId } });
+        }
+      }
+
+      // Clean up orphaned supplier
+      if (bill.supplierId) {
+        const otherBills = await tx.purchaseBill.count({ where: { supplierId: bill.supplierId } });
+        if (otherBills === 0) {
+          const supplier = await tx.supplier.findUnique({ where: { id: bill.supplierId } });
+          await tx.supplier.delete({ where: { id: bill.supplierId } });
+          if (supplier?.accountId) {
+             await tx.account.delete({ where: { id: supplier.accountId } });
+          }
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          userId: session.userId,
+          userName: session.name || "Manager",
+          action: AuditAction.DELETE,
+          entityType: "PURCHASE_BILL",
+          entityId: bill.id,
+          details: { billNumber: bill.billNumber, totalAmount: bill.totalAmount },
+        }
+      });
+    }, { maxWait: 10000, timeout: 30000 });
+
+    return NextResponse.json({ success: true, message: "Purchase bill successfully deleted." });
+  } catch (error: any) {
+    if (error.name === "ForbiddenError") return NextResponse.json({ error: error.message }, { status: 403 });
+    if (error.name === "AuthError")      return NextResponse.json({ error: error.message }, { status: 401 });
+    console.error("Error deleting purchase bill:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+

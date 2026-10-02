@@ -365,6 +365,23 @@ export default function PurchaseInwardPage() {
     }
   };
 
+  // Delete purchase bill
+  const deletePurchase = async (billId: string) => {
+    if (!confirm('Are you sure you want to completely delete this purchase bill? This will reverse all ledger entries and stock quantities. This action cannot be undone.')) return;
+    try {
+      const res = await fetch(`/api/purchase/${billId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete purchase.');
+        return;
+      }
+      alert('Purchase bill deleted successfully.');
+      loadBills();
+    } catch (err: any) {
+      alert('An error occurred while deleting the purchase.');
+    }
+  };
+
   // Load purchase bills register
   const loadBills = async () => {
     setLoading(true);
