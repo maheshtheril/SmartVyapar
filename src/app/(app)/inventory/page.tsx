@@ -48,6 +48,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const uniqueCategories = Array.from(new Set(products.map((p: any) => p.category).filter(Boolean)));
   const [showImportModal, setShowImportModal] = useState(false);
 
   // Stock Adjustment State
@@ -951,17 +952,57 @@ export default function InventoryPage() {
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
                       />
                       <datalist id="category-suggestions">
-                        <option value="Electrical & Lighting" />
-                        <option value="Automobile Parts & Lubricants" />
-                        <option value="Groceries & Packaged Foods" />
-                        <option value="Beverages & Dairy" />
-                        <option value="Hardware & Sanitary" />
-                        <option value="Pharmaceuticals & Wellness" />
-                        <option value="Textiles & Garments" />
-                        <option value="Electronics & Accessories" />
-                      </datalist>
+                          {uniqueCategories.map((cat, idx) => (
+                            <option key={idx} value={cat as string} />
+                          ))}
+                        </datalist>
+                      </div>
                     </div>
-                  </div>
+
+                    {/* AUTOMOTIVE FIELDS */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 pb-2 bg-indigo-50/50 -mx-4 px-4 border-y border-indigo-100">
+                      <div>
+                        <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
+                          Part / OEM Number
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Part No."
+                            value={partNumber}
+                            onChange={(e) => setPartNumber(e.target.value)}
+                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                          />
+                          <input
+                            type="text"
+                            placeholder="OEM No."
+                            value={oemNumber}
+                            onChange={(e) => setOemNumber(e.target.value)}
+                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
+                          Vehicle Compatibility (For Search)
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Makes (e.g. Maruti, Hyundai)"
+                            value={compatibleMakes}
+                            onChange={(e) => setCompatibleMakes(e.target.value)}
+                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Models (e.g. Swift, i20)"
+                            value={compatibleModels}
+                            onChange={(e) => setCompatibleModels(e.target.value)}
+                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                          />
+                        </div>
+                      </div>                </div>
 
                   {/* SKU, Barcode, HSN */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
