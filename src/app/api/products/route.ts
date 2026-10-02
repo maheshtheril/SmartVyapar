@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
           phone: true,
           address: true,
           upiId: true,
+          isComposition: true,
         },
       }),
     ]);
@@ -140,4 +141,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
