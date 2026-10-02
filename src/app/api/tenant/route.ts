@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
             badgeColor: "rose"
           },
           { 
-            id: "price-lists", name: "Price Lists (Tiers)", href: "/inventory/price-lists", icon: "Tag", badge: "New", badgeColor: "emerald" }, { id: "delivery-challans", 
+            id: "price-lists", name: "Price Lists", href: "/inventory/price-lists", icon: "Tag", badge: "New", badgeColor: "emerald" }, { id: "delivery-challans", 
             name: "Delivery Challans (Rule 55)", 
             href: "/inventory/challans", 
             icon: "Truck",
