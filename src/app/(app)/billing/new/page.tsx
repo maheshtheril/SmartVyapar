@@ -163,6 +163,7 @@ export default function NewInvoicePage() {
     phone?: string;
     address?: string;
     upiId?: string;
+    isComposition?: boolean;
   }>({
     name: "Ziona Tech & Electricals",
     logoUrl: "",
@@ -2326,6 +2327,7 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
 
 
 
