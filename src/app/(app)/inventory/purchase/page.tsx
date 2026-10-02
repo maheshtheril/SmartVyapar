@@ -582,7 +582,9 @@ export default function PurchaseInwardPage() {
 
           return {
             productId: match?.id || undefined,
-            productName: it.productName || 'Unnamed Item',
+              productName: it.productName || 'Unnamed Item',
+              suggestedDisplayName: finalDisplayName || '',
+              partNumber: finalPartNumber || '',
             hsnCode: it.hsnCode || match?.hsnCode || '',
             unit: it.unit || match?.baseUnit || 'PCS',
             quantity: Number(it.quantity || 1),
