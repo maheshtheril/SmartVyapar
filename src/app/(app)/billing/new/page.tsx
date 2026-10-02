@@ -319,8 +319,9 @@ export default function NewInvoicePage() {
             address: data.tenant.address || "",
             phone: data.tenant.phone || "",
             upiId: data.tenant.upiId || "",
-          };
-          setBusiness(biz);
+              isComposition: data.tenant.isComposition || false,
+            };
+            setBusiness(biz);
           cacheBusinessProfile(biz);
         }
       } catch (err) {
@@ -2325,6 +2326,7 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
 
 
 
