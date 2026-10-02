@@ -1609,9 +1609,13 @@ export default function PurchaseInwardPage() {
                                   onChange={(e) => updateItem(idx, 'suggestedDisplayName', e.target.value)}
                                   className="w-full border border-indigo-200 rounded px-2.5 py-1.5 text-[11px] font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 bg-indigo-50/30"
                                 />
-                                {row.productId && (
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
-                                    LINKED
+                                {row.productId ? (
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shadow-sm whitespace-nowrap">
+                                    ✅ SAVED ITEM
+                                  </span>
+                                ) : (
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shadow-sm whitespace-nowrap">
+                                    ✨ NEW AI ALIAS
                                   </span>
                                 )}
                               </td>
