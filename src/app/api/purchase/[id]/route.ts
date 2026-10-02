@@ -351,15 +351,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       // Delete Bill
       await tx.purchaseBill.delete({ where: { id: bill.id } });
 
-      // Clean up orphaned products
-      for (const item of bill.items) {
-        if (!item.productId) continue;
-        const otherUses = await tx.purchaseBillItem.count({ where: { productId: item.productId } });
-        const salesUses = await tx.invoiceItem.count({ where: { productId: item.productId } });
-        if (otherUses === 0 && salesUses === 0) {
-          await tx.product.delete({ where: { id: item.productId } });
-        }
-      }
+      // Clean up orphaned products block removed to prevent Foreign Key transaction errors
 
       // Clean up orphaned supplier
       if (bill.supplierId) {
@@ -394,6 +386,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
 
 
