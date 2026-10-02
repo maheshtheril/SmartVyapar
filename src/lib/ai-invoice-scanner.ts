@@ -3,6 +3,8 @@ import { z } from "zod";
 
 export const ScannedPurchaseItemSchema = z.object({
   productName: z.string().trim().default("Unknown Item"),
+  suggestedDisplayName: z.string().trim().optional().default(""),
+  partNumber: z.string().trim().optional().default(""),
   hsnCode: z.string().trim().optional(),
   batchNumber: z.string().trim().optional().default(""),
   expiryDate: z.string().trim().optional().default(""),
@@ -92,7 +94,9 @@ RULES:
    - For pharmaceuticals & perishable goods, carefully capture "batchNumber" and "expiryDate" (YYYY-MM-DD if available).
    - Invoices often bill in packaging units ('BOX', 'STRIP', 'BOTTLE', 'VIAL', 'AMP', 'CTN', 'PKT', 'DOZ', 'PCS', 'KG', 'MTR').
    - Extract:
-     - "productName": Exact item name or medicine/chemical description
+     - "productName": Exact raw item name or description as printed on the bill
+     - "suggestedDisplayName": A clean, human-readable display alias for internal POS use. Strip out weird symbols, excessive measurements, and supplier junk. (e.g., if raw is "QH-TSM70031MS2 /FRONT STRUT MOUNT MARUTI SX4 /SWIFT", return "Swift Front Strut Mount")
+     - "partNumber": Extract the exact OEM or Manufacturer Part Number if it is embedded in the description (e.g., "QH-TSM70031MS2")
      - "hsnCode": HSN/SAC code if listed (else "")
      - "batchNumber": Batch or Lot ID if present (else "")
      - "expiryDate": Expiry date if pharma/food (YYYY-MM-DD or "")

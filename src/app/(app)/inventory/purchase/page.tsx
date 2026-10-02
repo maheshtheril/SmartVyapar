@@ -42,6 +42,8 @@ import PurchaseReturnModal from '@/components/PurchaseReturnModal';
 interface PurchaseItemRow {
   productId?: string;
   productName: string;
+  suggestedDisplayName?: string;
+  partNumber?: string;
   hsnCode: string;
   unit: string;
   quantity: number;
@@ -534,6 +536,16 @@ export default function PurchaseInwardPage() {
           const cost = Number(it.purchasePrice || 0);
           let sp = 0;
           let margin = 30;
+
+          let finalProductId = match?.id;
+          let finalProductName = it.productName; // Supplier raw text
+          let finalDisplayName = it.suggestedDisplayName || undefined;
+          let finalPartNumber = it.partNumber || undefined;
+
+          if (match) {
+            // It's saved
+            finalProductName = it.productName; // Keeping raw for mapping
+          }
 
           if (match && Number(match.sellingPrice || 0) > 0) {
             sp = Number(match.sellingPrice);
@@ -1483,7 +1495,7 @@ export default function PurchaseInwardPage() {
               {/* Full-Width Line Items Table Grid */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 min-h-[300px] flex flex-col">
                 <div className="overflow-x-auto flex-1">
-                  <table className="w-full text-left text-xs border-collapse min-w-[1300px]">
+                  <table className="w-full text-left text-xs border-collapse min-w-[1600px]">
                     <thead className="sticky top-0 z-10 shadow-xs">
                       <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[11px] border-b border-slate-950">
                         <th className="py-2.5 px-2 w-8 text-center text-slate-400">#</th>
@@ -2452,7 +2464,7 @@ export default function PurchaseInwardPage() {
               {/* Full-width 14-column Line Items Table */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 min-h-[300px] flex flex-col">
                 <div className="overflow-x-auto flex-1">
-                  <table className="w-full text-left text-xs border-collapse min-w-[1300px]">
+                  <table className="w-full text-left text-xs border-collapse min-w-[1600px]">
                     <thead className="sticky top-0 z-10">
                       <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[11px] border-b border-slate-950">
                         <th className="py-2.5 px-2 w-8 text-center text-slate-400">#</th>

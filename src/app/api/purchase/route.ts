@@ -246,6 +246,8 @@ export async function POST(req: NextRequest) {
       return {
         productId: item.productId,
         productName: item.productName,
+          suggestedDisplayName: item.suggestedDisplayName,
+          partNumber: item.partNumber,
         batchNumber: item.batchNumber?.trim() || null,
         mfgDate: item.mfgDate ? new Date(item.mfgDate) : null,
         expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
@@ -356,7 +358,8 @@ export async function POST(req: NextRequest) {
           product = await tx.product.create({
             data: {
               tenantId,
-              name: item.productName,
+              name: item.suggestedDisplayName || item.productName,
+                partNumber: item.partNumber || undefined,
               hsnCode: item.hsnCode,
               baseUnit: item.unit,
               purchasePrice: item.baseCostPrice,
