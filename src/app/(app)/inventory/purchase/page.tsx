@@ -587,9 +587,19 @@ export default function PurchaseInwardPage() {
       }
 
       if (Array.isArray(data.items) && data.items.length > 0) {
-        const mappedRows: PurchaseItemRow[] = data.items.map((it: any) => {
+          let currentProducts = products;
+          let currentTenant = tenant;
+          try {
+            const [pRes, tRes] = await Promise.all([
+              fetch('/api/products').then(r => r.json()),
+              fetch('/api/tenant').then(r => r.json())
+            ]);
+            if (pRes.success && pRes.products) currentProducts = pRes.products;
+            if (tRes.success && tRes.tenant) currentTenant = tRes.tenant;
+          } catch(e) {}
+          const mappedRows: PurchaseItemRow[] = data.items.map((it: any) => {
           // Attempt catalog match by name or SKU
-          const match = products.find((p) => (p.partNumber && it.partNumber && p.partNumber.trim().toLowerCase() === it.partNumber.trim().toLowerCase()) || (it.suggestedDisplayName && p.displayName && p.displayName.trim().toLowerCase() === it.suggestedDisplayName.trim().toLowerCase()) || p.name.toLowerCase().includes(it.productName.toLowerCase()) || it.productName.toLowerCase().includes(p.name.toLowerCase()) || (p.sku && it.productName.toLowerCase().includes(p.sku.toLowerCase())));
+          const match = currentProducts.find((p) => (p.partNumber && it.partNumber && p.partNumber.trim().toLowerCase() === it.partNumber.trim().toLowerCase()) || (it.suggestedDisplayName && p.displayName && p.displayName.trim().toLowerCase() === it.suggestedDisplayName.trim().toLowerCase()) || p.name.toLowerCase().includes(it.productName.toLowerCase()) || it.productName.toLowerCase().includes(p.name.toLowerCase()) || (p.sku && it.productName.toLowerCase().includes(p.sku.toLowerCase())));
 
           const cost = Number(it.purchasePrice || 0);
           let sp = 0;
@@ -1682,7 +1692,7 @@ export default function PurchaseInwardPage() {
                                   </span>
                                 ) : (
                                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shadow-sm whitespace-nowrap">
-                                    ✨ NEW AI ALIAS
+                                    ✨ NEW
                                   </span>
                                 )}
                               </td>
