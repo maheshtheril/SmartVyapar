@@ -604,14 +604,16 @@ export default function PurchaseInwardPage() {
             finalProductName = it.productName; // Keeping raw for mapping
           }
 
-          if (match && Number(match.sellingPrice || 0) > 0) {
-            sp = Number(match.sellingPrice);
-            if (cost > 0) {
-              margin = Math.round(((sp - cost) / cost) * 1000) / 10;
+          const gstRate = Number(it.gstRate || 18);
+            const landedCost = tenant?.isComposition ? cost * (1 + gstRate / 100) : cost;
+            if (match && Number(match.sellingPrice || 0) > 0) {
+              sp = Number(match.sellingPrice);
+              if (landedCost > 0) {
+                margin = Math.round(((sp - landedCost) / landedCost) * 1000) / 10;
+              }
+            } else {
+              sp = Math.round(landedCost * 1.30 * 100) / 100;
             }
-          } else {
-            sp = Math.round(cost * 1.30 * 100) / 100;
-          }
 
           return {
             productId: match?.id || undefined,
@@ -713,12 +715,13 @@ export default function PurchaseInwardPage() {
         row.mrp = row.sellingPrice;
       }
     } else if (field === 'sellingPrice') {
-      // If user manually changed sellingPrice -> compute marginPercent
-      const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
-      const sp = Number(value || 0);
-      if (cost > 0) {
-        row.marginPercent = Math.round(((sp - cost) / cost) * 1000) / 10;
-      }
+        // If user manually changed sellingPrice -> compute marginPercent
+        const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
+        const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
+        const sp = Number(value || 0);
+        if (landedCost > 0) {
+          row.marginPercent = Math.round(((sp - landedCost) / landedCost) * 1000) / 10;
+        }
       if (!row.mrp || Number(row.mrp) < sp) {
         row.mrp = sp;
       }
@@ -788,7 +791,8 @@ export default function PurchaseInwardPage() {
     }
 
     const sp = Number(item.sellingPrice || 0);
-    projectedGrossProfit += (sp - cost) * qty;
+      const landedCost = tenant?.isComposition ? cost * (1 + Number(item.gstRate || 0) / 100) : cost;
+      projectedGrossProfit += (sp - landedCost) * qty;
   });
 
   rawGrandTotal = totalTaxable + totalCgst + totalSgst + totalIgst;
@@ -1896,7 +1900,7 @@ export default function PurchaseInwardPage() {
 
                 <div className="space-y-0.5 border-l border-slate-200 pl-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">
-                    GST Input Credit ({isInterState ? 'IGST' : 'CGST+SGST'})
+                    {tenant?.isComposition ? `GST Paid (${isInterState ? 'IGST' : 'CGST+SGST'} Sunk Cost)` : `GST Input Credit (${isInterState ? 'IGST' : 'CGST+SGST'})`}
                   </span>
                   <span className="font-bold text-emerald-600">
                     ₹{(totalCgst + totalSgst + totalIgst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -2560,8 +2564,9 @@ export default function PurchaseInwardPage() {
                     <tbody className="divide-y divide-slate-100">
                       {(editingBill.items || []).map((row: any, idx: number) => {
                         const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
-                        const sp = Number(row.sellingPrice || 0);
-                        const unitProfit = Math.round((sp - cost) * 100) / 100;
+                          const sp = Number(row.sellingPrice || 0);
+                          const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
+                          const unitProfit = Math.round((sp - landedCost) * 100) / 100;
                         const taxable = Math.round(cost * Number(row.quantity || 0) * 100) / 100;
                         const gst = Number(row.gstRate || 18);
                         const lineTotal = Math.round(taxable * (1 + gst / 100) * 100) / 100;
