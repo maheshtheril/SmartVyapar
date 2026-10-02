@@ -511,7 +511,19 @@ export default function PurchaseInwardPage() {
         body: formData,
       });
 
-      const json = await res.json();
+      let json;
+      try {
+        json = await res.json();
+      } catch (e) {
+        if (res.status === 413) {
+          throw new Error("File is too large (max 4.5MB). Please compress the PDF or scan 1 page at a time.");
+        } else if (res.status === 504) {
+          throw new Error("AI scan timed out after 10 seconds. Please try a smaller file or a clearer image.");
+        } else {
+          const text = await res.text().catch(() => "");
+          throw new Error("Server error (" + res.status + "): " + (text.substring(0, 50) || "AI service unavailable."));
+        }
+      }
 
       // Plan gate — clear upgrade message
       if (res.status === 403 && json.error === 'PRO_FEATURE') {
