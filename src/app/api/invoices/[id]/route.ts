@@ -251,7 +251,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
         // We assume default warehouse for now (as invoices don't track WH explicitly in basic mode)
         const whStock = await tx.warehouseStock.findFirst({
-          where: { tenantId, productId: item.productId }
+          where: { productId: item.productId }
         });
         if (whStock) {
           await tx.warehouseStock.update({
