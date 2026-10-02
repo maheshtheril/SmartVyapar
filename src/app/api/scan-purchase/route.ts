@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: friendlyError,
+        error: error.message || friendlyError, rawError: String(error),
       },
       { status: 400 }
     );

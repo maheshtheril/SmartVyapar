@@ -154,8 +154,8 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 `;
 
   const CANDIDATE_MODELS = [
-    "gemini-3.5-flash",
-    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash", "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
     "gemini-2.5-flash",
   ];
 

@@ -1228,7 +1228,7 @@ export default function PurchaseInwardPage() {
               {scanError && scanError !== '__UPGRADE__' && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  <span className="flex-1">AI scan failed. Please enter bill items manually in the table below.</span>
+                  <span className="flex-1">{scanError || "AI scan failed. Please enter bill items manually in the table below."}</span>
                   <button onClick={() => setScanError(null)} className="text-rose-400 hover:text-rose-700 cursor-pointer shrink-0">
                     <X className="w-3.5 h-3.5" />
                   </button>
