@@ -45,6 +45,7 @@ import BulkImportModal from '@/components/BulkImportModal';
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<any[]>([]);
+  const [tenant, setTenant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -123,7 +124,9 @@ export default function InventoryPage() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/products");
+      const [res, tenantRes] = await Promise.all([fetch("/api/products"), fetch("/api/tenant")]);
+      const tenantData = await tenantRes.json();
+      if (tenantData.success) setTenant(tenantData.tenant);
       const data = await res.json();
       if (data.success) {
         setProducts(data.products || []);
