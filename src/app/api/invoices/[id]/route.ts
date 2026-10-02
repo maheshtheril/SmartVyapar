@@ -262,7 +262,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
         // Delete Stock Logs for this sale
         await tx.stockLog.deleteMany({
-          where: { tenantId, referenceId: invoice.invoiceNumber, type: 'SALE' }
+          where: { tenantId, referenceId: invoice.invoiceNumber, type: 'SALE_OUT' }
         });
       }
 
