@@ -70,8 +70,7 @@ export function cleanHumanReadableAiError(error: any): string {
 }
 
 export async function scanPurchaseInvoiceWithGemini(
-  base64Data: string,
-  mimeType: string,
+  files: { base64Data: string; mimeType: string }[],
   apiKey?: string
 ): Promise<ScannedInvoiceResult> {
   const isValidKey = (k: string) => k.startsWith("AIzaSy") || k.startsWith("AQ.");
@@ -174,10 +173,10 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
         contents: [
           {
             role: "user",
-            parts: [
-              { text: prompt },
-              { inlineData: { mimeType: mimeType || "image/jpeg", data: base64Data } },
-            ],
+              parts: [
+                { text: prompt },
+                ...files.map(f => ({ inlineData: { mimeType: f.mimeType || "image/jpeg", data: f.base64Data } })),
+              ],
           },
         ],
       });
