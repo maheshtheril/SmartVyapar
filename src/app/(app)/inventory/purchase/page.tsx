@@ -489,9 +489,8 @@ export default function PurchaseInwardPage() {
 
   // AI Invoice Scanner handler
   const handleScanInvoice = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files[0]) return;
-    const selectedFile = e.target.files[0];
-
+    if (!e.target.files || e.target.files.length === 0) return;
+    
     setIsNewBillOpen(true);
     setIsScanningInvoice(true);
     setScanError(null);
@@ -499,7 +498,9 @@ export default function PurchaseInwardPage() {
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      for (let i = 0; i < e.target.files.length; i++) {
+        formData.append('file', e.target.files[i]);
+      }
 
       const customApiKey = typeof window !== 'undefined' ? localStorage.getItem('smartvyapar_gemini_api_key') : null;
       const headers: Record<string, string> = {};
@@ -885,8 +886,9 @@ export default function PurchaseInwardPage() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,application/pdf"
-        onChange={handleScanInvoice}
+          accept="image/*,application/pdf"
+          multiple
+          onChange={handleScanInvoice}
         className="hidden"
       />
 
