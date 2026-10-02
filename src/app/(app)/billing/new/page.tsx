@@ -814,14 +814,14 @@ export default function NewInvoicePage() {
         setActivePriceList(data.priceList);
         // Recalculate existing cart
         setBillItems(prev => prev.map(item => {
-          let newPrice = Number(item.product.sellingPrice);
+          let newPrice = Number(catalog.find(p => p.id === item.productId)?.sellingPrice || item.price);
           const override = data.priceList.items?.find((i: any) => i.productId === item.id);
           if (override) {
             if (override.type === 'FIXED_PRICE') newPrice = override.value;
             else if (override.type === 'PERCENTAGE_DISCOUNT') newPrice = newPrice - (newPrice * (override.value / 100));
           } else {
             if (data.priceList.type === 'PERCENTAGE_DISCOUNT') newPrice = newPrice - (newPrice * (data.priceList.value / 100));
-            else if (data.priceList.type === 'MARKUP_ON_COST') newPrice = Number(item.product.purchasePrice) + (Number(item.product.purchasePrice) * (data.priceList.value / 100));
+            else if (data.priceList.type === 'MARKUP_ON_COST') newPrice = Number(0) + (Number(0) * (data.priceList.value / 100));
           }
           return { ...item, price: newPrice };
         }));
@@ -2357,6 +2357,8 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
+
 
 
 
