@@ -498,11 +498,11 @@ export async function POST(req: NextRequest) {
       const accounts = await tx.account.findMany({
         where: {
           tenantId,
-          code: { in: ["1200", "1410", "1420", "1430", "2000", "1000", "1010"] },
+          code: { in: ["1300", "1410", "1420", "1430", "2000", "1000", "1010"] },
         },
       });
       const accountMap = new Map(accounts.map((a) => [a.code, a]));
-      const inventoryAcc = accountMap.get("1200");
+      const inventoryAcc = accountMap.get("1300");
       const cgstAcc = accountMap.get("1410");
       const sgstAcc = accountMap.get("1420");
       const igstAcc = accountMap.get("1430");
