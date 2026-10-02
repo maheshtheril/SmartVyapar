@@ -65,8 +65,8 @@ export default function InventoryPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Form State - World Standard ERP Product Master
-  const [name, displayName, setName] = useState("");
-  const [displayname, displayName, setDisplayName] = useState("");
+  const [name, setName] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState<"RETAIL_ITEM"|"RAW_MATERIAL"|"FINISHED_GOOD">("RETAIL_ITEM");
   const [hsnCode, setHsnCode] = useState("9983");
@@ -1825,6 +1825,7 @@ export default function InventoryPage() {
     </div>
   );
 }
+
 
 
 
