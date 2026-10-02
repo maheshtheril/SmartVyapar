@@ -217,7 +217,8 @@ export default function PurchaseInwardPage() {
     setGlobalMargin(margin);
     const updated = items.map((it) => {
       const cost = Number(it.purchasePrice || 0) * (1 - Number(it.discountPercent || 0) / 100);
-      const newSP = cost > 0 ? Math.round(cost * (1 + margin / 100) * 100) / 100 : it.sellingPrice;
+      const landedCost = tenant?.isComposition ? cost * (1 + Number(it.gstRate || 0) / 100) : cost;
+        const newSP = landedCost > 0 ? Math.round(landedCost * (1 + margin / 100) * 100) / 100 : it.sellingPrice;
       return {
         ...it,
         marginPercent: margin,
@@ -243,7 +244,8 @@ export default function PurchaseInwardPage() {
     if (found) {
       const cost = Number(found.purchasePrice || 0);
       const sp = Number(found.sellingPrice || cost * 1.3);
-      const margin = cost > 0 ? Math.round(((sp - cost) / cost) * 1000) / 10 : globalMargin;
+      const landedCost = tenant?.isComposition ? cost * (1 + Number(found.gstRate || 0) / 100) : cost;
+        const margin = landedCost > 0 ? Math.round(((sp - landedCost) / landedCost) * 1000) / 10 : globalMargin;
 
       if (items.length === 1 && !items[0].productName.trim()) {
         setItems([{
@@ -669,7 +671,8 @@ export default function PurchaseInwardPage() {
     if (field === 'purchasePrice' || field === 'discountPercent' || field === 'marginPercent') {
       const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
       const margin = Number(row.marginPercent || 0);
-      row.sellingPrice = Math.round(cost * (1 + margin / 100) * 100) / 100;
+      const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
+        row.sellingPrice = Math.round(landedCost * (1 + margin / 100) * 100) / 100;
       if (!row.mrp || Number(row.mrp) < row.sellingPrice) {
         row.mrp = row.sellingPrice;
       }
@@ -1542,7 +1545,8 @@ export default function PurchaseInwardPage() {
                       {items.map((row, idx) => {
                         const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
                         const sp = Number(row.sellingPrice || 0);
-                        const unitProfit = Math.round((sp - cost) * 100) / 100;
+                        const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
+                          const unitProfit = Math.round((sp - landedCost) * 100) / 100;
                         const taxable = Math.round(cost * Number(row.quantity || 0) * 100) / 100;
                         const gst = Number(row.gstRate || 18);
                         const lineTotal = Math.round((taxable * (1 + gst / 100)) * 100) / 100;
@@ -2392,11 +2396,13 @@ export default function PurchaseInwardPage() {
               const row = { ...it, [field]: value };
               if (field === 'purchasePrice' || field === 'discountPercent' || field === 'marginPercent') {
                 const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
-                row.sellingPrice = Math.round(cost * (1 + Number(row.marginPercent || 0) / 100) * 100) / 100;
+                const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
+                  row.sellingPrice = Math.round(landedCost * (1 + Number(row.marginPercent || 0) / 100) * 100) / 100;
                 if (!row.mrp || Number(row.mrp) < row.sellingPrice) row.mrp = row.sellingPrice;
               } else if (field === 'sellingPrice') {
                 const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
-                if (cost > 0) row.marginPercent = Math.round(((Number(value) - cost) / cost) * 1000) / 10;
+                const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
+                  if (landedCost > 0) row.marginPercent = Math.round(((Number(value) - landedCost) / landedCost) * 1000) / 10;
                 if (!row.mrp || Number(row.mrp) < Number(value)) row.mrp = value;
               }
               return row;
