@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Tag, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Tag, 
   Receipt, 
   QrCode, 
@@ -38,7 +38,7 @@ import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalRec
 import CashDrawerModal from '@/components/CashDrawerModal';
 import ThermalZReportModal, { ZReportData } from '@/components/ThermalZReportModal';
 import QrCodeCanvas from '@/components/QrCodeCanvas';
-import { Tag, cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
+import { cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
 import OfflineStatusPill from '@/components/OfflineStatusPill';
 
 interface BillItem {
@@ -2357,6 +2357,7 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
 
 
 
