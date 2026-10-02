@@ -376,6 +376,8 @@ export async function POST(req: NextRequest) {
             where: { id: product.id },
             data: {
               currentStock: { increment: item.baseQuantity },
+              ...(item.suggestedDisplayName ? { displayName: item.suggestedDisplayName } : {}),
+              ...(item.partNumber ? { partNumber: item.partNumber } : {}),
               purchasePrice: item.baseCostPrice,
               sellingPrice: item.sellingPrice,
               mrp: item.mrp,
@@ -425,6 +427,8 @@ export async function POST(req: NextRequest) {
               where: { id: existingBatch.id },
               data: {
                 currentStock: { increment: item.baseQuantity },
+              ...(item.suggestedDisplayName ? { displayName: item.suggestedDisplayName } : {}),
+              ...(item.partNumber ? { partNumber: item.partNumber } : {}),
                 costPrice: item.baseCostPrice,
                 sellingPrice: item.sellingPrice,
                 mrp: item.mrp,
@@ -596,3 +600,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
