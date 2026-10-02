@@ -9,6 +9,7 @@ export interface CustomerOption {
   phone: string;
   stateCode?: string;
   outstandingBalance: number;
+  priceListId?: string;
   loyaltyPoints?: number;
 }
 
@@ -331,3 +332,4 @@ export default function CustomerSearch({
     </div>
   );
 }
+

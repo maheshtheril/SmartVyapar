@@ -120,6 +120,7 @@ model Tenant {
   LabourService         LabourService[]
   Supplier              Supplier[]
   SalesOrder            SalesOrder[]
+  PriceList             PriceList[]
 
   @@map("tenants")
 }
@@ -151,14 +152,14 @@ model User {
 // 3. PRODUCT & INVENTORY CATALOG
 // ----------------------------------------------------
 model Product {
-  id       String  @id @default(uuid())
-  tenantId String
-  name     String
+  id          String  @id @default(uuid())
+  tenantId    String
+  name        String
   displayName String?
-  sku      String?
-  barcode  String?
-  hsnCode  String
-  category String?
+  sku         String?
+  barcode     String?
+  hsnCode     String
+  category    String?
 
   // Automotive specifics
   brand               String?
@@ -207,6 +208,7 @@ model Product {
   usedInRecipes      RecipeItem[]         @relation("IngredientToMenu")
   JobCardItem        JobCardItem[]
   SalesOrderLineItem SalesOrderLineItem[]
+  PriceListItem      PriceListItem[]
 
   // Prevent duplicate SKU or barcode per tenant (NULLs are allowed multiple times by PostgreSQL)
   @@unique([tenantId, sku])
@@ -332,7 +334,7 @@ model Beat {
 // ----------------------------------------------------
 
 model Customer {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   tenantId           String
   name               String
   phone              String
@@ -340,15 +342,15 @@ model Customer {
   gstin              String?
   stateCode          String?
   address            String?
-  pincode            String?  @default("682001")
+  pincode            String?   @default("682001")
   territoryId        String?
-  outstandingBalance Decimal  @default(0.0) @db.Decimal(10, 2) // Positive means customer owes money
+  outstandingBalance Decimal   @default(0.0) @db.Decimal(10, 2) // Positive means customer owes money
   openingBalanceDate DateTime?
-  accountId          String?  @unique
-  loyaltyPoints      Int      @default(0)
-    isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  accountId          String?   @unique
+  loyaltyPoints      Int       @default(0)
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account             Account?             @relation(fields: [accountId], references: [id])
@@ -365,6 +367,8 @@ model Customer {
   zoneId              String?
   Beat                Beat?                @relation(fields: [beatId], references: [id])
   beatId              String?
+  PriceList           PriceList?           @relation(fields: [priceListId], references: [id])
+  priceListId         String?
 
   @@index([tenantId, phone])
   @@map("customers")
@@ -1553,16 +1557,16 @@ model ServiceReminder {
 }
 
 model Supplier {
-  id        String  @id @default(uuid())
-  tenantId  String
-  name      String
-  gstin     String?
-  phone     String?
-  email     String?
-  address   String?
-  accountId String? @unique
-  isActive  Boolean @default(true)
-  outstandingBalance Decimal  @default(0.0) @db.Decimal(10, 2)
+  id                 String    @id @default(uuid())
+  tenantId           String
+  name               String
+  gstin              String?
+  phone              String?
+  email              String?
+  address            String?
+  accountId          String?   @unique
+  isActive           Boolean   @default(true)
+  outstandingBalance Decimal   @default(0.0) @db.Decimal(10, 2)
   openingBalanceDate DateTime?
 
   createdAt DateTime @default(now())
@@ -1615,4 +1619,44 @@ model SalesOrderLineItem {
   @@index([salesOrderId])
   @@index([productId])
   @@map("sales_order_line_items")
+}
+
+// ----------------------------------------------------
+// 10. DYNAMIC PRICE LISTS (ZOHO-STYLE MULTI-TIER PRICING)
+// ----------------------------------------------------
+
+model PriceList {
+  id          String  @id @default(uuid())
+  tenantId    String
+  name        String // e.g. "Wholesale Tier 1", "VIP Customers"
+  description String?
+
+  // Global Rule settings
+  type  String  @default("PERCENTAGE_DISCOUNT") // PERCENTAGE_DISCOUNT, MARKUP_ON_COST
+  value Decimal @default(0.0) @db.Decimal(10, 2) // e.g. 15.0 for 15% discount
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customers Customer[]
+  items     PriceListItem[]
+
+  @@index([tenantId])
+}
+
+model PriceListItem {
+  id          String @id @default(uuid())
+  priceListId String
+  productId   String
+
+  // Item-level override
+  type  String  @default("FIXED_PRICE") // FIXED_PRICE, PERCENTAGE_DISCOUNT
+  value Decimal @db.Decimal(10, 2) // e.g. 500 for Rs.500 fixed price
+
+  priceList PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([priceListId, productId])
 }

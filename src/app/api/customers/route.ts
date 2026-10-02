@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
         beatId: true,
         isActive: true,
         territoryId: true,
+        priceListId: true,
         territory: { select: { name: true, zone: true } },
         outstandingBalance: true,
         loyaltyPoints: true,
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, openingBalance, openingBalanceDate } = body;
+    const { name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, openingBalance, openingBalanceDate, priceListId } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ error: "Name and phone are required" }, { status: 400 });
@@ -134,6 +135,7 @@ export async function POST(req: NextRequest) {
               regionId: regionId || null,
               zoneId: zoneId || null,
               territoryId: territoryId || null,
+              priceListId: priceListId || null,
               beatId: beatId || null
             },
           });
@@ -155,7 +157,7 @@ export async function PUT(req: NextRequest) {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
     const body = await req.json();
-    const { id, name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, beatId, isActive, outstandingBalance, openingBalanceDate } = body;
+    const { id, name, phone, gstin, stateCode, email, address, pincode, regionId, zoneId, territoryId, priceListId, beatId, isActive, outstandingBalance, openingBalanceDate } = body;
 
     if (!id || !name) {
       return NextResponse.json({ error: "ID and Name are required" }, { status: 400 });
@@ -175,6 +177,7 @@ export async function PUT(req: NextRequest) {
           regionId: regionId || null,
           zoneId: zoneId || null,
           territoryId: territoryId || null,
+              priceListId: priceListId || null,
           beatId: beatId || null,
           isActive: isActive !== undefined ? isActive : true,
           ...(openingBalanceDate !== undefined && { openingBalanceDate: openingBalanceDate ? new Date(openingBalanceDate) : null }),

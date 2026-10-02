@@ -50,6 +50,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
     const [territoryEnabled, setTerritoryEnabled] = useState(false);
     const [regions, setRegions] = useState<any[]>([]);
+  const [priceLists, setPriceLists] = useState<any[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -72,6 +73,7 @@ export default function CustomersPage() {
     const [addRegionId, setAddRegionId] = useState('');
     const [addZoneId, setAddZoneId] = useState('');
     const [addTerritoryId, setAddTerritoryId] = useState('');
+  const [addPriceListId, setAddPriceListId] = useState('');
     const [addBeatId, setAddBeatId] = useState('');
     const [rememberHierarchy, setRememberHierarchy] = useState(true);
   const [addSaving, setAddSaving] = useState(false);
@@ -92,6 +94,11 @@ export default function CustomersPage() {
       const url = search ? `/api/customers?q=${encodeURIComponent(search)}` : '/api/customers';
       const res = await fetch(url);
         const tRes = await fetch('/api/territories/hierarchy');
+        const plRes = await fetch('/api/price-lists').catch(() => null);
+        if (plRes && plRes.ok) {
+          const plData = await plRes.json();
+          if (plData.success) setPriceLists(plData.priceLists);
+        }
         const tData = await tRes.json();
         if (tData.success) {
           setTerritoryEnabled(tData.enabled);
@@ -175,6 +182,7 @@ export default function CustomersPage() {
             regionId: addRegionId || undefined,
             zoneId: addZoneId || undefined,
             territoryId: addTerritoryId || undefined,
+            priceListId: addPriceListId || undefined,
             beatId: addBeatId || undefined,
         }),
       });

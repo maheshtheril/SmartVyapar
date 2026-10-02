@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { 
+import { Tag, useRouter } from 'next/navigation';
+import { Tag, 
   Receipt, 
   QrCode, 
   Share2, 
@@ -38,7 +38,7 @@ import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalRec
 import CashDrawerModal from '@/components/CashDrawerModal';
 import ThermalZReportModal, { ZReportData } from '@/components/ThermalZReportModal';
 import QrCodeCanvas from '@/components/QrCodeCanvas';
-import { cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
+import { Tag, cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
 import OfflineStatusPill from '@/components/OfflineStatusPill';
 
 interface BillItem {
@@ -208,6 +208,7 @@ export default function NewInvoicePage() {
 
   // Customer Loyalty Rewards States
   const [customerLoyaltyPoints, setCustomerLoyaltyPoints] = useState<number>(0);
+  const [activePriceList, setActivePriceList] = useState<any>(null);
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState<number>(0);
 
   // Multi-item rows (default with 1 empty row for quick scanning)
@@ -803,6 +804,29 @@ export default function NewInvoicePage() {
       return;
     }
     setBillItems(billItems.filter((_, i) => i !== index));
+  };
+
+  const fetchPriceList = async (id: string) => {
+    try {
+      const res = await fetch('/api/price-lists/' + id);
+      const data = await res.json();
+      if (data.success) {
+        setActivePriceList(data.priceList);
+        // Recalculate existing cart
+        setBillItems(prev => prev.map(item => {
+          let newPrice = Number(item.product.sellingPrice);
+          const override = data.priceList.items?.find((i: any) => i.productId === item.id);
+          if (override) {
+            if (override.type === 'FIXED_PRICE') newPrice = override.value;
+            else if (override.type === 'PERCENTAGE_DISCOUNT') newPrice = newPrice - (newPrice * (override.value / 100));
+          } else {
+            if (data.priceList.type === 'PERCENTAGE_DISCOUNT') newPrice = newPrice - (newPrice * (data.priceList.value / 100));
+            else if (data.priceList.type === 'MARKUP_ON_COST') newPrice = Number(item.product.purchasePrice) + (Number(item.product.purchasePrice) * (data.priceList.value / 100));
+          }
+          return { ...item, price: newPrice };
+        }));
+      }
+    } catch (err) {}
   };
 
   const handleSelectCustomer = (customer: CustomerOption | null) => {
@@ -1595,7 +1619,13 @@ export default function NewInvoicePage() {
             
             {/* Customer Bar */}
             <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs shrink-0">
-              <CustomerSearch
+              {activePriceList && (
+      <div className="mb-2 inline-flex items-center space-x-1.5 bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md text-[10px] font-bold">
+        <Tag className="w-3 h-3" />
+        <span>Price List Applied: {activePriceList.name}</span>
+      </div>
+    )}
+    <CustomerSearch
                 customerName={customerName}
                 customerPhone={customerPhone}
                 onSelectCustomer={handleSelectCustomer}
@@ -2327,6 +2357,7 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
 
 
 
