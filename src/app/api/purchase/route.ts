@@ -569,8 +569,8 @@ export async function POST(req: NextRequest) {
 
       return bill;
     }, {
-      maxWait: 10000,
-      timeout: 30000,
+      maxWait: 30000,
+        timeout: 90000,
     });
 
     return NextResponse.json({
@@ -585,7 +585,10 @@ export async function POST(req: NextRequest) {
     if (error.name === "AuthError") {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    console.error("Error creating purchase bill:", error);
+    if (error.message && error.message.includes("Transaction already closed")) {
+        return NextResponse.json({ error: "The database is busy processing this large bill (Timeout). Please try clicking Save again." }, { status: 500 });
+      }
+      console.error("Error creating purchase bill:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
