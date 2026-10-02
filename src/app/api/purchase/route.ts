@@ -510,32 +510,40 @@ export async function POST(req: NextRequest) {
       const cashAcc = accountMap.get("1000");
       const bankAcc = accountMap.get("1010");
 
+      // Check composition status for ITC handling
+      const tenantMeta = await tx.tenant.findUnique({ where: { id: tenantId } });
+      const isComp = tenantMeta?.isComposition === true;
+
       // Debit Inventory Asset
       if (inventoryAcc) {
+        // Composition dealers capitalize tax into inventory cost; Regular dealers capitalize only taxable base
+        const inventoryDebit = isComp ? totalAmount : totalTaxable;
         await tx.account.update({
           where: { id: inventoryAcc.id },
-          data: { balance: { increment: totalTaxable } },
+          data: { balance: { increment: inventoryDebit } },
         });
       }
 
-      // Debit Input Tax Credit
-      if (cgstAcc && cgstAmount > 0) {
-        await tx.account.update({
-          where: { id: cgstAcc.id },
-          data: { balance: { increment: cgstAmount } },
-        });
-      }
-      if (sgstAcc && sgstAmount > 0) {
-        await tx.account.update({
-          where: { id: sgstAcc.id },
-          data: { balance: { increment: sgstAmount } },
-        });
-      }
-      if (igstAcc && igstAmount > 0) {
-        await tx.account.update({
-          where: { id: igstAcc.id },
-          data: { balance: { increment: igstAmount } },
-        });
+      // Debit Input Tax Credit (ONLY if Regular dealer)
+      if (!isComp) {
+        if (cgstAcc && cgstAmount > 0) {
+          await tx.account.update({
+            where: { id: cgstAcc.id },
+            data: { balance: { increment: cgstAmount } },
+          });
+        }
+        if (sgstAcc && sgstAmount > 0) {
+          await tx.account.update({
+            where: { id: sgstAcc.id },
+            data: { balance: { increment: sgstAmount } },
+          });
+        }
+        if (igstAcc && igstAmount > 0) {
+          await tx.account.update({
+            where: { id: igstAcc.id },
+            data: { balance: { increment: igstAmount } },
+          });
+        }
       }
 
       // Credit Accounts Payable or Cash/Bank
@@ -600,4 +608,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 

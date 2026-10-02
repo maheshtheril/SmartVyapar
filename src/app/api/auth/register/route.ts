@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
           email: data.email,
           address: data.address || null,
           isComposition: data.isComposition,
+          businessType: data.businessType,
           subscriptionTier: "FREE",
         },
       });
@@ -152,3 +153,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

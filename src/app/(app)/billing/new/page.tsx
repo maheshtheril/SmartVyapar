@@ -399,7 +399,7 @@ export default function NewInvoicePage() {
       const lineBase = item.price * item.quantity;
       const lineDisc = (lineBase * Math.min(100, Math.max(0, item.discountPercent || 0))) / 100;
       const itemTaxable = (lineBase - lineDisc) * discountRatio;
-      const effectiveGst = billType === "TAX_INVOICE" ? item.gst : 0;
+      const effectiveGst = (business?.isComposition || billType === "ESTIMATE") ? 0 : item.gst;
       const itemTax = (itemTaxable * effectiveGst) / 100;
       if (isIntraState) {
         totalCgst += itemTax / 2;
@@ -1051,7 +1051,7 @@ export default function NewInvoicePage() {
         customerPhone: customerPhone,
         customerState: customerState,
         cashierName: "Counter 1 (Offline)",
-        docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : "Tax Invoice",
+        docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : (business?.isComposition ? "Bill of Supply" : "Tax Invoice"),
         items: receiptItems,
         subTotal: Number(grossSubtotal),
         taxableAmount: Number(totalTaxable),
@@ -1095,7 +1095,7 @@ export default function NewInvoicePage() {
         customerPhone: customerPhone,
         customerState: customerState,
         cashierName: "Counter 1",
-        docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : "Tax Invoice",
+        docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : (business?.isComposition ? "Bill of Supply" : "Tax Invoice"),
         items: receiptItems,
         subTotal: Number(data.invoice.subTotal || grossSubtotal),
         taxableAmount: Number(totalTaxable),
@@ -1130,7 +1130,7 @@ export default function NewInvoicePage() {
             customerPhone: customerPhone,
             customerState: customerState,
             cashierName: "Counter 1 (Offline)",
-            docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : "Tax Invoice",
+            docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : (business?.isComposition ? "Bill of Supply" : "Tax Invoice"),
             items: receiptItems,
             subTotal: Number(totalTaxable),
             taxableAmount: Number(totalTaxable),
@@ -1225,7 +1225,7 @@ export default function NewInvoicePage() {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Tax Invoice (GST)
+              {business?.isComposition ? "Bill of Supply" : "Tax Invoice (GST)"}
             </button>
             <button
               type="button"
@@ -2325,3 +2325,6 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
+
+
