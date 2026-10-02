@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   ArrowUpRight,
   ArrowDownRight,
+  Pencil,
   Sparkles,
   Layers,
   Calculator,
@@ -86,6 +87,7 @@ export default function InventoryPage() {
   const [formError, setFormError] = useState<string|null>(null);
   const [activeTab, setActiveTab] = useState<"GENERAL" | "PRICING" | "PACKAGING" | "INVENTORY">("GENERAL");
   const [isMaximized, setIsMaximized] = useState(true);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   // Handle local image file upload & conversion to Data URL
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,6 +178,32 @@ export default function InventoryPage() {
   const isSellingAboveMrp = mrpNum > 0 && sellNum > mrpNum;
   const isLoss = costNum > 0 && sellNum > 0 && profitNum < 0;
 
+  
+  const openEditModal = (item: any) => {
+    setEditingProductId(item.id);
+    setName(item.name || "");
+    setCategory(item.category || "");
+    setProductType(item.productType || "RETAIL_ITEM");
+    setHsnCode(item.hsnCode || "9983");
+    setSku(item.sku || "");
+    setBarcode(item.barcode || "");
+    setPurchasePrice(item.purchasePrice ? String(item.purchasePrice) : "");
+    setSellingPrice(item.sellingPrice ? String(item.sellingPrice) : "");
+    setMrp(item.mrp ? String(item.mrp) : "");
+    setGstRate(item.gstRate ? String(item.gstRate) : "18");
+    setBaseUnit(item.baseUnit || "PCS");
+    setHasAltUnit(item.hasAltUnit || false);
+    setAltUnit(item.altUnit || "");
+    setConversionFactor(item.conversionFactor ? String(item.conversionFactor) : "1");
+    setInitialStock(item.currentStock ? String(item.currentStock) : "0");
+    setMinStockAlert(item.minStockAlert ? String(item.minStockAlert) : "5");
+    setHasBatchTracking(item.hasBatchTracking || false);
+    setImageUrl(item.imageUrl || "");
+    setImagePreview(item.imageUrl || null);
+    setActiveTab("GENERAL");
+    setShowModal(true);
+  };
+
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -207,8 +235,10 @@ export default function InventoryPage() {
       const cost = Number(purchasePrice || 0);
       const sell = Number(sellingPrice);
 
-      const res = await fetch("/api/products", {
-        method: "POST",
+      const url = editingProductId ? `/api/products/${editingProductId}` : "/api/products";
+      const res = await fetch(url, {
+        method: editingProductId ? "PUT" : "POST",
+        
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
@@ -387,7 +417,29 @@ export default function InventoryPage() {
             <span>Import CSV</span>
           </button>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+    setEditingProductId(null);
+    setName("");
+    setCategory("");
+    setProductType("RETAIL_ITEM");
+    setHsnCode("9983");
+    setSku("");
+    setBarcode("");
+    setPurchasePrice("");
+    setSellingPrice("");
+    setMrp("");
+    setGstRate("18");
+    setBaseUnit("PCS");
+    setHasAltUnit(false);
+    setAltUnit("");
+    setConversionFactor("10");
+    setInitialStock("0");
+    setMinStockAlert("5");
+    setHasBatchTracking(false);
+    setImageUrl("");
+    setImagePreview(null);
+    setShowModal(true);
+  }}
             className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 flex items-center space-x-1.5 transition"
           >
             <Plus className="h-4 w-4" />
@@ -481,7 +533,29 @@ export default function InventoryPage() {
             <p className="text-sm font-semibold text-slate-700">No products found</p>
             <p className="text-xs text-slate-400 mb-4">Add your first product to start tracking inventory</p>
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+    setEditingProductId(null);
+    setName("");
+    setCategory("");
+    setProductType("RETAIL_ITEM");
+    setHsnCode("9983");
+    setSku("");
+    setBarcode("");
+    setPurchasePrice("");
+    setSellingPrice("");
+    setMrp("");
+    setGstRate("18");
+    setBaseUnit("PCS");
+    setHasAltUnit(false);
+    setAltUnit("");
+    setConversionFactor("10");
+    setInitialStock("0");
+    setMinStockAlert("5");
+    setHasBatchTracking(false);
+    setImageUrl("");
+    setImagePreview(null);
+    setShowModal(true);
+  }}
               className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-600 hover:text-indigo-800"
             >
               <span>+ Add a product</span>

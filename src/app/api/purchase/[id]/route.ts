@@ -147,11 +147,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       const accounts = await tx.account.findMany({
         where: {
           tenantId,
-          code: { in: ["1200", "1410", "1420", "1430", "2000", "1000", "1010"] },
+          code: { in: ["1300", "1410", "1420", "1430", "2000", "1000", "1010"] },
         },
       });
       const acc = new Map(accounts.map((a) => [a.code, a]));
-      const inventoryAcc = acc.get("1200");
+      const inventoryAcc = acc.get("1300");
       const cgstAcc      = acc.get("1410");
       const sgstAcc      = acc.get("1420");
       const igstAcc      = acc.get("1430");
@@ -317,12 +317,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
       // Reverse Accounts
       const accounts = await tx.account.findMany({
-        where: { tenantId, code: { in: ["1200", "1410", "1420", "1430", "2000", "1000", "1010"] } }
+        where: { tenantId, code: { in: ["1300", "1410", "1420", "1430", "2000", "1000", "1010"] } }
       });
       const accountMap = new Map(accounts.map((a) => [a.code, a]));
       
-      if (accountMap.get("1200")) {
-        await tx.account.update({ where: { id: accountMap.get("1200")!.id }, data: { balance: { decrement: bill.totalTaxable } } });
+      if (accountMap.get("1300")) {
+        await tx.account.update({ where: { id: accountMap.get("1300")!.id }, data: { balance: { decrement: bill.totalTaxable } } });
       }
       if (accountMap.get("1410") && Number(bill.cgstAmount) > 0) {
         await tx.account.update({ where: { id: accountMap.get("1410")!.id }, data: { balance: { decrement: bill.cgstAmount } } });
