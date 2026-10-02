@@ -153,9 +153,10 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 `;
 
   const CANDIDATE_MODELS = [
-    "gemini-2.5-flash", "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
     "gemini-2.5-flash",
+    "gemini-1.5-flash"
   ];
 
   let rawText = "";
@@ -188,7 +189,8 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
       lastError = err;
         console.warn(`[AI Invoice Scanner] Model ${modelName} failed (${err.message}).`);
         if (/RESOURCE_EXHAUSTED|quota|429/i.test(err.message)) {
-          break; // Stop hammering the API if we are rate limited
+          // If 2.5-flash hits its tiny 20 RPD free tier limit, we must fall back to 1.5-flash which has 1500 RPD
+          console.warn(`[AI Invoice Scanner] Rate limited on ${modelName}. Falling back...`);
         }
       }
   }
