@@ -164,7 +164,7 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 
   for (const modelName of CANDIDATE_MODELS) {
     try {
-      const timeoutMs = 30_000;
+      const timeoutMs = 55_000;
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error(`Gemini AI OCR (${modelName}) timed out`)), timeoutMs);
       });
