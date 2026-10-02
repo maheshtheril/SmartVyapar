@@ -606,7 +606,7 @@ export default function PurchaseInwardPage() {
           }
 
           const gstRate = Number(it.gstRate || 18);
-            const landedCost = tenant?.isComposition ? cost * (1 + gstRate / 100) : cost;
+            const landedCost = currentTenant?.isComposition ? cost * (1 + gstRate / 100) : cost;
             if (match && Number(match.sellingPrice || 0) > 0) {
               sp = Number(match.sellingPrice);
               if (landedCost > 0) {
