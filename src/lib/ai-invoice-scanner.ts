@@ -171,7 +171,42 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 
       const scanPromise = ai.models.generateContent({
         model: modelName,
-          config: { responseMimeType: "application/json" },
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "object",
+              properties: {
+                billNumber: { type: "string" },
+                billDate: { type: "string" },
+                totalAmount: { type: "number" },
+                confidenceScore: { type: "number" },
+                items: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      productName: { type: "string" },
+                      suggestedDisplayName: { type: "string" },
+                      partNumber: { type: "string" },
+                      hsnCode: { type: "string" },
+                      batchNumber: { type: "string" },
+                      expiryDate: { type: "string" },
+                      unit: { type: "string" },
+                      quantity: { type: "number" },
+                      packageSize: { type: "number" },
+                      baseUnit: { type: "string" },
+                      baseQuantity: { type: "number" },
+                      purchasePrice: { type: "number" },
+                      mrp: { type: "number" },
+                      gstRate: { type: "number" }
+                    },
+                    required: ["productName", "suggestedDisplayName", "quantity", "purchasePrice", "partNumber", "hsnCode", "batchNumber", "unit"]
+                  }
+                }
+              },
+              required: ["items"]
+            }
+          },
         contents: [
           {
             role: "user",
