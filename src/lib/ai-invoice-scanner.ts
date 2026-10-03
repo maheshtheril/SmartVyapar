@@ -176,6 +176,8 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
             responseSchema: {
               type: "object",
               properties: {
+                supplierName: { type: "string" },
+                supplierGstin: { type: "string" },
                 billNumber: { type: "string" },
                 billDate: { type: "string" },
                 totalAmount: { type: "number" },
