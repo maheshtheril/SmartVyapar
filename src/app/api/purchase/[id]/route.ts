@@ -230,7 +230,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       });
 
       return bill;
-    }, { maxWait: 10000, timeout: 30000 });
+    }, { maxWait: 20000, timeout: 80000 });
 
     return NextResponse.json({
       success: true,
@@ -309,12 +309,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
             });
           }
         }
-
+        }
         // Delete Stock Logs for this bill
         await tx.stockLog.deleteMany({
           where: { tenantId, referenceId: bill.billNumber, type: "PURCHASE_IN" }
         });
-      }
 
       // Reverse Accounts
       const accounts = await tx.account.findMany({
@@ -376,7 +375,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
           details: { billNumber: bill.billNumber, totalAmount: bill.totalAmount },
         }
       });
-    }, { maxWait: 10000, timeout: 30000 });
+    }, { maxWait: 20000, timeout: 80000 });
 
     return NextResponse.json({ success: true, message: "Purchase bill successfully deleted." });
   } catch (error: any) {
