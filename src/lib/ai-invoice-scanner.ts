@@ -3,8 +3,8 @@ import { z } from "zod";
 
 export const ScannedPurchaseItemSchema = z.object({
   productName: z.string().trim().default("Unknown Item"),
-  suggestedDisplayName: z.string().trim().optional().default(""),
-  partNumber: z.string().trim().optional().default(""),
+  suggestedDisplayName: z.string().trim().describe("Mandatory. You must ALWAYS generate a clean, readable POS display name. Never leave this blank."),
+  partNumber: z.string().trim().optional().describe("Always extract the OEM/Part Number if it exists in the name."),
   hsnCode: z.string().trim().optional(),
   batchNumber: z.string().trim().optional().default(""),
   expiryDate: z.string().trim().optional().default(""),
