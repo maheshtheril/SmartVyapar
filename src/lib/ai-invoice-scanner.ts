@@ -171,7 +171,7 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 
       const scanPromise = ai.models.generateContent({
         model: modelName,
-          generationConfig: { responseMimeType: "application/json" },
+          config: { responseMimeType: "application/json" },
         contents: [
           {
             role: "user",
