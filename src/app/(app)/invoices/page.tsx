@@ -49,6 +49,7 @@ export default function InvoicesPage() {
     gstin: "32AAAAA0000A1Z5",
     phone: "9876543210",
     upiId: "zionabusiness@icici",
+    isComposition: false,
   });
   const [receiptData, setReceiptData] = useState<ThermalReceiptData | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -102,6 +103,7 @@ export default function InvoicesPage() {
             phone: data.tenant.phone || "",
             address: data.tenant.address || "",
             upiId: data.tenant.upiId || "",
+            isComposition: !!data.tenant.isComposition,
           });
         }
       }
@@ -971,14 +973,18 @@ export default function InvoicesPage() {
       {/* EDIT INVOICE MODAL — Full-Screen ERP Workspace */}
       {editingInvoice && (() => {
         // Live totals
+        const eIsComposition = !!business.isComposition;
         let eTaxable = 0, eCgst = 0, eSgst = 0, eIgst = 0;
         const eIsInter = editingInvoice.isInterState;
         (editingInvoice.items || []).forEach((it: any) => {
           const linePrice = Number(it.unitPrice || 0) * (1 - Number(it.discountPercent || 0) / 100);
           const taxable = Math.round(linePrice * Number(it.quantity || 1) * 100) / 100;
-          const tax = Math.round(taxable * Number(it.gstRate || 0) / 100 * 100) / 100;
+          // Composition dealers don't charge GST — no tax on sales
+          const tax = eIsComposition ? 0 : Math.round(taxable * Number(it.gstRate || 0) / 100 * 100) / 100;
           eTaxable += taxable;
-          if (eIsInter) eIgst += tax; else { eCgst += tax / 2; eSgst += tax / 2; }
+          if (!eIsComposition) {
+            if (eIsInter) eIgst += tax; else { eCgst += tax / 2; eSgst += tax / 2; }
+          }
         });
         const eGrand = Math.round((eTaxable + eCgst + eSgst + eIgst) * 100) / 100;
         const eDue = Math.max(0, Math.round((eGrand - Number(editingInvoice.paidAmount || 0)) * 100) / 100);
@@ -1096,8 +1102,8 @@ export default function InvoicesPage() {
                         <th className="py-2.5 px-2 w-16 text-center">Qty</th>
                         <th className="py-2.5 px-2 w-32 text-right bg-blue-900 text-blue-100 border-x border-blue-800">Unit Price (₹)</th>
                         <th className="py-2.5 px-2 w-16 text-right">Disc %</th>
-                        <th className="py-2.5 px-2 w-16 text-center">GST %</th>
-                        <th className="py-2.5 px-2 w-28 text-right">Taxable (₹)</th>
+                        {!eIsComposition && <th className="py-2.5 px-2 w-16 text-center">GST %</th>}
+                        {!eIsComposition && <th className="py-2.5 px-2 w-28 text-right">Taxable (₹)</th>}
                         <th className="py-2.5 px-3 w-28 text-right font-black">Line Total (₹)</th>
                       </tr>
                     </thead>
@@ -1105,7 +1111,7 @@ export default function InvoicesPage() {
                       {(editingInvoice.items || []).map((item: any, idx: number) => {
                         const linePrice = Number(item.unitPrice || 0) * (1 - Number(item.discountPercent || 0) / 100);
                         const taxable = Math.round(linePrice * Number(item.quantity || 1) * 100) / 100;
-                        const tax = Math.round(taxable * Number(item.gstRate || 0) / 100 * 100) / 100;
+                        const tax = eIsComposition ? 0 : Math.round(taxable * Number(item.gstRate || 0) / 100 * 100) / 100;
                         const lineTotal = Math.round((taxable + tax) * 100) / 100;
                         return (
                           <tr key={idx} className="hover:bg-blue-50/30 transition group">
@@ -1129,15 +1135,19 @@ export default function InvoicesPage() {
                                 onChange={e => updateItem(idx, 'discountPercent', e.target.value)}
                                 className="w-full text-right border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono" />
                             </td>
-                            <td className="py-2 px-2 align-middle">
-                              <select value={item.gstRate || 0} onChange={e => updateItem(idx, 'gstRate', e.target.value)}
-                                className="w-full border border-slate-300 rounded px-1 py-1.5 text-xs font-mono font-bold bg-white text-center">
-                                {[0,5,12,18,28].map(r => <option key={r} value={r}>{r}%</option>)}
-                              </select>
-                            </td>
-                            <td className="py-2 px-2 text-right font-mono text-slate-700 align-middle">
-                              ₹{taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </td>
+                            {!eIsComposition && (
+                              <td className="py-2 px-2 align-middle">
+                                <select value={item.gstRate || 0} onChange={e => updateItem(idx, 'gstRate', e.target.value)}
+                                  className="w-full border border-slate-300 rounded px-1 py-1.5 text-xs font-mono font-bold bg-white text-center">
+                                  {[0,5,12,18,28].map(r => <option key={r} value={r}>{r}%</option>)}
+                                </select>
+                              </td>
+                            )}
+                            {!eIsComposition && (
+                              <td className="py-2 px-2 text-right font-mono text-slate-700 align-middle">
+                                ₹{taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </td>
+                            )}
                             <td className="py-2 px-3 text-right font-mono font-black text-slate-900 align-middle">
                               ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </td>
@@ -1158,10 +1168,10 @@ export default function InvoicesPage() {
                   <span className="font-bold text-slate-800">{(editingInvoice.items || []).length} Lines</span>
                 </div>
                 <div className="space-y-0.5 border-l border-slate-200 pl-4">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Taxable</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">{eIsComposition ? 'Net Total' : 'Taxable'}</span>
                   <span className="font-bold text-slate-800">₹{eTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
-                {!eIsInter ? (
+                {!eIsComposition && (!eIsInter ? (
                   <>
                     <div className="space-y-0.5 border-l border-slate-200 pl-4">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">CGST</span>
@@ -1177,7 +1187,7 @@ export default function InvoicesPage() {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">IGST</span>
                     <span className="font-bold text-emerald-700">₹{eIgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
-                )}
+                ))}
                 <div className="space-y-0.5 border-l border-slate-200 pl-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Grand Total</span>
                   <span className="text-xl font-black text-slate-900">₹{eGrand.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
