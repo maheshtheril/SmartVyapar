@@ -802,16 +802,21 @@ export default function ThermalReceiptModal({
             visibility: visible;
           }
           #thermal-receipt-preview {
-            position: absolute;
+            position: fixed;
             left: 0;
             top: 0;
-            width: ${isA4 ? '210mm' : paperWidth};
+            width: ${isA4 ? '210mm' : paperWidth} !important;
+            max-width: ${isA4 ? '210mm' : paperWidth} !important;
+            min-width: ${isA4 ? '210mm' : paperWidth} !important;
             margin: 0 !important;
-            padding: ${is58mm ? '4px' : '8px'} !important;
+            padding: ${is58mm ? '3mm' : '4mm'} !important;
             box-shadow: none !important;
             border: none !important;
             background: white !important;
             color: black !important;
+            font-size: ${is58mm ? '9pt' : '10pt'} !important;
+            font-family: 'Courier New', Courier, monospace !important;
+            line-height: 1.4 !important;
           }
           @page {
             size: ${isA4 ? 'A4' : `${paperWidth} auto`};
