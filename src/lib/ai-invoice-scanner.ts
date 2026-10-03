@@ -84,9 +84,10 @@ export async function scanPurchaseInvoiceWithGemini(
 
   const prompt = `
 You are an expert Purchase Invoice and Bill OCR auditor with specialized knowledge across wholesale, pharmaceutical/medical, retail, and manufacturing sectors.
-Analyze this invoice image or document and extract the vendor, items, packaging units, tax slabs, batch numbers, expiry dates, and totals into a strict JSON object.
+Analyze this entire invoice document (ALL PAGES) and extract the vendor, items, packaging units, tax slabs, batch numbers, expiry dates, and totals into a strict JSON object.
 
 RULES:
+0. COMPLETE EXTRACTION: You MUST read EVERY SINGLE PAGE of the document if it has multiple pages. You MUST extract EVERY SINGLE LINE ITEM from ALL pages. Do not stop at page 1. Do not truncate.
 1. Vendor/Supplier: Extract exact business name, GSTIN (15 characters if present), bill/invoice number, and bill date (YYYY-MM-DD format).
 2. Line Items & Packaging (UOM) Intelligence:
    - Invoices can be from any sector: medical/pharma (medicines, tablets, injections, syrups, surgicals), grocery, electronics, auto, or retail.
