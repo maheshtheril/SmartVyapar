@@ -1363,7 +1363,8 @@ export default function NewInvoicePage() {
                 handleFastBarcodeScan(product);
               }}
               autoClearOnSelect={true}
-              placeholder="Scan barcode gun or search product name / SKU (F1)..."
+                openOnFocus={false}
+                placeholder="Scan barcode gun or search product name / SKU (F1)..."
             />
           </div>
 
@@ -1392,10 +1393,20 @@ export default function NewInvoicePage() {
                   {/* Product Picker */}
                   <div className="flex-1 min-w-[200px] w-full">
                     <ProductSearchCombobox
-                      products={isOnline ? undefined : catalog}
-                      selectedProductId={item.productId}
-                      onSelect={(prod) => handleProductSelect(idx, prod)}
-                    />
+                        id={`combo-row-${idx}`}
+                        products={isOnline ? undefined : catalog}
+                        selectedProductId={item.productId}
+                        onSelect={(prod) => {
+                          handleProductSelect(idx, prod);
+                          setTimeout(() => {
+                            const qtyInput = document.getElementById(`qty-row-${idx}`) as HTMLInputElement;
+                            if (qtyInput) {
+                              qtyInput.focus();
+                              qtyInput.select();
+                            }
+                          }, 50);
+                        }}
+                      />
                     {item.batchNumber && (
                       <div className="mt-1 flex items-center space-x-1.5 text-[10px]">
                         <span className="rounded bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 font-mono font-bold text-indigo-700">
@@ -1425,10 +1436,22 @@ export default function NewInvoicePage() {
                       -
                     </button>
                     <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => handleQuantityChange(idx, Number(e.target.value))}
+                        id={`qty-row-${idx}`}
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => handleQuantityChange(idx, Number(e.target.value))}
+                        onFocus={(e) => e.target.select()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const priceInput = document.getElementById(`price-row-${idx}`) as HTMLInputElement;
+                            if (priceInput) {
+                              priceInput.focus();
+                              priceInput.select();
+                            }
+                          }
+                        }}
                       className="w-10 text-center text-xs font-bold font-mono bg-transparent text-slate-900 focus:outline-none"
                     />
                     <button
@@ -1443,10 +1466,24 @@ export default function NewInvoicePage() {
                   {/* Price */}
                   <div className="w-20 shrink-0">
                     <input
-                      type="number"
-                      min="0"
-                      value={item.price}
-                      onChange={(e) => handlePriceChange(idx, Number(e.target.value))}
+                        id={`price-row-${idx}`}
+                        type="number"
+                        min="0"
+                        value={item.price}
+                        onChange={(e) => handlePriceChange(idx, Number(e.target.value))}
+                        onFocus={(e) => e.target.select()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddItem();
+                            setTimeout(() => {
+                              const nextCombo = document.getElementById(`combo-row-${billItems.length}`) as HTMLInputElement;
+                              if (nextCombo) {
+                                nextCombo.focus();
+                              }
+                            }, 50);
+                          }
+                        }}
                       className="w-full h-8 rounded-lg bg-white border border-slate-200 text-slate-900 font-mono font-bold text-xs text-right px-2 focus:border-indigo-500 focus:outline-none"
                       placeholder="₹ Price"
                     />

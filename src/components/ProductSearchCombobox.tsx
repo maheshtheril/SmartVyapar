@@ -16,12 +16,14 @@ export interface ProductOption {
 }
 
 interface ProductSearchComboboxProps {
+  id?: string;
   products?: ProductOption[];
   selectedProductId: string;
   onSelect: (product: ProductOption | null) => void;
   placeholder?: string;
   onBarcodeScan?: (product: ProductOption) => void;
   autoClearOnSelect?: boolean;
+  openOnFocus?: boolean;
 }
 
 export default function ProductSearchCombobox({
@@ -31,6 +33,8 @@ export default function ProductSearchCombobox({
   placeholder = "Search product name, SKU, or barcode (F1)...",
   onBarcodeScan,
   autoClearOnSelect = false,
+  openOnFocus = true,
+  id,
 }: ProductSearchComboboxProps) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -167,15 +171,16 @@ export default function ProductSearchCombobox({
       <div className="relative flex items-center">
         <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
         <input
-          ref={inputRef}
-          type="text"
+            id={id}
+            ref={inputRef}
+            type="text"
           autoFocus
-          value={isOpen ? query : (selectedProduct ? `[${selectedProduct.sku || 'No SKU'}] ${selectedProduct.name} (Qty: ${selectedProduct.currentStock})` : "")}
-          placeholder={selectedProduct ? `[${selectedProduct.sku}] ${selectedProduct.name}` : placeholder}
+          value={isOpen ? query : (selectedProduct ? (selectedProduct.sku ? `[${selectedProduct.sku}] ` : "") + `${selectedProduct.name} (Qty: ${selectedProduct.currentStock})` : "")}
+          placeholder={selectedProduct ? (selectedProduct.sku ? `[${selectedProduct.sku}] ` : "") + selectedProduct.name : placeholder}
           onFocus={() => {
-            setIsOpen(true);
-            setQuery("");
-          }}
+              if (openOnFocus) setIsOpen(true);
+              setQuery("");
+            }}
           onChange={(e) => {
             setQuery(e.target.value);
             setIsOpen(true);
@@ -205,7 +210,7 @@ export default function ProductSearchCombobox({
 
       {/* Autocomplete Dropdown List */}
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-[350px] w-full min-w-full sm:min-w-[450px] lg:min-w-[550px] max-w-[90vw] overflow-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-indigo-900/10">
           {filtered.length === 0 ? (
             <div className="py-4 text-center text-xs text-slate-400">
               No products found matching &quot;{query}&quot;

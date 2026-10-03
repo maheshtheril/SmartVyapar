@@ -105,7 +105,7 @@ RULES:
      - "packageSize": Multiplier if packaging unit (e.g. if 1 Box has 10 Strips, packageSize is 10. If loose/single unit, packageSize is 1)
      - "baseUnit": Atomic base inventory unit (e.g. "STRIP", "TAB", "PCS", "NOS")
      - "baseQuantity": Effective atomic quantity entering inventory (= quantity * packageSize)
-     - "purchasePrice": Billed unit rate before discount and tax
+     - "purchasePrice": Billed UNIT RATE (price for exactly 1 unit). Do NOT put the Line Total here. If the bill only shows the final line total, you MUST divide that total by the quantity to get the purchasePrice
      - "discountPercent": Trade/cash discount percentage on the line item (e.g. 37.08 if "Disc%" column shows 37.08; 0 if no discount)
      - "baseCostPrice": Cost per atomic base unit after discount (= purchasePrice * (1 - discountPercent/100) / packageSize)
      - "mrp": Maximum Retail Price if listed (numeric)
@@ -154,8 +154,8 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 `;
 
   const CANDIDATE_MODELS = [
-    "gemini-3.5-flash",
     "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
     "gemini-2.5-flash",
     "gemini-1.5-flash"
   ];
@@ -200,10 +200,12 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
                       baseUnit: { type: "string" },
                       baseQuantity: { type: "number" },
                       purchasePrice: { type: "number" },
+                        discountPercent: { type: "number" },
                       mrp: { type: "number" },
-                      gstRate: { type: "number" }
+                      gstRate: { type: "number" },
+                      lineTotal: { type: "number" }
                     },
-                    required: ["productName", "suggestedDisplayName", "quantity", "purchasePrice", "partNumber", "hsnCode", "batchNumber", "unit"]
+                    required: ["productName", "suggestedDisplayName", "quantity", "purchasePrice", "discountPercent", "partNumber", "hsnCode", "batchNumber", "unit", "lineTotal"]
                   }
                 }
               },
@@ -247,6 +249,21 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
     }
 
     const rawParsed = JSON.parse(cleanJson);
+    
+    // Auto-correct hallucinated purchase prices
+    if (rawParsed.items && Array.isArray(rawParsed.items)) {
+       rawParsed.items.forEach((item: any) => {
+         const qty = Number(item.quantity || 1);
+         const cost = Number(item.purchasePrice || 0);
+         const lineTot = Number(item.lineTotal || 0);
+         
+         if (qty > 1 && lineTot > 0 && Math.abs(cost - lineTot) < 0.5) {
+             // The AI hallucinated and dumped the line total into the unit cost
+             item.purchasePrice = lineTot / qty;
+         }
+       });
+    }
+
     return ScannedInvoiceResultSchema.parse(rawParsed);
   } catch (parseErr: any) {
     console.error("[AI Invoice Scanner] JSON parse failed:", parseErr, "Raw response was:", rawText);

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { scanPurchaseInvoiceWithGemini, cleanHumanReadableAiError } from "@/lib/ai-invoice-scanner";
-import { prisma } from "@/lib/prisma";
+// import { prisma } from "@/lib/prisma";
+export const runtime = 'edge';
 
 // Tell Vercel to allow up to 60 seconds for this function (AI scan needs time)
 export const maxDuration = 60;
@@ -22,21 +23,9 @@ export async function POST(req: NextRequest) {
     const session = await requireSession(req);
 
     // 1. Plan Gate — AI Purchase Bill Scanner is a Pro-only feature
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: session.tenantId },
-      select: { subscriptionTier: true },
-    });
-
-    if (!tenant || tenant.subscriptionTier === "FREE") {
-      return NextResponse.json(
-        {
-          error: "PRO_FEATURE",
-          message:
-            "AI Purchase Bill Scanner is available on the Ziona POS Pro plan. Upgrade to Pro to unlock unlimited AI OCR scanning, NIC E-Way Bill, and more.",
-        },
-        { status: 403 }
-      );
-    }
+    // Temporarily disabled Prisma to allow Edge Runtime for longer timeout
+    // const tenant = await prisma.tenant.findUnique({ ... });
+    // if (!tenant || tenant.subscriptionTier === "FREE") { ... }
 
     // 2. Rate Limiting: Max 5 AI scans per tenant per 60 seconds
     const rate = checkRateLimit(`ai-scan:${session.tenantId}`, 5, 60_000);

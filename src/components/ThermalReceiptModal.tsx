@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import BarcodeSvg from './BarcodeSvg';
 import QrCodeCanvas from './QrCodeCanvas';
+import A4InvoicePrint from './A4InvoicePrint';
 import { 
   buildEscposReceipt, 
   printDirectHardware, 
@@ -69,7 +70,7 @@ export interface ThermalReceiptData {
   customerLoyaltyBalance?: number;
 }
 
-interface BusinessProfile {
+export interface BusinessProfile {
   name: string;
   logoUrl?: string;
   gstin?: string;
@@ -94,7 +95,7 @@ export default function ThermalReceiptModal({
   business,
   onNewSale,
 }: ThermalReceiptModalProps) {
-  const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>('80mm');
+  const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm' | 'A4'>('80mm');
   const [autoPrintTriggered, setAutoPrintTriggered] = useState(false);
   const [printingDirect, setPrintingDirect] = useState(false);
   const [kickingDrawer, setKickingDrawer] = useState(false);
@@ -171,8 +172,8 @@ export default function ThermalReceiptModal({
         taxAmount: (data.cgstAmount || 0) + (data.sgstAmount || 0) + (data.igstAmount || 0),
         totalAmount: data.totalAmount,
         paymentMethod: data.paymentMode,
-        paperWidth,
-        includeBarcode: true,
+        paperWidth: paperWidth === 'A4' ? '80mm' : paperWidth,
+          includeBarcode: true,
         kickDrawer: hwConfig.kickDrawerOnPrint,
         loyaltyRedeemed: data.loyaltyDiscountAmount,
         loyaltyEarned: data.loyaltyPointsEarned,
@@ -259,6 +260,7 @@ export default function ThermalReceiptModal({
   };
 
   const is58mm = paperWidth === '58mm';
+  const isA4 = paperWidth === 'A4';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -302,14 +304,25 @@ export default function ThermalReceiptModal({
               <button
                 type="button"
                 onClick={() => setPaperWidth('58mm')}
-                className={`rounded-lg px-2.5 py-1 transition ${
-                  paperWidth === '58mm'
-                    ? 'bg-white text-indigo-600 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                2-Inch (58mm)
-              </button>
+                  className={`rounded-lg px-2.5 py-1 transition ${
+                    paperWidth === '58mm'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  2-Inch (58mm)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaperWidth('A4')}
+                  className={`rounded-lg px-2.5 py-1 transition ${
+                    paperWidth === 'A4'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  A4 (Full Size)
+                </button>
             </div>
 
             <button
@@ -792,7 +805,7 @@ export default function ThermalReceiptModal({
             position: absolute;
             left: 0;
             top: 0;
-            width: ${paperWidth};
+            width: ${isA4 ? '210mm' : paperWidth};
             margin: 0 !important;
             padding: ${is58mm ? '4px' : '8px'} !important;
             box-shadow: none !important;
@@ -801,7 +814,7 @@ export default function ThermalReceiptModal({
             color: black !important;
           }
           @page {
-            size: ${paperWidth} auto;
+            size: ${isA4 ? 'A4' : `${paperWidth} auto`};
             margin: 0mm;
           }
         }
