@@ -466,8 +466,8 @@ export default function NewInvoicePage() {
   const totalPaidStream = Number(payments.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2));
   const streamBalanceDue = Number(Math.max(0, grandTotal - totalPaidStream).toFixed(2));
   const isStreamBalanced = grandTotal > 0 && Math.abs(totalPaidStream - grandTotal) < 0.05;
-  const isStreamDeficit = totalPaidStream < grandTotal;
-  const isStreamSurplus = totalPaidStream > grandTotal;
+  const isStreamDeficit = !isStreamBalanced && totalPaidStream < grandTotal;
+  const isStreamSurplus = !isStreamBalanced && totalPaidStream > grandTotal;
 
   // Auto-snap active payment amount when Payment Terminal opens
   useEffect(() => {
