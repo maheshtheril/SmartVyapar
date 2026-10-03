@@ -161,22 +161,28 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       const bankAcc      = acc.get("1010");
 
       // ── 4. REVERSE old ledger entries ─────────────────────────────────────
-      // Debit side: undo inventory & ITC
-      if (inventoryAcc) {
-        await tx.account.update({
-          where: { id: inventoryAcc.id },
-          data: { balance: { decrement: oldTaxable } },
-        });
-      }
-      if (cgstAcc && oldCgst > 0) {
-        await tx.account.update({ where: { id: cgstAcc.id }, data: { balance: { decrement: oldCgst } } });
-      }
-      if (sgstAcc && oldSgst > 0) {
-        await tx.account.update({ where: { id: sgstAcc.id }, data: { balance: { decrement: oldSgst } } });
-      }
-      if (igstAcc && oldIgst > 0) {
-        await tx.account.update({ where: { id: igstAcc.id }, data: { balance: { decrement: oldIgst } } });
-      }
+      const tenantMeta = await tx.tenant.findUnique({ where: { id: tenantId } });
+        const isComp = tenantMeta?.isComposition === true;
+        
+        // Debit side: undo inventory & ITC
+        if (inventoryAcc) {
+          const oldInventoryDebit = isComp ? oldTotal : oldTaxable;
+          await tx.account.update({
+            where: { id: inventoryAcc.id },
+            data: { balance: { decrement: oldInventoryDebit } },
+          });
+        }
+        if (!isComp) {
+          if (cgstAcc && oldCgst > 0) {
+            await tx.account.update({ where: { id: cgstAcc.id }, data: { balance: { decrement: oldCgst } } });
+          }
+          if (sgstAcc && oldSgst > 0) {
+            await tx.account.update({ where: { id: sgstAcc.id }, data: { balance: { decrement: oldSgst } } });
+          }
+          if (igstAcc && oldIgst > 0) {
+            await tx.account.update({ where: { id: igstAcc.id }, data: { balance: { decrement: oldIgst } } });
+          }
+        }
       // Credit side: undo payable / cash / bank
       if (oldPayment === "CREDIT" && apAcc) {
         await tx.account.update({ where: { id: apAcc.id  }, data: { balance: { decrement: oldTotal } } });
@@ -188,20 +194,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
       // ── 5. POST new ledger entries ─────────────────────────────────────────
       if (inventoryAcc) {
-        await tx.account.update({
-          where: { id: inventoryAcc.id },
-          data: { balance: { increment: totalTaxable } },
-        });
-      }
-      if (cgstAcc && cgstAmount > 0) {
-        await tx.account.update({ where: { id: cgstAcc.id }, data: { balance: { increment: cgstAmount } } });
-      }
-      if (sgstAcc && sgstAmount > 0) {
-        await tx.account.update({ where: { id: sgstAcc.id }, data: { balance: { increment: sgstAmount } } });
-      }
-      if (igstAcc && igstAmount > 0) {
-        await tx.account.update({ where: { id: igstAcc.id }, data: { balance: { increment: igstAmount } } });
-      }
+          const inventoryDebit = isComp ? totalAmount : totalTaxable;
+          await tx.account.update({
+            where: { id: inventoryAcc.id },
+            data: { balance: { increment: inventoryDebit } },
+          });
+        }
+        if (!isComp) {
+          if (cgstAcc && cgstAmount > 0) {
+            await tx.account.update({ where: { id: cgstAcc.id }, data: { balance: { increment: cgstAmount } } });
+          }
+          if (sgstAcc && sgstAmount > 0) {
+            await tx.account.update({ where: { id: sgstAcc.id }, data: { balance: { increment: sgstAmount } } });
+          }
+          if (igstAcc && igstAmount > 0) {
+            await tx.account.update({ where: { id: igstAcc.id }, data: { balance: { increment: igstAmount } } });
+          }
+        }
       if (newPayment === "CREDIT" && apAcc) {
         await tx.account.update({ where: { id: apAcc.id   }, data: { balance: { increment: totalAmount } } });
       } else if (newPayment === "CASH" && cashAcc) {
@@ -321,18 +330,24 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       });
       const accountMap = new Map(accounts.map((a) => [a.code, a]));
       
-      if (accountMap.get("1300")) {
-        await tx.account.update({ where: { id: accountMap.get("1300")!.id }, data: { balance: { decrement: bill.totalTaxable } } });
-      }
-      if (accountMap.get("1410") && Number(bill.cgstAmount) > 0) {
-        await tx.account.update({ where: { id: accountMap.get("1410")!.id }, data: { balance: { decrement: bill.cgstAmount } } });
-      }
-      if (accountMap.get("1420") && Number(bill.sgstAmount) > 0) {
-        await tx.account.update({ where: { id: accountMap.get("1420")!.id }, data: { balance: { decrement: bill.sgstAmount } } });
-      }
-      if (accountMap.get("1430") && Number(bill.igstAmount) > 0) {
-        await tx.account.update({ where: { id: accountMap.get("1430")!.id }, data: { balance: { decrement: bill.igstAmount } } });
-      }
+      const tenantMetaDel = await tx.tenant.findUnique({ where: { id: tenantId } });
+        const isCompDel = tenantMetaDel?.isComposition === true;
+        
+        if (accountMap.get("1300")) {
+          const invDec = isCompDel ? Number(bill.totalAmount) : Number(bill.totalTaxable);
+          await tx.account.update({ where: { id: accountMap.get("1300")!.id }, data: { balance: { decrement: invDec } } });
+        }
+        if (!isCompDel) {
+          if (accountMap.get("1410") && Number(bill.cgstAmount) > 0) {
+            await tx.account.update({ where: { id: accountMap.get("1410")!.id }, data: { balance: { decrement: bill.cgstAmount } } });
+          }
+          if (accountMap.get("1420") && Number(bill.sgstAmount) > 0) {
+            await tx.account.update({ where: { id: accountMap.get("1420")!.id }, data: { balance: { decrement: bill.sgstAmount } } });
+          }
+          if (accountMap.get("1430") && Number(bill.igstAmount) > 0) {
+            await tx.account.update({ where: { id: accountMap.get("1430")!.id }, data: { balance: { decrement: bill.igstAmount } } });
+          }
+        }
 
       const paymentTerms = bill.paymentTerms;
       const totalAmount = bill.totalAmount;
