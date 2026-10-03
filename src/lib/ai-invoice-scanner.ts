@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export const ScannedPurchaseItemSchema = z.object({
   productName: z.string().trim().default("Unknown Item"),
-  suggestedDisplayName: z.string().trim().describe("Mandatory. You must ALWAYS generate a clean, readable POS display name. Never leave this blank."),
+  suggestedDisplayName: z.string().trim().optional().default("").describe("Strongly Required. You must ALWAYS generate a clean, readable POS display name. Never leave this blank."),
   partNumber: z.string().trim().optional().describe("Always extract the OEM/Part Number if it exists in the name."),
   hsnCode: z.string().trim().optional(),
   batchNumber: z.string().trim().optional().default(""),
@@ -153,8 +153,8 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 `;
 
   const CANDIDATE_MODELS = [
-    "gemini-3.5-flash-lite",
     "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
     "gemini-2.5-flash",
     "gemini-1.5-flash"
   ];
@@ -171,6 +171,7 @@ Return ONLY a valid JSON object matching this schema, with no markdown code bloc
 
       const scanPromise = ai.models.generateContent({
         model: modelName,
+          generationConfig: { responseMimeType: "application/json" },
         contents: [
           {
             role: "user",
