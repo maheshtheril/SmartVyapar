@@ -145,16 +145,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
       if (oldJournal) {
         for (const line of oldJournal.lines) {
-          const delta = Number(line.debit) - Number(line.credit);
+          const acc = line.account;
+          if (!acc) continue;
+          const isAssetExp = acc.classification === 'ASSET' || acc.classification === 'EXPENSE';
+          const delta = isAssetExp
+            ? Number(line.debit) - Number(line.credit)
+            : Number(line.credit) - Number(line.debit);
           await tx.account.update({
             where: { id: line.accountId },
             data: { balance: { decrement: delta } },
           });
         }
-        await tx.journalEntry.update({
-          where: { id: oldJournal.id },
-          data: { narration: `[REVERSED] ${oldJournal.narration}` },
-        });
+        // DELETE the old journal entry — don't leave ghost entries behind
+        await tx.journalEntry.delete({ where: { id: oldJournal.id } });
       }
 
       // ── 5. Post new ledger entry ───────────────────────────────────────────

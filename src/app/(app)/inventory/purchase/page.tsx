@@ -402,32 +402,19 @@ export default function PurchaseInwardPage() {
     }
   };
 
-  // Delete purchase bill
-  const deletePurchase = async (billId: string) => {
-    if (!confirm('Are you sure you want to completely delete this purchase bill? This will reverse all ledger entries and stock quantities. This action cannot be undone.')) return;
+
+  // Cancel purchase bill (soft cancel — world standard, never hard delete financial records)
+  const cancelPurchase = async (billId: string, billNumber: string) => {
+    const reason = prompt(Cancel Purchase Bill #?\n\nEnter reason:, 'Cancelled by owner');
+    if (reason === null) return;
     try {
-      const res = await fetch(`/api/purchase/${billId}`, { method: 'DELETE' });
-      let data;
-      try {
-        data = await res.json();
-      } catch (e) {
-        if (res.status === 413) {
-          throw new Error("File is too large (max 4.5MB). Please compress the PDF or scan 1 page at a time.");
-        } else if (res.status === 504) {
-          throw new Error("AI scan timed out after 10 seconds (Vercel limit). Please try a smaller file.");
-        } else {
-          const text = await res.text().catch(() => "");
-          throw new Error("Server error (" + res.status + "): " + (text.substring(0, 50) || "AI service unavailable."));
-        }
-      }
-      if (!res.ok) {
-        alert(data.error || 'Failed to delete purchase.');
-        return;
-      }
-      alert('Purchase bill deleted successfully.');
+      const res = await fetch(/api/purchase/?reason=, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { alert(data.error || 'Failed to cancel purchase.'); return; }
+      alert(Purchase bill # cancelled. Stock reversed & ledger corrected.);
       loadBills();
     } catch (err: any) {
-      alert('An error occurred while deleting the purchase.');
+      alert('An error occurred while cancelling the purchase.');
     }
   };
 
@@ -1134,13 +1121,13 @@ export default function PurchaseInwardPage() {
                               <RotateCcw className="w-3 h-3 text-rose-600" /> Return
                             </button>
                             <button
-                              onClick={() => deletePurchase(bill.id)}
-                              className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-md text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
-                              title="Delete Purchase completely"
+                              onClick={() => cancelPurchase(bill.id, bill.billNumber)}
+                              disabled={bill.isCancelled}
+                              className={px-2.5 py-1 border rounded-md text-[11px] font-semibold flex items-center gap-1 transition }
+                              title={bill.isCancelled ? 'Bill already cancelled' : 'Cancel Purchase Bill (Stock & Ledger reversed)'}
                             >
-                              <Trash2 className="w-3 h-3 text-red-600" /> Delete
+                              <Trash2 className="w-3 h-3" /> {bill.isCancelled ? 'Cancelled' : 'Cancel'}
                             </button>
-                          </div>
                         </td>
                       </tr>
                     );
