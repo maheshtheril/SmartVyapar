@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
         phone: true,
         address: true,
         upiId: true,
+        isComposition: true,
       },
     });
 
