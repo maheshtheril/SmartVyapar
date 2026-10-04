@@ -359,6 +359,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         await tx.account.update({ where: { id: accountMap.get("1010")!.id }, data: { balance: { increment: totalAmount } } });
       }
 
+      // Delete journal entries for this bill (prevents ghost ledger entries)
+      const billJournals = await tx.journalEntry.findMany({
+        where: { tenantId, referenceNo: bill.billNumber },
+      });
+      for (const journal of billJournals) {
+        await tx.journalEntry.delete({ where: { id: journal.id } });
+      }
+
       // Delete Bill Items
       await tx.purchaseBillItem.deleteMany({ where: { purchaseBillId: bill.id } });
       
