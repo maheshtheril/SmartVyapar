@@ -405,13 +405,13 @@ export default function PurchaseInwardPage() {
 
   // Cancel purchase bill (soft cancel — world standard, never hard delete financial records)
   const cancelPurchase = async (billId: string, billNumber: string) => {
-    const reason = prompt(Cancel Purchase Bill #?\n\nEnter reason:, 'Cancelled by owner');
+    const reason = prompt(`Cancel Purchase Bill #${billNumber}?\n\nEnter reason:`, 'Cancelled by owner');
     if (reason === null) return;
     try {
-      const res = await fetch(/api/purchase/?reason=, { method: 'DELETE' });
+      const res = await fetch(`/api/purchase/${billId}?reason=${encodeURIComponent(reason || 'Cancelled by owner')}`, { method: 'DELETE' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { alert(data.error || 'Failed to cancel purchase.'); return; }
-      alert(Purchase bill # cancelled. Stock reversed & ledger corrected.);
+      alert(`Purchase bill #${billNumber} cancelled. Stock reversed & ledger corrected.`);
       loadBills();
     } catch (err: any) {
       alert('An error occurred while cancelling the purchase.');
@@ -1123,11 +1123,12 @@ export default function PurchaseInwardPage() {
                             <button
                               onClick={() => cancelPurchase(bill.id, bill.billNumber)}
                               disabled={bill.isCancelled}
-                              className={px-2.5 py-1 border rounded-md text-[11px] font-semibold flex items-center gap-1 transition }
+                              className={`px-2.5 py-1 border rounded-md text-[11px] font-semibold flex items-center gap-1 transition ${bill.isCancelled ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200 cursor-pointer'}`}
                               title={bill.isCancelled ? 'Bill already cancelled' : 'Cancel Purchase Bill (Stock & Ledger reversed)'}
                             >
                               <Trash2 className="w-3 h-3" /> {bill.isCancelled ? 'Cancelled' : 'Cancel'}
                             </button>
+                           </div>
                         </td>
                       </tr>
                     );
