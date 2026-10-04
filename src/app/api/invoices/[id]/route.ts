@@ -160,10 +160,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         await tx.journalEntry.delete({ where: { id: oldJournal.id } });
       }
 
-      // ── 5. Post new ledger entry ───────────────────────────────────────────
+      // ── 5. Post new ledger entry (with items for COGS calculation) ────────
+      const invoiceWithItems = await tx.invoice.findUnique({
+        where: { id: invoice.id },
+        include: { items: true },
+      });
       const { postInvoiceJournalEntry } = await import("@/lib/accounting-mapper");
       await postInvoiceJournalEntry(tx, tenantId, {
-        ...invoice,
+        ...invoiceWithItems,
         invoiceDate: existing.invoiceDate,
       });
 
