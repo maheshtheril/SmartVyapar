@@ -599,6 +599,11 @@ model Invoice {
   loyaltyPointsRedeemed Int     @default(0)
   loyaltyDiscountAmount Decimal @default(0.0) @db.Decimal(10, 2)
 
+  // Soft Cancellation (world standard — never hard delete financial records)
+  isCancelled        Boolean   @default(false)
+  cancelledAt        DateTime?
+  cancellationReason String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -693,6 +698,12 @@ model PurchaseBill {
   paymentStatus PaymentStatus @default(UNPAID)
   paidAmount    Decimal       @default(0.0) @db.Decimal(10, 2)
   dueAmount     Decimal       @default(0.0) @db.Decimal(10, 2)
+
+  // Soft Cancellation (world standard — never hard delete financial records)
+  isCancelled        Boolean   @default(false)
+  cancelledAt        DateTime?
+  cancellationReason String?
+
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

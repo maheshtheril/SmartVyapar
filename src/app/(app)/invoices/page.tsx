@@ -65,19 +65,20 @@ export default function InvoicesPage() {
   const [selectedInvoiceForReturn, setSelectedInvoiceForReturn] = useState<any | null>(null);
   const [showCreditNoteModal, setShowCreditNoteModal] = useState(false);
 
-  const deleteInvoice = async (invoiceId: string) => {
-    if (!confirm('Are you sure you want to completely delete this invoice? This will reverse all ledger entries and stock quantities. This action cannot be undone.')) return;
+  const cancelInvoice = async (invoiceId: string, invoiceNumber: string) => {
+    const reason = prompt(`Cancel Invoice #${invoiceNumber}?\n\nEnter reason (or press OK to proceed):\n`, 'Cancelled by owner');
+    if (reason === null) return; // user pressed Cancel on prompt
     try {
-      const res = await fetch(`/api/invoices/${invoiceId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/invoices/${invoiceId}?reason=${encodeURIComponent(reason || 'Cancelled by owner')}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || 'Failed to delete invoice.');
+        alert(data.error || 'Failed to cancel invoice.');
         return;
       }
-      alert('Invoice deleted successfully.');
+      alert(`Invoice #${invoiceNumber} cancelled. Stock restored & ledger reversed.`);
       loadInvoices();
     } catch (err: any) {
-      alert('An error occurred while deleting the invoice.');
+      alert('An error occurred while cancelling the invoice.');
     }
   };
 
@@ -653,9 +654,16 @@ export default function InvoicesPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {invoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-slate-50/50">
+                    <tr key={inv.id} className={`hover:bg-slate-50/50 ${inv.isCancelled ? 'opacity-60 bg-red-50/30' : ''}`}>
                       <td className="px-4 py-3 font-bold text-slate-900">
-                        <div>{inv.invoiceNumber}</div>
+                        <div className="flex items-center gap-2">
+                          {inv.invoiceNumber}
+                          {inv.isCancelled && (
+                            <span className="inline-flex items-center text-[10px] font-bold text-red-700 bg-red-100 border border-red-300 px-1.5 py-0.5 rounded-md uppercase tracking-wide">
+                              Cancelled
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap gap-1 mt-0.5">
                           {inv.irn ? (
                             <span
@@ -758,12 +766,17 @@ export default function InvoicesPage() {
                             
                             <button
                               type="button"
-                              onClick={() => deleteInvoice(inv.id)}
-                              className="inline-flex items-center space-x-1 rounded-lg border border-red-200 bg-red-50/80 px-2 py-1 text-red-800 hover:bg-red-100 transition shadow-xs font-semibold"
-                              title="Securely Delete Invoice completely"
+                              onClick={() => cancelInvoice(inv.id, inv.invoiceNumber)}
+                              disabled={inv.isCancelled}
+                              className={`inline-flex items-center space-x-1 rounded-lg border px-2 py-1 transition shadow-xs font-semibold ${
+                                inv.isCancelled
+                                  ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                                  : 'border-red-200 bg-red-50/80 text-red-800 hover:bg-red-100'
+                              }`}
+                              title={inv.isCancelled ? 'Invoice already cancelled' : 'Cancel Invoice (Stock & Ledger reversed)'}
                             >
-                              <Trash2 className="h-3 w-3 text-red-600" />
-                              <span>Delete</span>
+                              <Trash2 className="h-3 w-3" />
+                              <span>{inv.isCancelled ? 'Cancelled' : 'Cancel'}</span>
                             </button>
 
                           <button

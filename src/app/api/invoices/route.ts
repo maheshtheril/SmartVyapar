@@ -51,11 +51,11 @@ export async function GET(req: NextRequest) {
 
     const [invAll, invToday, cnAll, cnToday] = await Promise.all([
       prisma.invoice.aggregate({
-        where: { tenantId, einvoiceStatus: { not: "CANCELLED" } },
+        where: { tenantId, isCancelled: false, einvoiceStatus: { not: "CANCELLED" } },
         _sum: { dueAmount: true, cgstAmount: true, sgstAmount: true, igstAmount: true },
       }),
       prisma.invoice.aggregate({
-        where: { tenantId, einvoiceStatus: { not: "CANCELLED" }, invoiceDate: { gte: todayStart, lte: todayEnd } },
+        where: { tenantId, isCancelled: false, einvoiceStatus: { not: "CANCELLED" }, invoiceDate: { gte: todayStart, lte: todayEnd } },
         _sum: { totalAmount: true },
       }),
       prisma.creditNote.aggregate({

@@ -35,6 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       include: { items: true },
     });
     if (!existing) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    if (existing.isCancelled) return NextResponse.json({ error: "Cannot edit a cancelled invoice." }, { status: 400 });
 
     // Old totals for ledger reversal
     const oldSubtotal   = Number(existing.subtotal);
@@ -135,8 +136,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         });
       }
 
-      // ── 4. Reverse old ledger entries (find and reverse journal entry) ─────
-      // Find original journal entry for this invoice
+      // ── 4. Reverse old ledger entries ─────────────────────────────────────
       const oldJournal = await tx.journalEntry.findFirst({
         where: { tenantId, referenceNo: existing.invoiceNumber },
         include: { lines: { include: { account: true } } },
@@ -144,15 +144,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       });
 
       if (oldJournal) {
-        // Reverse each line: debit ↔ credit
         for (const line of oldJournal.lines) {
-          const delta = Number(line.debit) - Number(line.credit); // positive = was a debit
+          const delta = Number(line.debit) - Number(line.credit);
           await tx.account.update({
             where: { id: line.accountId },
-            data: { balance: { decrement: delta } }, // undo original impact
+            data: { balance: { decrement: delta } },
           });
         }
-        // Mark old entry as reversed
         await tx.journalEntry.update({
           where: { id: oldJournal.id },
           data: { narration: `[REVERSED] ${oldJournal.narration}` },
@@ -199,31 +197,50 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 
-// DELETE /api/invoices/[id] - Completely and securely deletes an invoice
+// DELETE /api/invoices/[id] — SOFT CANCEL (world standard: never hard-delete financial records)
+// Posts a reversal journal entry, restores stock, marks invoice as CANCELLED.
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await requireSession(req);
     const tenantId = session.tenantId;
 
+    const { searchParams } = new URL(req.url);
+    const reason = searchParams.get("reason") || "Cancelled by user";
+
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id, tenantId },
       include: { items: true },
     });
-    if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    if (invoice.isCancelled) return NextResponse.json({ error: "Invoice is already cancelled." }, { status: 400 });
 
-    // Security Checks
-    if (invoice.isReconciled) {
-      return NextResponse.json({ error: 'Cannot delete an invoice that has been reconciled in a closed Cash Drawer shift. Issue a Credit Note instead.' }, { status: 400 });
-    }
-    if (invoice.irn) {
-      return NextResponse.json({ error: 'Cannot delete an invoice with an active E-Invoice IRN. Cancel the E-Invoice on the portal first.' }, { status: 400 });
+    // Block cancellation of e-invoiced IRN (must cancel on IRP portal first)
+    if (invoice.irn && invoice.einvoiceStatus === "GENERATED") {
+      return NextResponse.json({
+        error: "Cannot cancel: This invoice has an active E-Invoice IRN. Cancel it on the IRP portal first.",
+      }, { status: 400 });
     }
     if (invoice.ewayBillNo) {
-      return NextResponse.json({ error: 'Cannot delete an invoice with an active E-Way Bill. Cancel the E-Way bill first.' }, { status: 400 });
+      return NextResponse.json({
+        error: "Cannot cancel: This invoice has an active E-Way Bill. Cancel the E-Way Bill first.",
+      }, { status: 400 });
     }
 
     await prisma.$transaction(async (tx) => {
-      // 1. Reverse Customer Balance
+
+      // ── 1. Mark invoice as CANCELLED ──────────────────────────────────────
+      await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          isCancelled:        true,
+          cancelledAt:        new Date(),
+          cancellationReason: reason,
+          // Zero out due amount — no money owed on a cancelled invoice
+          dueAmount:          0,
+        },
+      });
+
+      // ── 2. Restore customer outstanding balance ────────────────────────────
       if (invoice.customerId && Number(invoice.dueAmount) > 0) {
         await tx.customer.update({
           where: { id: invoice.customerId },
@@ -231,17 +248,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         });
       }
 
-      // 2. Restore Stock Quantities
+      // ── 3. Restore stock quantities ────────────────────────────────────────
       for (const item of invoice.items) {
         if (!item.productId) continue;
-        
-        // Increment Product Stock
+
         await tx.product.update({
           where: { id: item.productId },
           data: { currentStock: { increment: item.baseQuantity } },
         });
 
-        // Increment Batch Stock
         if (item.batchId) {
           await tx.batch.update({
             where: { id: item.batchId },
@@ -249,10 +264,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
           });
         }
 
-        // We assume default warehouse for now (as invoices don't track WH explicitly in basic mode)
-        const whStock = await tx.warehouseStock.findFirst({
-          where: { productId: item.productId }
-        });
+        const whStock = await tx.warehouseStock.findFirst({ where: { productId: item.productId } });
         if (whStock) {
           await tx.warehouseStock.update({
             where: { id: whStock.id },
@@ -260,53 +272,76 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
           });
         }
 
-        // Delete Stock Logs for this sale
+        // Remove sale stock logs
         await tx.stockLog.deleteMany({
-          where: { tenantId, referenceId: invoice.invoiceNumber, type: 'SALE_OUT' }
+          where: { tenantId, referenceId: invoice.invoiceNumber, type: "SALE_OUT" },
         });
       }
 
-      // 3. Reverse Ledger (Journal Entries)
-      const oldJournals = await tx.journalEntry.findMany({
+      // ── 4. Post reversal journal entry (DR/CR flipped) ────────────────────
+      // Find original journal entries for this invoice
+      const originalJournals = await tx.journalEntry.findMany({
         where: { tenantId, referenceNo: invoice.invoiceNumber },
-        include: { lines: true }
+        include: { lines: { include: { account: true } } },
       });
 
-      for (const journal of oldJournals) {
+      for (const journal of originalJournals) {
+        // Reverse each line: flip debit ↔ credit, update account balance
+        const reversalLines = journal.lines.map((line: any) => ({
+          accountCode: line.account.code,
+          debit:  Number(line.credit), // flipped
+          credit: Number(line.debit),  // flipped
+        }));
+
         for (const line of journal.lines) {
-          const acc = await tx.account.findUnique({ where: { id: line.accountId } });
+          const acc = line.account;
           if (!acc) continue;
+          // Original delta was: ASSET/EXP → debit-credit, others → credit-debit
+          // Reversal delta is the negative of that
           const isAssetExp = acc.classification === "ASSET" || acc.classification === "EXPENSE";
-          const delta = isAssetExp ? Number(line.debit) - Number(line.credit) : Number(line.credit) - Number(line.debit);
+          const originalDelta = isAssetExp
+            ? Number(line.debit) - Number(line.credit)
+            : Number(line.credit) - Number(line.debit);
+
           await tx.account.update({
             where: { id: line.accountId },
-            data: { balance: { decrement: delta } },
+            data: { balance: { decrement: originalDelta } },
           });
         }
-        await tx.journalEntry.delete({ where: { id: journal.id } });
+
+        // Mark original entry as reversed
+        await tx.journalEntry.update({
+          where: { id: journal.id },
+          data: { narration: `[CANCELLED] ${journal.narration}` },
+        });
       }
 
-      // 4. Delete Items and Invoice
-      await tx.invoiceItem.deleteMany({ where: { invoiceId: invoice.id } });
-      await tx.invoice.delete({ where: { id: invoice.id } });
-
-      // 5. Audit Log
+      // ── 5. Audit log ───────────────────────────────────────────────────────
       await tx.auditLog.create({
         data: {
           tenantId,
-          userId: session.userId,
-          userName: session.name || 'Manager',
-          action: AuditAction.DELETE,
-          entityType: 'INVOICE',
-          entityId: invoice.id,
-          details: { invoiceNumber: invoice.invoiceNumber, totalAmount: invoice.totalAmount },
-        }
+          userId:     session.userId,
+          userName:   session.name || "Manager",
+          action:     AuditAction.DELETE,
+          entityType: "INVOICE",
+          entityId:   invoice.id,
+          details: {
+            invoiceNumber:      invoice.invoiceNumber,
+            totalAmount:        invoice.totalAmount,
+            cancellationReason: reason,
+            type:               "SOFT_CANCEL",
+          },
+        },
       });
-    }, { maxWait: 10000, timeout: 30000 });
 
-    return NextResponse.json({ success: true, message: 'Invoice successfully deleted.' });
+    }, DEFAULT_TX_OPTIONS);
+
+    return NextResponse.json({
+      success: true,
+      message: `Invoice #${invoice.invoiceNumber} cancelled successfully. Stock restored & ledger reversed.`,
+    });
   } catch (error: any) {
-    console.error('Error deleting invoice:', error);
+    console.error("Error cancelling invoice:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

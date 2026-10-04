@@ -254,50 +254,47 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-// DELETE /api/purchase/[id] - Reverses a purchase entirely if no stock was consumed
+// DELETE /api/purchase/[id] — SOFT CANCEL (world standard: never hard-delete financial records)
+// Marks bill as CANCELLED, reverses stock, reverses ledger journal entries.
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await requireRole(req, ["OWNER", "MANAGER"]);
     const tenantId = session.tenantId;
+
+    const { searchParams } = new URL(req.url);
+    const reason = searchParams.get("reason") || "Cancelled by user";
 
     const bill = await prisma.purchaseBill.findUnique({
       where: { id: params.id, tenantId },
       include: { items: true },
     });
     if (!bill) return NextResponse.json({ error: "Bill not found" }, { status: 404 });
+    if (bill.isCancelled) return NextResponse.json({ error: "Purchase bill is already cancelled." }, { status: 400 });
 
-    // 1. Verify stock has not been consumed
-    for (const item of bill.items) {
-      if (!item.productId) continue;
-      
-      const batch = await prisma.batch.findFirst({
-        where: { tenantId, productId: item.productId, batchNumber: item.batchNumber || "" }
-      });
-      
-      // If batch exists and current stock is LESS than what we purchased, stock was consumed.
-      if (batch && Number(batch.currentStock) < Number(item.baseQuantity)) {
-        return NextResponse.json(
-          { error: `Cannot delete: Stock for ${item.productName} has already been consumed or sold.` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // 2. Perform deletion in a transaction
     await prisma.$transaction(async (tx) => {
-      // Revert Stock and Batches
+
+      // ── 1. Mark bill as CANCELLED ──────────────────────────────────────────
+      await tx.purchaseBill.update({
+        where: { id: bill.id },
+        data: {
+          isCancelled:        true,
+          cancelledAt:        new Date(),
+          cancellationReason: reason,
+          dueAmount:          0,
+        },
+      });
+
+      // ── 2. Reverse stock quantities (decrement back what was added) ─────────
       for (const item of bill.items) {
         if (!item.productId) continue;
 
-        // Decrement Product Stock
         await tx.product.update({
           where: { id: item.productId },
           data: { currentStock: { decrement: item.baseQuantity } },
         });
 
-        // Decrement Batch Stock
         const batch = await tx.batch.findFirst({
-          where: { tenantId, productId: item.productId, batchNumber: item.batchNumber || "" }
+          where: { tenantId, productId: item.productId, batchNumber: item.batchNumber || "" },
         });
         if (batch) {
           await tx.batch.update({
@@ -306,10 +303,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
           });
         }
 
-        // Decrement Warehouse Stock
         if (bill.warehouseId) {
           const whStock = await tx.warehouseStock.findUnique({
-            where: { warehouseId_productId: { warehouseId: bill.warehouseId, productId: item.productId } }
+            where: { warehouseId_productId: { warehouseId: bill.warehouseId, productId: item.productId } },
           });
           if (whStock) {
             await tx.warehouseStock.update({
@@ -318,97 +314,67 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
             });
           }
         }
-        }
-        // Delete Stock Logs for this bill
-        await tx.stockLog.deleteMany({
-          where: { tenantId, referenceId: bill.billNumber, type: "PURCHASE_IN" }
-        });
-
-      // Reverse Accounts
-      const accounts = await tx.account.findMany({
-        where: { tenantId, code: { in: ["1300", "1410", "1420", "1430", "2000", "1000", "1010"] } }
-      });
-      const accountMap = new Map(accounts.map((a) => [a.code, a]));
-      
-      const tenantMetaDel = await tx.tenant.findUnique({ where: { id: tenantId } });
-        const isCompDel = tenantMetaDel?.isComposition === true;
-        
-        if (accountMap.get("1300")) {
-          const invDec = isCompDel ? Number(bill.totalAmount) : Number(bill.totalTaxable);
-          await tx.account.update({ where: { id: accountMap.get("1300")!.id }, data: { balance: { decrement: invDec } } });
-        }
-        if (!isCompDel) {
-          if (accountMap.get("1410") && Number(bill.cgstAmount) > 0) {
-            await tx.account.update({ where: { id: accountMap.get("1410")!.id }, data: { balance: { decrement: bill.cgstAmount } } });
-          }
-          if (accountMap.get("1420") && Number(bill.sgstAmount) > 0) {
-            await tx.account.update({ where: { id: accountMap.get("1420")!.id }, data: { balance: { decrement: bill.sgstAmount } } });
-          }
-          if (accountMap.get("1430") && Number(bill.igstAmount) > 0) {
-            await tx.account.update({ where: { id: accountMap.get("1430")!.id }, data: { balance: { decrement: bill.igstAmount } } });
-          }
-        }
-
-      const paymentTerms = bill.paymentTerms;
-      const totalAmount = bill.totalAmount;
-      if (paymentTerms === "CREDIT" && accountMap.get("2000")) {
-        await tx.account.update({ where: { id: accountMap.get("2000")!.id }, data: { balance: { decrement: totalAmount } } });
-      } else if (paymentTerms === "CASH" && accountMap.get("1000")) {
-        await tx.account.update({ where: { id: accountMap.get("1000")!.id }, data: { balance: { increment: totalAmount } } });
-      } else if ((paymentTerms === "BANK_TRANSFER" || paymentTerms === "UPI") && accountMap.get("1010")) {
-        await tx.account.update({ where: { id: accountMap.get("1010")!.id }, data: { balance: { increment: totalAmount } } });
       }
 
-      // Delete journal entries for this bill (prevents ghost ledger entries)
-      const billJournals = await tx.journalEntry.findMany({
+      // Delete purchase stock logs
+      await tx.stockLog.deleteMany({
+        where: { tenantId, referenceId: bill.billNumber, type: "PURCHASE_IN" },
+      });
+
+      // ── 3. Reverse account balances & mark journal entries as CANCELLED ─────
+      const journals = await tx.journalEntry.findMany({
         where: { tenantId, referenceNo: bill.billNumber },
+        include: { lines: { include: { account: true } } },
       });
-      for (const journal of billJournals) {
-        await tx.journalEntry.delete({ where: { id: journal.id } });
-      }
 
-      // Delete Bill Items
-      await tx.purchaseBillItem.deleteMany({ where: { purchaseBillId: bill.id } });
-      
-      // Delete Bill
-      await tx.purchaseBill.delete({ where: { id: bill.id } });
-
-      // Clean up orphaned products block removed to prevent Foreign Key transaction errors
-
-      // Clean up orphaned supplier
-      if (bill.supplierId) {
-        const otherBills = await tx.purchaseBill.count({ where: { supplierId: bill.supplierId } });
-        if (otherBills === 0) {
-          const supplier = await tx.supplier.findUnique({ where: { id: bill.supplierId } });
-          await tx.supplier.delete({ where: { id: bill.supplierId } });
-          if (supplier?.accountId) {
-             await tx.account.delete({ where: { id: supplier.accountId } });
-          }
+      for (const journal of journals) {
+        for (const line of journal.lines) {
+          const acc = line.account;
+          if (!acc) continue;
+          const isAssetExp = acc.classification === "ASSET" || acc.classification === "EXPENSE";
+          const originalDelta = isAssetExp
+            ? Number(line.debit) - Number(line.credit)
+            : Number(line.credit) - Number(line.debit);
+          await tx.account.update({
+            where: { id: line.accountId },
+            data: { balance: { decrement: originalDelta } },
+          });
         }
+        // Mark as cancelled — keep in DB for audit trail
+        await tx.journalEntry.update({
+          where: { id: journal.id },
+          data: { narration: `[CANCELLED] ${journal.narration}` },
+        });
       }
 
+      // ── 4. Audit log ───────────────────────────────────────────────────────
       await tx.auditLog.create({
         data: {
           tenantId,
-          userId: session.userId,
-          userName: session.name || "Manager",
-          action: AuditAction.DELETE,
+          userId:     session.userId,
+          userName:   session.name || "Manager",
+          action:     AuditAction.DELETE,
           entityType: "PURCHASE_BILL",
-          entityId: bill.id,
-          details: { billNumber: bill.billNumber, totalAmount: bill.totalAmount },
-        }
+          entityId:   bill.id,
+          details: {
+            billNumber:         bill.billNumber,
+            totalAmount:        bill.totalAmount,
+            cancellationReason: reason,
+            type:               "SOFT_CANCEL",
+          },
+        },
       });
+
     }, { maxWait: 20000, timeout: 80000 });
 
-    return NextResponse.json({ success: true, message: "Purchase bill successfully deleted." });
+    return NextResponse.json({
+      success: true,
+      message: `Purchase bill #${bill.billNumber} cancelled. Stock reversed & ledger corrected.`,
+    });
   } catch (error: any) {
     if (error.name === "ForbiddenError") return NextResponse.json({ error: error.message }, { status: 403 });
     if (error.name === "AuthError")      return NextResponse.json({ error: error.message }, { status: 401 });
-    console.error("Error deleting purchase bill:", error);
+    console.error("Error cancelling purchase bill:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-
-
-
