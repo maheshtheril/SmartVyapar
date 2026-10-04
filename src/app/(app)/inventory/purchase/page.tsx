@@ -9,6 +9,7 @@ import {
   Percent,
   Plus,
   Trash2,
+  XCircle,
   Printer,
   Barcode,
   CheckCircle2,
@@ -1123,10 +1124,10 @@ export default function PurchaseInwardPage() {
                             <button
                               onClick={() => cancelPurchase(bill.id, bill.billNumber)}
                               disabled={bill.isCancelled}
-                              className={`px-2.5 py-1 border rounded-md text-[11px] font-semibold flex items-center gap-1 transition ${bill.isCancelled ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200 cursor-pointer'}`}
+                              className={`px-2.5 py-1 border rounded-md text-[11px] font-semibold flex items-center gap-1 transition ${bill.isCancelled ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 cursor-pointer'}`}
                               title={bill.isCancelled ? 'Bill already cancelled' : 'Cancel Purchase Bill (Stock & Ledger reversed)'}
                             >
-                              <Trash2 className="w-3 h-3" /> {bill.isCancelled ? 'Cancelled' : 'Cancel'}
+                              <XCircle className="w-3 h-3" /> {bill.isCancelled ? 'Cancelled' : 'Cancel'}
                             </button>
                            </div>
                         </td>
