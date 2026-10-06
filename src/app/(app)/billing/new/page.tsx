@@ -140,6 +140,7 @@ export default function NewInvoicePage() {
   const [catalog, setCatalog] = useState<ProductOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
@@ -951,6 +952,8 @@ export default function NewInvoicePage() {
 
   // Submit Invoice to Neon DB (or Offline Storage)
   const handleCreateBill = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     const validItems = billItems.filter((i) => i.productId && i.price > 0);
     if (validItems.length === 0) {
       alert("Please add at least one product item to bill!");
@@ -1102,6 +1105,7 @@ export default function NewInvoicePage() {
       setShowReceiptModal(true);
       setIsPaymentModalOpen(false);
       setIsSubmitting(false);
+        isSubmittingRef.current = false;
       return;
     }
 
@@ -1187,6 +1191,7 @@ export default function NewInvoicePage() {
       }
     } finally {
       setIsSubmitting(false);
+        isSubmittingRef.current = false;
     }
   };
 
@@ -2397,6 +2402,9 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
+
+
 
 
 
