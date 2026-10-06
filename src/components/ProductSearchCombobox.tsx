@@ -6,9 +6,12 @@ import { Search, Check, AlertTriangle, X, ChevronDown } from 'lucide-react';
 export interface ProductOption {
   id: string;
   name: string;
+  displayName?: string;
+  partNumber?: string;
   sku?: string;
   barcode?: string;
   hsnCode: string;
+  mrp?: number;
   sellingPrice: number;
   gstRate: number;
   currentStock: number;
@@ -98,9 +101,12 @@ export default function ProductSearchCombobox({
           const q = query.toLowerCase();
           return (
             (p.name && p.name.toLowerCase().includes(q)) ||
+            (p.displayName && p.displayName.toLowerCase().includes(q)) ||
+            (p.partNumber && p.partNumber.toLowerCase().includes(q)) ||
             (p.barcode && p.barcode.toLowerCase().includes(q)) ||
             (p.sku && p.sku.toLowerCase().includes(q)) ||
-            (p.hsnCode && p.hsnCode.includes(q))
+            (p.hsnCode && p.hsnCode.includes(q)) ||
+            (p.mrp && p.mrp.toString().includes(q))
           );
         }).slice(0, 50))
     : serverResults;

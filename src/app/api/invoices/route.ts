@@ -39,7 +39,9 @@ export async function GET(req: NextRequest) {
     const invoices = await prisma.invoice.findMany({
       where,
       include: {
-        items: true,
+        items: {
+          include: { product: true }
+        }
       },
       orderBy: { createdAt: "desc" },
     });
@@ -146,6 +148,12 @@ export async function POST(req: NextRequest) {
     });
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
 
+    const printTemplate = await prisma.printTemplate.findFirst({
+      where: { tenantId, docType: 'sale_bill' },
+    });
+    const sections = printTemplate?.sections ? (printTemplate.sections as any) : {};
+    const itemNameFormat = sections.itemNameFormat || 'default';
+
     // Atomic transaction: Create Invoice, Line Items, Deduct Stock, Record Stock Logs
     const result = await prisma.$transaction(async (tx) => {
       // 1. Generate Invoice Number atomically (race-condition safe)
@@ -190,9 +198,16 @@ export async function POST(req: NextRequest) {
         totalSgst += tax.sgstAmount;
         totalIgst += tax.igstAmount;
 
+        let finalProductName = product.name;
+        if (itemNameFormat === 'pos_name') {
+          finalProductName = product.displayName || product.name;
+        } else if (itemNameFormat === 'part_name') {
+          finalProductName = product.partNumber ? `[${product.partNumber}] ${product.displayName || product.name}` : (product.displayName || product.name);
+        }
+
         processedItems.push({
           productId: product.id,
-          productName: product.name,
+          productName: finalProductName,
           hsnCode: product.hsnCode,
           unitSold,
           quantity: qty,

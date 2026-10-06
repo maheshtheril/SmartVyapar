@@ -45,6 +45,7 @@ export interface TemplateSections {
   showUpiQr: boolean;
   showTerms: boolean;
   showSignatures: boolean;
+  itemNameFormat?: 'default' | 'part_name' | 'pos_name';
 }
 
 export interface TemplateAutomation {

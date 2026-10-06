@@ -793,6 +793,19 @@ function PrintStudioContent() {
                     />
                   </label>
                 ))}
+                
+                <div className="py-2 border-t border-slate-100">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Item Name Display Format</label>
+                  <select
+                    value={sections.itemNameFormat || 'default'}
+                    onChange={(e) => setSections({ ...sections, itemNameFormat: e.target.value as any })}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="default">Default Product Name</option>
+                    <option value="pos_name">POS Display Name</option>
+                    <option value="part_name">[Part No] POS Display Name</option>
+                  </select>
+                </div>
               </div>
 
               {/* Footer & Compliance Group */}

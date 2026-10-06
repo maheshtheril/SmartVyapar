@@ -301,9 +301,12 @@ export default function NewInvoicePage() {
           const mappedProducts = data.products.map((p: any) => ({
             id: p.id,
             name: p.name,
+            displayName: p.displayName,
+            partNumber: p.partNumber,
             sku: p.sku,
             barcode: p.barcode,
             hsnCode: p.hsnCode,
+            mrp: p.mrp ? Number(p.mrp) : undefined,
             sellingPrice: Number(p.sellingPrice),
             gstRate: Number(p.gstRate),
             currentStock: Number(p.currentStock),
@@ -1347,26 +1350,7 @@ export default function NewInvoicePage() {
         {/* LEFT PANEL: CART & ITEMS (58% on Desktop) */}
         <section className="w-full lg:w-[58%] border-b lg:border-b-0 lg:border-r border-slate-200 bg-white flex flex-col p-4 sm:p-5 overflow-hidden">
           
-          {/* Barcode & Product Quick Search */}
-          <div className="mb-3 shrink-0">
-            <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
-              Barcode Scanner / Fast Product Lookup
-            </label>
-            <ProductSearchCombobox
-              products={isOnline ? undefined : catalog}
-              selectedProductId=""
-              onSelect={(product) => {
-                if (!product) return;
-                handleFastBarcodeScan(product);
-              }}
-              onBarcodeScan={(product) => {
-                handleFastBarcodeScan(product);
-              }}
-              autoClearOnSelect={true}
-                openOnFocus={false}
-                placeholder="Scan barcode gun or search product name / SKU (F1)..."
-            />
-          </div>
+
 
           {/* Cart Items List Table */}
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 rounded-xl bg-slate-50/50 p-2 border border-slate-200">
@@ -1380,6 +1364,25 @@ export default function NewInvoicePage() {
                 <Plus className="h-3.5 w-3.5" />
                 <span>+ Add Row (F2)</span>
               </button>
+            </div>
+
+            {/* Fast Product Lookup / Barcode Scanner Row */}
+            <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-xs relative">
+              <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-8 bg-indigo-500 rounded-r-full"></div>
+              <ProductSearchCombobox
+                products={isOnline ? undefined : catalog}
+                selectedProductId=""
+                onSelect={(product) => {
+                  if (!product) return;
+                  handleFastBarcodeScan(product);
+                }}
+                onBarcodeScan={(product) => {
+                  handleFastBarcodeScan(product);
+                }}
+                autoClearOnSelect={true}
+                openOnFocus={false}
+                placeholder="Scan barcode gun or search product name / SKU / MRP (F1)..."
+              />
             </div>
 
             {billItems.map((item, idx) => {
