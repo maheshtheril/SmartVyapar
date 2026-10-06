@@ -2369,7 +2369,7 @@ export default function NewInvoicePage() {
       {/* ESC/POS Thermal Roll Receipt Modal (80mm / 58mm) */}
       <ThermalReceiptModal
         isOpen={showReceiptModal}
-        onClose={() => setShowReceiptModal(false)}
+        onClose={() => { setShowReceiptModal(false); handleResetNewSale(); }}
         data={receiptData}
         business={business}
         onNewSale={handleResetNewSale}
@@ -2402,6 +2402,7 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
 
 
 
