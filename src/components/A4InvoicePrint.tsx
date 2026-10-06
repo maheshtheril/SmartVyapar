@@ -1,4 +1,5 @@
 import React from 'react';
+import { Phone } from 'lucide-react';
 import { ThermalReceiptData, BusinessProfile, ThermalReceiptItem } from './ThermalReceiptModal';
 
 interface A4InvoicePrintProps {
@@ -43,8 +44,8 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
             <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">{data.docTitle || 'TAX INVOICE'}</div>
             <h1 className="text-2xl font-black uppercase tracking-[0.05em] text-blue-800 mb-1.5 leading-tight">{business.name}</h1>
             <p className="font-bold text-[13px] text-slate-700 tracking-wide leading-snug">{business.address}</p>
-            <p className="font-bold text-[12px] text-slate-700 mt-0.5">
-              <span className="text-slate-400 font-semibold">PHONE:</span> {business.phone}
+            <p className="font-bold text-[12px] text-slate-700 mt-0.5 flex items-center justify-center">
+              <Phone className="w-3.5 h-3.5 text-slate-400 mr-1" strokeWidth={2.5} /> {business.phone}
             </p>
           </div>
           
