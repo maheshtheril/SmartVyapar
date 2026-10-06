@@ -495,8 +495,13 @@ export default function ThermalReceiptModal({
           </div>
 
           {/* Right Column: Thermal Paper Preview (Real Scale) */}
-          <div className="md:col-span-7 order-1 md:order-2 flex justify-center items-start">
-            {/* Outer Roll Container */}
+          <div className="md:col-span-7 order-1 md:order-2 flex justify-center items-start overflow-auto max-h-[85vh]">
+            {isA4 ? (
+              <div id="a4-receipt-preview" className="scale-[0.5] sm:scale-75 md:scale-90 origin-top shadow-2xl print:scale-100 print:shadow-none">
+                <A4InvoicePrint data={data} business={business} />
+              </div>
+            ) : (
+            /* Outer Roll Container */
             <div
               className={`bg-white shadow-xl border border-slate-300 transition-all duration-300 text-black font-mono text-[11px] leading-relaxed select-none ${
                 is58mm ? 'w-[240px] px-2 py-4 text-[10px]' : 'w-[320px] px-4 py-5 text-[11px]'
@@ -787,16 +792,37 @@ export default function ThermalReceiptModal({
                 </p>
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Embedded CSS for Thermal Printing: Targets ONLY #thermal-receipt-preview */}
+      {/* Embedded CSS for Printing: Targets thermal or A4 */}
       <style jsx global>{`
         @media print {
           body * {
             visibility: hidden;
           }
+          
+          ${isA4 ? `
+          #a4-receipt-preview,
+          #a4-receipt-preview * {
+            visibility: visible;
+          }
+          #a4-receipt-preview {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+          ` : `
           #thermal-receipt-preview,
           #thermal-receipt-preview * {
             visibility: visible;
@@ -805,9 +831,9 @@ export default function ThermalReceiptModal({
             position: fixed;
             left: 0;
             top: 0;
-            width: ${isA4 ? '210mm' : paperWidth} !important;
-            max-width: ${isA4 ? '210mm' : paperWidth} !important;
-            min-width: ${isA4 ? '210mm' : paperWidth} !important;
+            width: ${paperWidth} !important;
+            max-width: ${paperWidth} !important;
+            min-width: ${paperWidth} !important;
             margin: 0 !important;
             padding: ${is58mm ? '3mm' : '4mm'} !important;
             box-shadow: none !important;
@@ -819,9 +845,10 @@ export default function ThermalReceiptModal({
             line-height: 1.4 !important;
           }
           @page {
-            size: ${isA4 ? 'A4' : `${paperWidth} auto`};
+            size: ${paperWidth} auto;
             margin: 0mm;
           }
+          `}
         }
       `}</style>
     </div>

@@ -1,6 +1,5 @@
 import React from 'react';
-import { ThermalReceiptData } from './ThermalReceiptModal';
-import { BusinessProfile } from './ThermalReceiptModal';
+import { ThermalReceiptData, BusinessProfile, ThermalReceiptItem } from './ThermalReceiptModal';
 
 interface A4InvoicePrintProps {
   data: ThermalReceiptData;
@@ -10,113 +9,207 @@ interface A4InvoicePrintProps {
 export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) {
   const isIgst = data.customerState && business.stateCode && data.customerState !== business.stateCode;
 
+  // Helper to calculate taxes per item (assuming total is inclusive)
+  const calculateItemTaxes = (item: ThermalReceiptItem) => {
+    const rate = item.gstRate || 0;
+    const taxAmount = (item.total * rate) / (100 + rate);
+    const taxable = item.total - taxAmount;
+    
+    return {
+      taxable,
+      cgst: isIgst ? 0 : taxAmount / 2,
+      sgst: isIgst ? 0 : taxAmount / 2,
+      igst: isIgst ? taxAmount : 0,
+    };
+  };
+
   return (
-    <div className="bg-white w-full max-w-[210mm] mx-auto p-8 text-slate-900 font-sans shadow-sm ring-1 ring-slate-200 min-h-[297mm]">
-      {/* Header */}
-      <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight">{business.name}</h1>
-          <p className="text-sm mt-1">{business.address}</p>
-          <p className="text-sm">Phone: {business.phone}</p>
-          {business.gstin && <p className="text-sm font-bold mt-1">GSTIN: {business.gstin}</p>}
-        </div>
-        <div className="text-right">
-          <h2 className="text-xl font-bold uppercase text-slate-500 mb-2">{data.docTitle || 'TAX INVOICE'}</h2>
-          <p className="text-sm font-semibold">Invoice No: <span className="font-mono">{data.invoiceNumber}</span></p>
-          <p className="text-sm font-semibold">Date: {new Date(data.invoiceDate).toLocaleDateString('en-IN')}</p>
-        </div>
-      </div>
-
-      {/* Bill To */}
-      <div className="mb-6">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Billed To</h3>
-        <p className="font-bold text-base">{data.customerName}</p>
-        {data.customerPhone && <p className="text-sm">Ph: {data.customerPhone}</p>}
-        {data.customerState && <p className="text-sm">State: {data.customerState}</p>}
-      </div>
-
-      {/* Items Table */}
-      <table className="w-full text-sm mb-6 border-collapse">
-        <thead>
-          <tr className="bg-slate-100 border-y border-slate-300">
-            <th className="py-2 px-2 text-left font-bold">#</th>
-            <th className="py-2 px-2 text-left font-bold">Item Description</th>
-            <th className="py-2 px-2 text-center font-bold">HSN/SAC</th>
-            <th className="py-2 px-2 text-right font-bold">Qty</th>
-            <th className="py-2 px-2 text-right font-bold">Rate</th>
-            <th className="py-2 px-2 text-right font-bold">GST %</th>
-            <th className="py-2 px-2 text-right font-bold">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.items.map((item, idx) => (
-            <tr key={idx} className="border-b border-slate-200">
-              <td className="py-2 px-2 text-left">{idx + 1}</td>
-              <td className="py-2 px-2 text-left font-medium">{item.name}</td>
-              <td className="py-2 px-2 text-center text-xs">{item.hsn || '-'}</td>
-              <td className="py-2 px-2 text-right">{item.quantity} {item.unit || 'PCS'}</td>
-              <td className="py-2 px-2 text-right">₹{item.price.toFixed(2)}</td>
-              <td className="py-2 px-2 text-right">{item.gstRate || 0}%</td>
-              <td className="py-2 px-2 text-right font-bold">₹{item.total.toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Totals */}
-      <div className="flex justify-end mb-8">
-        <div className="w-1/2">
-          <div className="flex justify-between py-1">
-            <span className="font-semibold text-slate-600">Subtotal:</span>
-            <span>₹{(data.taxableAmount || data.subTotal).toFixed(2)}</span>
+    <div className="bg-white w-full max-w-[210mm] mx-auto text-black font-sans min-h-[297mm] flex flex-col border-2 border-black p-1 text-[13px] leading-tight print:border-none print:p-0">
+      <div className="border border-black flex flex-col flex-1">
+        
+        {/* Top Header */}
+        <div className="relative border-b border-black p-4 text-center flex flex-col items-center min-h-[120px] justify-center">
+          <div className="absolute top-4 left-4 flex flex-col items-center justify-center w-24 h-24 border border-slate-200">
+            {business.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={business.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+            ) : (
+              <span className="text-gray-300 text-sm font-bold">LOGO</span>
+            )}
           </div>
           
-          {(data.cgstAmount || 0) > 0 && (
-            <div className="flex justify-between py-1">
-              <span className="font-semibold text-slate-600">CGST:</span>
-              <span>₹{(data.cgstAmount || 0).toFixed(2)}</span>
-            </div>
-          )}
-          {(data.sgstAmount || 0) > 0 && (
-            <div className="flex justify-between py-1">
-              <span className="font-semibold text-slate-600">SGST:</span>
-              <span>₹{(data.sgstAmount || 0).toFixed(2)}</span>
-            </div>
-          )}
-          {(data.igstAmount || 0) > 0 && (
-            <div className="flex justify-between py-1">
-              <span className="font-semibold text-slate-600">IGST:</span>
-              <span>₹{(data.igstAmount || 0).toFixed(2)}</span>
-            </div>
-          )}
+          <div className="font-bold text-sm uppercase mb-1">{data.docTitle || 'TAX INVOICE'}</div>
+          <h1 className="text-3xl font-black uppercase tracking-widest text-slate-900 mb-2">{business.name}</h1>
+          <p className="font-semibold text-sm">{business.address}</p>
+          <p className="font-semibold text-sm">Phone: {business.phone}</p>
           
-          <div className="flex justify-between py-2 border-t-2 border-slate-900 mt-2">
-            <span className="font-black text-lg">Grand Total:</span>
-            <span className="font-black text-lg">₹{data.totalAmount.toFixed(2)}</span>
-          </div>
-          
-          <div className="text-right mt-1 text-xs text-slate-500 font-semibold">
-            Amount in words: Rupees {numberToWords(Math.round(data.totalAmount))} Only
+          <div className="absolute bottom-4 right-4 text-right text-[13px]">
+            {business.gstin && <div className="font-bold">GSTIN: {business.gstin}</div>}
+            {business.stateCode && <div className="font-bold">State code: {business.stateCode}</div>}
           </div>
         </div>
-      </div>
 
-      {/* Footer / Notes */}
-      {data.notes && (
-        <div className="mb-6">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Notes / Terms</h3>
-          <p className="text-sm whitespace-pre-wrap">{data.notes}</p>
+        {/* Info Row */}
+        <div className="flex border-b border-black">
+          {/* Billed To */}
+          <div className="w-1/2 border-r border-black p-3">
+            <div className="font-semibold mb-1 text-sm">Billed To :</div>
+            <div className="font-bold text-[14px]">{data.customerName || 'Cash Customer'}</div>
+            {data.customerState && <div className="mt-1 text-[13px]">State: {data.customerState}</div>}
+            {data.customerPhone && <div className="mt-1 text-[13px]">Phone: {data.customerPhone}</div>}
+          </div>
+          
+          {/* Invoice Details Table */}
+          <div className="w-1/2 flex flex-col text-[13px]">
+            <div className="flex border-b border-black">
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Invoice No</div>
+              <div className="w-1/2 p-1.5 font-bold">{data.invoiceNumber}</div>
+            </div>
+            <div className="flex border-b border-black">
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Date</div>
+              <div className="w-1/2 p-1.5">{new Date(data.invoiceDate).toLocaleDateString('en-IN')}</div>
+            </div>
+            <div className="flex border-b border-black">
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Terms of Payments</div>
+              <div className="w-1/2 p-1.5">{data.paymentMode}</div>
+            </div>
+            <div className="flex border-b border-black">
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Sales Person</div>
+              <div className="w-1/2 p-1.5">{data.cashierName || '-'}</div>
+            </div>
+            <div className="flex flex-1">
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Destination</div>
+              <div className="w-1/2 p-1.5">-</div>
+            </div>
+          </div>
         </div>
-      )}
 
-      <div className="mt-16 flex justify-between items-end">
-        <div className="text-xs text-slate-500">
-          This is a computer generated invoice.
+        {/* Items Table */}
+        <div className="flex-1 flex flex-col">
+          {/* Table Header */}
+          <div className="flex border-b border-black font-bold text-center bg-slate-50 items-stretch text-[13px]">
+            <div className="w-10 border-r border-black p-2 flex items-center justify-center">SNo</div>
+            <div className="flex-1 border-r border-black p-2 flex items-center justify-center">Commodity / Item</div>
+            <div className="w-20 border-r border-black p-2 flex items-center justify-center">HSN/SAC</div>
+            <div className="w-16 border-r border-black p-2 flex items-center justify-center">Tax(%)</div>
+            <div className="w-20 border-r border-black p-2 flex items-center justify-center">Rate</div>
+            <div className="w-16 border-r border-black p-2 flex items-center justify-center">Qty</div>
+            <div className="w-24 border-r border-black p-2 flex items-center justify-center">Gross</div>
+            <div className="w-20 border-r border-black p-2 flex items-center justify-center">{isIgst ? 'IGST' : 'CGST'}</div>
+            <div className="w-20 border-r border-black p-2 flex items-center justify-center">{isIgst ? '-' : 'SGST'}</div>
+            <div className="w-28 p-2 flex items-center justify-center">Total</div>
+          </div>
+
+          {/* Table Body */}
+          <div className="flex-1 flex flex-col text-[13px]">
+            {data.items.map((item, idx) => {
+              const taxes = calculateItemTaxes(item);
+              return (
+                <div key={idx} className="flex border-b border-black min-h-[28px] items-stretch">
+                  <div className="w-10 border-r border-black p-1.5 text-center">{idx + 1}</div>
+                  <div className="flex-1 border-r border-black p-1.5 font-semibold">{item.name}</div>
+                  <div className="w-20 border-r border-black p-1.5 text-center text-[12px]">{item.hsn || '-'}</div>
+                  <div className="w-16 border-r border-black p-1.5 text-center">{item.gstRate || 0}</div>
+                  <div className="w-20 border-r border-black p-1.5 text-right">{item.price.toFixed(2)}</div>
+                  <div className="w-16 border-r border-black p-1.5 text-center">{item.quantity}</div>
+                  <div className="w-24 border-r border-black p-1.5 text-right">{taxes.taxable.toFixed(2)}</div>
+                  <div className="w-20 border-r border-black p-1.5 text-right">{isIgst ? taxes.igst.toFixed(2) : taxes.cgst.toFixed(2)}</div>
+                  <div className="w-20 border-r border-black p-1.5 text-right">{isIgst ? '-' : taxes.sgst.toFixed(2)}</div>
+                  <div className="w-28 p-1.5 text-right font-bold">{item.total.toFixed(2)}</div>
+                </div>
+              );
+            })}
+            {/* Empty space filler with vertical lines */}
+            <div className="flex-1 flex min-h-[120px]">
+              <div className="w-10 border-r border-black"></div>
+              <div className="flex-1 border-r border-black"></div>
+              <div className="w-20 border-r border-black"></div>
+              <div className="w-16 border-r border-black"></div>
+              <div className="w-20 border-r border-black"></div>
+              <div className="w-16 border-r border-black"></div>
+              <div className="w-24 border-r border-black"></div>
+              <div className="w-20 border-r border-black"></div>
+              <div className="w-20 border-r border-black"></div>
+              <div className="w-28"></div>
+            </div>
+          </div>
+          
+          {/* Table Footer / Subtotals */}
+          <div className="flex border-t border-b border-black font-bold text-[13px]">
+            <div className="flex-1 border-r border-black p-2 text-right pr-4">Total</div>
+            <div className="w-16 border-r border-black p-2 text-center">{data.items.reduce((acc, i) => acc + i.quantity, 0)}</div>
+            <div className="w-24 border-r border-black p-2 text-right">{(data.taxableAmount || data.subTotal).toFixed(2)}</div>
+            <div className="w-20 border-r border-black p-2 text-right">{isIgst ? (data.igstAmount || 0).toFixed(2) : (data.cgstAmount || 0).toFixed(2)}</div>
+            <div className="w-20 border-r border-black p-2 text-right">{isIgst ? '-' : (data.sgstAmount || 0).toFixed(2)}</div>
+            <div className="w-28 p-2 text-right">{data.totalAmount.toFixed(2)}</div>
+          </div>
         </div>
-        <div className="text-center">
-          <div className="border-t border-slate-900 w-48 mb-2"></div>
-          <span className="text-sm font-bold">Authorized Signatory</span>
+
+        {/* Summary Footer */}
+        <div className="flex h-36">
+          {/* Amount in words */}
+          <div className="w-3/5 border-r border-black p-3 flex flex-col justify-between text-[13px]">
+            <div>
+              <div className="underline font-semibold italic mb-1">Amount in Words</div>
+              <div className="font-bold text-[14px]">Rupees {numberToWords(Math.round(data.totalAmount))} Only</div>
+            </div>
+            {data.notes && (
+              <div className="mt-2 text-[12px]">
+                <div className="font-semibold underline mb-1">Terms & Conditions / Notes:</div>
+                <div>{data.notes}</div>
+              </div>
+            )}
+          </div>
+          
+          {/* Tax Totals */}
+          <div className="w-2/5 flex flex-col text-[13px] font-semibold">
+            <div className="flex border-b border-black flex-1 items-center">
+              <div className="w-1/2 p-1.5 pl-3">CGST</div>
+              <div className="w-1/2 p-1.5 text-right pr-3">{(data.cgstAmount || 0).toFixed(2)}</div>
+            </div>
+            <div className="flex border-b border-black flex-1 items-center">
+              <div className="w-1/2 p-1.5 pl-3">SGST</div>
+              <div className="w-1/2 p-1.5 text-right pr-3">{(data.sgstAmount || 0).toFixed(2)}</div>
+            </div>
+            {isIgst && (
+              <div className="flex border-b border-black flex-1 items-center">
+                <div className="w-1/2 p-1.5 pl-3">IGST</div>
+                <div className="w-1/2 p-1.5 text-right pr-3">{(data.igstAmount || 0).toFixed(2)}</div>
+              </div>
+            )}
+            <div className="flex border-b border-black flex-1 items-center">
+              <div className="w-1/2 p-1.5 pl-3">TOTAL TAX</div>
+              <div className="w-1/2 p-1.5 text-right pr-3">{((data.cgstAmount || 0) + (data.sgstAmount || 0) + (data.igstAmount || 0)).toFixed(2)}</div>
+            </div>
+            <div className="flex border-b border-black flex-1 items-center">
+              <div className="w-1/2 p-1.5 pl-3">Discount</div>
+              <div className="w-1/2 p-1.5 text-right pr-3">{(data.discountAmount || 0).toFixed(2)}</div>
+            </div>
+            <div className="flex flex-1 items-center bg-slate-100 font-bold text-[15px]">
+              <div className="w-1/2 p-1.5 pl-3">Net Total</div>
+              <div className="w-1/2 p-1.5 text-right pr-3">{data.totalAmount.toFixed(2)}</div>
+            </div>
+          </div>
         </div>
+        
+        {/* Total Balance block at the bottom */}
+        <div className="flex border-t border-black bg-slate-50 font-bold p-2 text-[15px]">
+          <div className="w-3/5 pl-2">Total Balance</div>
+          <div className="w-2/5 text-right pr-2">{data.totalAmount.toFixed(2)}</div>
+        </div>
+
+        {/* Declaration and Signatory */}
+        <div className="flex h-24 border-t border-black">
+          <div className="w-1/2 border-r border-black p-3 text-[12px]">
+            <div className="font-bold underline mb-1">DECLARATION</div>
+            <div>Certified that all the particulars given above are true and correct.</div>
+          </div>
+          <div className="w-1/2 p-3 flex flex-col justify-between items-end text-center text-[12px]">
+            <div className="font-bold text-[13px]">For {business.name}</div>
+            <div className="font-bold mt-8">Authorised Signatory</div>
+          </div>
+        </div>
+        
       </div>
     </div>
   );
