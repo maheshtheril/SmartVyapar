@@ -821,7 +821,7 @@ export default function ThermalReceiptModal({
           }
           @page {
             size: A4;
-            margin: 10mm;
+            margin: 0;
           }
           ` : `
           #thermal-receipt-preview,
@@ -855,3 +855,4 @@ export default function ThermalReceiptModal({
     </div>
   );
 }
+
