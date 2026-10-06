@@ -73,6 +73,10 @@ function SettingsContent() {
     businessType: 'RETAIL',
     isComposition: false,
     allowNegativeStock: false,
+    taxInclusiveMode: true,
+    enforceCreditLimit: false,
+    financialYearStartMonth: 4,
+    autoRoundOff: true,
     subscriptionTier: 'FREE',
   });
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -202,6 +206,10 @@ function SettingsContent() {
           businessType: data.tenant.businessType || 'RETAIL',
           isComposition: !!data.tenant.isComposition,
           allowNegativeStock: !!data.tenant.allowNegativeStock,
+          taxInclusiveMode: data.tenant.taxInclusiveMode !== false,
+          enforceCreditLimit: !!data.tenant.enforceCreditLimit,
+          financialYearStartMonth: data.tenant.financialYearStartMonth || 4,
+          autoRoundOff: data.tenant.autoRoundOff !== false,
           subscriptionTier: data.tenant.subscriptionTier || 'FREE',
         });
       }
@@ -2195,3 +2203,7 @@ export default function SettingsPage() {
     </React.Suspense>
   );
 }
+
+
+
+

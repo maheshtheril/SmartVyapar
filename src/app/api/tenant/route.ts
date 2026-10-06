@@ -431,6 +431,14 @@ export async function GET(req: NextRequest) {
         businessType: tenant.businessType || "RETAIL",
           isComposition: tenant.isComposition,
           allowNegativeStock: tenant.allowNegativeStock,
+      taxInclusiveMode,
+      enforceCreditLimit,
+      financialYearStartMonth,
+      autoRoundOff,
+          taxInclusiveMode: tenant.taxInclusiveMode,
+          enforceCreditLimit: tenant.enforceCreditLimit,
+          financialYearStartMonth: tenant.financialYearStartMonth,
+          autoRoundOff: tenant.autoRoundOff,
         subscriptionTier: tenant.subscriptionTier,
         currency: tenant.currency,
       },
@@ -478,6 +486,10 @@ export async function PATCH(req: NextRequest) {
       gstin,
       isComposition,
       allowNegativeStock,
+      taxInclusiveMode,
+      enforceCreditLimit,
+      financialYearStartMonth,
+      autoRoundOff,
     } = body;
 
     const updated = await prisma.tenant.update({
@@ -496,6 +508,10 @@ export async function PATCH(req: NextRequest) {
         ...(gstin !== undefined ? { gstin: gstin ? gstin.trim().toUpperCase() : null } : {}),
         ...(isComposition !== undefined ? { isComposition: !!isComposition } : {}),
         ...(allowNegativeStock !== undefined ? { allowNegativeStock: !!allowNegativeStock } : {}),
+        ...(taxInclusiveMode !== undefined ? { taxInclusiveMode: !!taxInclusiveMode } : {}),
+        ...(enforceCreditLimit !== undefined ? { enforceCreditLimit: !!enforceCreditLimit } : {}),
+        ...(financialYearStartMonth !== undefined ? { financialYearStartMonth: parseInt(financialYearStartMonth) } : {}),
+        ...(autoRoundOff !== undefined ? { autoRoundOff: !!autoRoundOff } : {}),
       },
     });
 
@@ -531,6 +547,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message || "Failed to update profile" }, { status: 500 });
   }
 }
+
+
+
+
 
 
 

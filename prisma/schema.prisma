@@ -72,8 +72,12 @@ model Tenant {
   isComposition      Boolean          @default(false)
   currency           String           @default("INR")
   enableTerritory    Boolean          @default(false) // Toggle for FMCG Region/Zone hierarchy
-  allowNegativeStock Boolean          @default(false) // Allow sales when stock is zero
-  logoUrl            String?
+  allowNegativeStock      Boolean          @default(false) // Allow sales when stock is zero
+  taxInclusiveMode        Boolean          @default(true)  // True = MRP includes Tax, False = Exclusive
+  enforceCreditLimit      Boolean          @default(false) // Block billing if customer credit limit exceeded
+  financialYearStartMonth Int              @default(4)     // 4 = April, 1 = January
+  autoRoundOff            Boolean          @default(true)  // Round off bill to nearest integer
+  logoUrl                 String?
   businessType       String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES"
   subscriptionTier   SubscriptionTier @default(FREE)
   subscriptionStatus String           @default("ACTIVE") // "ACTIVE", "CANCELLED", "EXPIRED", "TRIALING"
@@ -346,6 +350,7 @@ model Customer {
   pincode            String?   @default("682001")
   territoryId        String?
   outstandingBalance Decimal   @default(0.0) @db.Decimal(10, 2) // Positive means customer owes money
+  creditLimit        Decimal?  @db.Decimal(10, 2)               // Max allowed outstanding balance
   openingBalanceDate DateTime?
   accountId          String?   @unique
   loyaltyPoints      Int       @default(0)
