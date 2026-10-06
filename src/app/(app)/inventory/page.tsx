@@ -317,8 +317,7 @@ export default function InventoryPage() {
       setInitialStock("0");
       setMinStockAlert("5");
       setHasBatchTracking(false);
-      setFormError(null);
-      loadProducts();
+      setFormError(null); setActiveTab("GENERAL"); loadProducts();
     } catch (err: any) {
       setFormError(err.message || "Failed to create product");
     } finally {
@@ -465,8 +464,7 @@ export default function InventoryPage() {
     setMinStockAlert("5");
     setHasBatchTracking(false);
     setImageUrl("");
-    setImagePreview(null);
-    setShowModal(true);
+    setImagePreview(null); setActiveTab("GENERAL"); setShowModal(true);
   }}
             className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 flex items-center space-x-1.5 transition"
           >
@@ -586,8 +584,7 @@ export default function InventoryPage() {
     setMinStockAlert("5");
     setHasBatchTracking(false);
     setImageUrl("");
-    setImagePreview(null);
-    setShowModal(true);
+    setImagePreview(null); setActiveTab("GENERAL"); setShowModal(true);
   }}
               className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-600 hover:text-indigo-800"
             >
@@ -1828,6 +1825,8 @@ export default function InventoryPage() {
     </div>
   );
 }
+
+
 
 
 
