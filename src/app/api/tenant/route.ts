@@ -482,6 +482,10 @@ export async function PATCH(req: NextRequest) {
       gstin,
       isComposition,
       allowNegativeStock,
+      taxInclusiveMode,
+      enforceCreditLimit,
+      financialYearStartMonth,
+      autoRoundOff,
     } = body;
 
     const updated = await prisma.tenant.update({
@@ -539,6 +543,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message || "Failed to update profile" }, { status: 500 });
   }
 }
+
 
 
 
