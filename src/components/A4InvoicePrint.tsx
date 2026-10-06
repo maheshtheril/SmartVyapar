@@ -41,9 +41,11 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
           
           <div className="flex flex-col items-center justify-center px-28 w-full">
             <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">{data.docTitle || 'TAX INVOICE'}</div>
-            <h1 className="text-2xl font-black uppercase tracking-widest text-indigo-950 mb-1 leading-tight">{business.name}</h1>
-            <p className="font-semibold text-sm text-slate-800">{business.address}</p>
-            <p className="font-semibold text-sm text-slate-800">Phone: {business.phone}</p>
+            <h1 className="text-2xl font-black uppercase tracking-[0.05em] text-blue-800 mb-1.5 leading-tight">{business.name}</h1>
+            <p className="font-bold text-[13px] text-slate-700 tracking-wide leading-snug">{business.address}</p>
+            <p className="font-bold text-[12px] text-slate-700 mt-0.5">
+              <span className="text-slate-400 font-semibold">PHONE:</span> {business.phone}
+            </p>
           </div>
           
           <div className="absolute bottom-4 right-4 text-right text-[13px]">
@@ -234,6 +236,11 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
         </div>
         
       </div>
+
+      {/* App Footer Brand */}
+      <div className="text-center text-[9px] text-slate-400 font-medium py-1 print:text-black mt-1">
+        Software powered by <span className="font-bold text-slate-500 print:text-black">ZionaPOS.store</span>
+      </div>
     </div>
   );
 }
@@ -253,4 +260,5 @@ function numberToWords(num: number) {
   str += (n[5] !== '00') ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
   return str.trim();
 }
+
 
