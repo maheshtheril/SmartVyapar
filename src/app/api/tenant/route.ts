@@ -430,6 +430,7 @@ export async function GET(req: NextRequest) {
         upiId: tenant.upiId,
         businessType: tenant.businessType || "RETAIL",
           isComposition: tenant.isComposition,
+          allowNegativeStock: tenant.allowNegativeStock,
         subscriptionTier: tenant.subscriptionTier,
         currency: tenant.currency,
       },
@@ -476,6 +477,7 @@ export async function PATCH(req: NextRequest) {
       upiId,
       gstin,
       isComposition,
+      allowNegativeStock,
     } = body;
 
     const updated = await prisma.tenant.update({
@@ -493,6 +495,7 @@ export async function PATCH(req: NextRequest) {
         ...(upiId !== undefined ? { upiId: upiId.trim() } : {}),
         ...(gstin !== undefined ? { gstin: gstin ? gstin.trim().toUpperCase() : null } : {}),
         ...(isComposition !== undefined ? { isComposition: !!isComposition } : {}),
+        ...(allowNegativeStock !== undefined ? { allowNegativeStock: !!allowNegativeStock } : {}),
       },
     });
 
@@ -528,5 +531,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message || "Failed to update profile" }, { status: 500 });
   }
 }
+
 
 

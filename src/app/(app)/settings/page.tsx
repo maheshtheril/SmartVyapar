@@ -72,6 +72,7 @@ function SettingsContent() {
     upiId: '',
     businessType: 'RETAIL',
     isComposition: false,
+    allowNegativeStock: false,
     subscriptionTier: 'FREE',
   });
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -200,6 +201,7 @@ function SettingsContent() {
           upiId: data.tenant.upiId || '',
           businessType: data.tenant.businessType || 'RETAIL',
           isComposition: !!data.tenant.isComposition,
+          allowNegativeStock: !!data.tenant.allowNegativeStock,
           subscriptionTier: data.tenant.subscriptionTier || 'FREE',
         });
       }
@@ -891,6 +893,18 @@ function SettingsContent() {
                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
                     />
                     <span>Registered under GST Composition Scheme (No Tax Collection)</span>
+                  </label>
+                </div>
+                
+                <div className="col-span-1 md:col-span-2 pt-2">
+                  <label className="flex items-center space-x-2 text-xs font-bold text-slate-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={profile.allowNegativeStock}
+                      onChange={(e) => setProfile({ ...profile, allowNegativeStock: e.target.checked })}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                    />
+                    <span>Allow Negative Inventory (Permit POS Sales when stock is zero)</span>
                   </label>
                 </div>
               </div>

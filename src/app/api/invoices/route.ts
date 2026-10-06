@@ -229,7 +229,7 @@ export async function POST(req: NextRequest) {
           if (!batch || batch.tenantId !== tenantId) {
             throw new Error(`Batch not found or unauthorized for product ${product.name}`);
           }
-          if (Number(batch.currentStock) < baseQty) {
+          if (!tenant.allowNegativeStock && Number(batch.currentStock) < baseQty) {
             throw new Error(`Insufficient stock in batch ${batch.batchNumber} for ${product.name}`);
           }
           const updatedBatch = await tx.batch.update({
@@ -237,7 +237,7 @@ export async function POST(req: NextRequest) {
             data: { currentStock: { decrement: baseQty } },
           });
           
-          if (Number(updatedBatch.currentStock) < 0) {
+          if (!tenant.allowNegativeStock && Number(updatedBatch.currentStock) < 0) {
             throw new Error(`Insufficient stock for batch ${updatedBatch.batchNumber}`);
           }
         }
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
 
             // Verify stock didn't drop below zero
             const postUpdateIng = await tx.product.findFirst({ where: { id: recipeItem.ingredientId } });
-            if (postUpdateIng && Number(postUpdateIng.currentStock) < 0) {
+            if (!tenant.allowNegativeStock && postUpdateIng && Number(postUpdateIng.currentStock) < 0) {
               throw new Error(`Insufficient stock for ingredient ${ingredient.name}`);
             }
 
@@ -288,7 +288,7 @@ export async function POST(req: NextRequest) {
         } else {
           // Standard Retail Item: Direct stock deduction
           const currentProd = await tx.product.findUnique({ where: { id: product.id } });
-          if (!currentProd || Number(currentProd.currentStock) < baseQty) {
+          if (!tenant.allowNegativeStock && (!currentProd || Number(currentProd.currentStock) < baseQty)) {
             throw new Error(`Insufficient stock for product ${product.name}`);
           }
 
@@ -296,7 +296,7 @@ export async function POST(req: NextRequest) {
             where: { id: product.id },
             data: { currentStock: { decrement: baseQty } },
           });
-          if (Number(updatedProd.currentStock) < 0) {
+          if (!tenant.allowNegativeStock && Number(updatedProd.currentStock) < 0) {
             throw new Error(`Insufficient global stock for ${product.name}`);
           }
 

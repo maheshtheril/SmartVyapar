@@ -72,6 +72,7 @@ model Tenant {
   isComposition      Boolean          @default(false)
   currency           String           @default("INR")
   enableTerritory    Boolean          @default(false) // Toggle for FMCG Region/Zone hierarchy
+  allowNegativeStock Boolean          @default(false) // Allow sales when stock is zero
   logoUrl            String?
   businessType       String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES"
   subscriptionTier   SubscriptionTier @default(FREE)
