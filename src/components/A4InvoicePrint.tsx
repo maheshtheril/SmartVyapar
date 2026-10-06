@@ -11,15 +11,16 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
 
   // Helper to calculate taxes per item (assuming total is inclusive)
   const calculateItemTaxes = (item: ThermalReceiptItem) => {
-    const rate = item.gstRate || 0;
+    const isComposition = business.isComposition;
+    const rate = isComposition ? 0 : (item.gstRate || 0);
     const taxAmount = (item.total * rate) / (100 + rate);
     const taxable = item.total - taxAmount;
     
     return {
       taxable,
-      cgst: isIgst ? 0 : taxAmount / 2,
-      sgst: isIgst ? 0 : taxAmount / 2,
-      igst: isIgst ? taxAmount : 0,
+      cgst: isComposition ? 0 : (isIgst ? 0 : taxAmount / 2),
+      sgst: isComposition ? 0 : (isIgst ? 0 : taxAmount / 2),
+      igst: isComposition ? 0 : (isIgst ? taxAmount : 0),
     };
   };
 
@@ -91,12 +92,16 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
             <div className="w-10 border-r border-black p-2 flex items-center justify-center">SNo</div>
             <div className="flex-1 border-r border-black p-2 flex items-center justify-center">Commodity / Item</div>
             <div className="w-20 border-r border-black p-2 flex items-center justify-center">HSN/SAC</div>
-            <div className="w-16 border-r border-black p-2 flex items-center justify-center">Tax(%)</div>
+            {!business.isComposition && <div className="w-16 border-r border-black p-2 flex items-center justify-center">Tax(%)</div>}
             <div className="w-20 border-r border-black p-2 flex items-center justify-center">Rate</div>
             <div className="w-16 border-r border-black p-2 flex items-center justify-center">Qty</div>
-            <div className="w-24 border-r border-black p-2 flex items-center justify-center">Gross</div>
-            <div className="w-20 border-r border-black p-2 flex items-center justify-center">{isIgst ? 'IGST' : 'CGST'}</div>
-            <div className="w-20 border-r border-black p-2 flex items-center justify-center">{isIgst ? '-' : 'SGST'}</div>
+            {!business.isComposition && (
+              <>
+                <div className="w-24 border-r border-black p-2 flex items-center justify-center">Gross</div>
+                <div className="w-20 border-r border-black p-2 flex items-center justify-center">{isIgst ? 'IGST' : 'CGST'}</div>
+                <div className="w-20 border-r border-black p-2 flex items-center justify-center">{isIgst ? '-' : 'SGST'}</div>
+              </>
+            )}
             <div className="w-28 p-2 flex items-center justify-center">Total</div>
           </div>
 
@@ -109,12 +114,16 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
                   <div className="w-10 border-r border-black p-1.5 text-center">{idx + 1}</div>
                   <div className="flex-1 border-r border-black p-1.5 font-semibold">{item.name}</div>
                   <div className="w-20 border-r border-black p-1.5 text-center text-[12px]">{item.hsn || '-'}</div>
-                  <div className="w-16 border-r border-black p-1.5 text-center">{item.gstRate || 0}</div>
+                  {!business.isComposition && <div className="w-16 border-r border-black p-1.5 text-center">{item.gstRate || 0}</div>}
                   <div className="w-20 border-r border-black p-1.5 text-right">{item.price.toFixed(2)}</div>
                   <div className="w-16 border-r border-black p-1.5 text-center">{item.quantity}</div>
-                  <div className="w-24 border-r border-black p-1.5 text-right">{taxes.taxable.toFixed(2)}</div>
-                  <div className="w-20 border-r border-black p-1.5 text-right">{isIgst ? taxes.igst.toFixed(2) : taxes.cgst.toFixed(2)}</div>
-                  <div className="w-20 border-r border-black p-1.5 text-right">{isIgst ? '-' : taxes.sgst.toFixed(2)}</div>
+                  {!business.isComposition && (
+                    <>
+                      <div className="w-24 border-r border-black p-1.5 text-right">{taxes.taxable.toFixed(2)}</div>
+                      <div className="w-20 border-r border-black p-1.5 text-right">{isIgst ? taxes.igst.toFixed(2) : taxes.cgst.toFixed(2)}</div>
+                      <div className="w-20 border-r border-black p-1.5 text-right">{isIgst ? '-' : taxes.sgst.toFixed(2)}</div>
+                    </>
+                  )}
                   <div className="w-28 p-1.5 text-right font-bold">{item.total.toFixed(2)}</div>
                 </div>
               );
@@ -124,12 +133,16 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
               <div className="w-10 border-r border-black"></div>
               <div className="flex-1 border-r border-black"></div>
               <div className="w-20 border-r border-black"></div>
-              <div className="w-16 border-r border-black"></div>
+              {!business.isComposition && <div className="w-16 border-r border-black"></div>}
               <div className="w-20 border-r border-black"></div>
               <div className="w-16 border-r border-black"></div>
-              <div className="w-24 border-r border-black"></div>
-              <div className="w-20 border-r border-black"></div>
-              <div className="w-20 border-r border-black"></div>
+              {!business.isComposition && (
+                <>
+                  <div className="w-24 border-r border-black"></div>
+                  <div className="w-20 border-r border-black"></div>
+                  <div className="w-20 border-r border-black"></div>
+                </>
+              )}
               <div className="w-28"></div>
             </div>
           </div>
@@ -138,9 +151,13 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
           <div className="flex border-t border-b border-black font-bold text-[13px]">
             <div className="flex-1 border-r border-black p-2 text-right pr-4">Total</div>
             <div className="w-16 border-r border-black p-2 text-center">{data.items.reduce((acc, i) => acc + i.quantity, 0)}</div>
-            <div className="w-24 border-r border-black p-2 text-right">{(data.taxableAmount || data.subTotal).toFixed(2)}</div>
-            <div className="w-20 border-r border-black p-2 text-right">{isIgst ? (data.igstAmount || 0).toFixed(2) : (data.cgstAmount || 0).toFixed(2)}</div>
-            <div className="w-20 border-r border-black p-2 text-right">{isIgst ? '-' : (data.sgstAmount || 0).toFixed(2)}</div>
+            {!business.isComposition && (
+              <>
+                <div className="w-24 border-r border-black p-2 text-right">{(data.taxableAmount || data.subTotal).toFixed(2)}</div>
+                <div className="w-20 border-r border-black p-2 text-right">{isIgst ? (data.igstAmount || 0).toFixed(2) : (data.cgstAmount || 0).toFixed(2)}</div>
+                <div className="w-20 border-r border-black p-2 text-right">{isIgst ? '-' : (data.sgstAmount || 0).toFixed(2)}</div>
+              </>
+            )}
             <div className="w-28 p-2 text-right">{data.totalAmount.toFixed(2)}</div>
           </div>
         </div>
@@ -163,24 +180,28 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
           
           {/* Tax Totals */}
           <div className="w-2/5 flex flex-col text-[13px] font-semibold">
-            <div className="flex border-b border-black flex-1 items-center">
-              <div className="w-1/2 p-1.5 pl-3">CGST</div>
-              <div className="w-1/2 p-1.5 text-right pr-3">{(data.cgstAmount || 0).toFixed(2)}</div>
-            </div>
-            <div className="flex border-b border-black flex-1 items-center">
-              <div className="w-1/2 p-1.5 pl-3">SGST</div>
-              <div className="w-1/2 p-1.5 text-right pr-3">{(data.sgstAmount || 0).toFixed(2)}</div>
-            </div>
-            {isIgst && (
-              <div className="flex border-b border-black flex-1 items-center">
-                <div className="w-1/2 p-1.5 pl-3">IGST</div>
-                <div className="w-1/2 p-1.5 text-right pr-3">{(data.igstAmount || 0).toFixed(2)}</div>
-              </div>
+            {!business.isComposition && (
+              <>
+                <div className="flex border-b border-black flex-1 items-center">
+                  <div className="w-1/2 p-1.5 pl-3">CGST</div>
+                  <div className="w-1/2 p-1.5 text-right pr-3">{(data.cgstAmount || 0).toFixed(2)}</div>
+                </div>
+                <div className="flex border-b border-black flex-1 items-center">
+                  <div className="w-1/2 p-1.5 pl-3">SGST</div>
+                  <div className="w-1/2 p-1.5 text-right pr-3">{(data.sgstAmount || 0).toFixed(2)}</div>
+                </div>
+                {isIgst && (
+                  <div className="flex border-b border-black flex-1 items-center">
+                    <div className="w-1/2 p-1.5 pl-3">IGST</div>
+                    <div className="w-1/2 p-1.5 text-right pr-3">{(data.igstAmount || 0).toFixed(2)}</div>
+                  </div>
+                )}
+                <div className="flex border-b border-black flex-1 items-center">
+                  <div className="w-1/2 p-1.5 pl-3">TOTAL TAX</div>
+                  <div className="w-1/2 p-1.5 text-right pr-3">{((data.cgstAmount || 0) + (data.sgstAmount || 0) + (data.igstAmount || 0)).toFixed(2)}</div>
+                </div>
+              </>
             )}
-            <div className="flex border-b border-black flex-1 items-center">
-              <div className="w-1/2 p-1.5 pl-3">TOTAL TAX</div>
-              <div className="w-1/2 p-1.5 text-right pr-3">{((data.cgstAmount || 0) + (data.sgstAmount || 0) + (data.igstAmount || 0)).toFixed(2)}</div>
-            </div>
             <div className="flex border-b border-black flex-1 items-center">
               <div className="w-1/2 p-1.5 pl-3">Discount</div>
               <div className="w-1/2 p-1.5 text-right pr-3">{(data.discountAmount || 0).toFixed(2)}</div>
@@ -230,3 +251,4 @@ function numberToWords(num: number) {
   str += (n[5] !== '00') ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
   return str.trim();
 }
+

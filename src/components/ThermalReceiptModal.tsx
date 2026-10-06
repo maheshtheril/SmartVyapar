@@ -78,6 +78,7 @@ export interface BusinessProfile {
   phone?: string;
   address?: string;
   upiId?: string;
+  isComposition?: boolean;
 }
 
 interface ThermalReceiptModalProps {
