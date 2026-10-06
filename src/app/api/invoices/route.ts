@@ -24,8 +24,17 @@ export async function GET(req: NextRequest) {
       tenantId,
     };
 
-    if (status && (status === "PAID" || status === "PARTIAL" || status === "UNPAID")) {
-      where.paymentStatus = status as PaymentStatus;
+    if (status) {
+      if (status === "PAID" || status === "PARTIAL" || status === "UNPAID") {
+        where.paymentStatus = status as PaymentStatus;
+        where.isCancelled = false;
+      } else if (status === "CANCELLED") {
+        where.isCancelled = true;
+      } else if (status === "ACTIVE") {
+        where.isCancelled = false;
+      }
+    } else {
+      where.isCancelled = false; // By default, hide cancelled invoices
     }
 
     if (query) {

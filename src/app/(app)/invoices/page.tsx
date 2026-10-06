@@ -40,7 +40,7 @@ export default function InvoicesPage() {
   const [showEinvoiceModal, setShowEinvoiceModal] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ACTIVE");
   const [editingInvoice, setEditingInvoice] = useState<any>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -578,19 +578,19 @@ export default function InvoicesPage() {
         </form>
 
         {activeTab === 'INVOICES' && (
-          <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
             <button
-              onClick={() => setStatusFilter("ALL")}
+              onClick={() => setStatusFilter("ACTIVE")}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
-                statusFilter === "ALL" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                statusFilter === "ACTIVE" ? "bg-slate-900 text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              All Bills
+              Saved Bills
             </button>
             <button
               onClick={() => setStatusFilter("UNPAID")}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
-                statusFilter === "UNPAID" ? "bg-rose-600 text-white" : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                statusFilter === "UNPAID" ? "bg-rose-600 text-white shadow-md" : "bg-rose-50 text-rose-700 hover:bg-rose-100"
               }`}
             >
               Unpaid (Due)
@@ -598,7 +598,7 @@ export default function InvoicesPage() {
             <button
               onClick={() => setStatusFilter("PARTIAL")}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
-                statusFilter === "PARTIAL" ? "bg-amber-600 text-white" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                statusFilter === "PARTIAL" ? "bg-amber-600 text-white shadow-md" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
               }`}
             >
               Partial
@@ -606,10 +606,26 @@ export default function InvoicesPage() {
             <button
               onClick={() => setStatusFilter("PAID")}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
-                statusFilter === "PAID" ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                statusFilter === "PAID" ? "bg-emerald-600 text-white shadow-md" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
               }`}
             >
               Paid
+            </button>
+            <button
+              onClick={() => setStatusFilter("CANCELLED")}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
+                statusFilter === "CANCELLED" ? "bg-red-900 text-white shadow-md" : "bg-red-50 text-red-900 hover:bg-red-100"
+              }`}
+            >
+              Cancelled
+            </button>
+            <button
+              onClick={() => setStatusFilter("ALL")}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
+                statusFilter === "ALL" ? "bg-indigo-600 text-white shadow-md" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+              }`}
+            >
+              All
             </button>
           </div>
         )}
@@ -1233,3 +1249,4 @@ export default function InvoicesPage() {
     </div>
   );
 }
+
