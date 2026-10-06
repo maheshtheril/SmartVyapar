@@ -29,20 +29,20 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
       <div className="border border-black flex flex-col flex-1">
         
         {/* Top Header */}
-        <div className="relative border-b border-black p-4 text-center flex flex-col items-center min-h-[120px] justify-center">
-          <div className="absolute top-4 left-4 flex flex-col items-center justify-center w-24 h-24 border border-slate-200">
+        <div className="relative border-b border-black p-4 text-center flex flex-col items-center min-h-[120px] justify-center bg-slate-50">
+          <div className="absolute top-4 left-4 flex flex-col items-center justify-center w-24 h-24 bg-white border border-slate-200 rounded-sm shadow-sm">
             {business.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={business.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+              <img src={business.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain p-1" />
             ) : (
               <span className="text-gray-300 text-sm font-bold">LOGO</span>
             )}
           </div>
           
-          <div className="font-bold text-sm uppercase mb-1">{data.docTitle || 'TAX INVOICE'}</div>
-          <h1 className="text-3xl font-black uppercase tracking-widest text-slate-900 mb-2">{business.name}</h1>
-          <p className="font-semibold text-sm">{business.address}</p>
-          <p className="font-semibold text-sm">Phone: {business.phone}</p>
+          <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">{data.docTitle || 'TAX INVOICE'}</div>
+          <h1 className="text-3xl font-black uppercase tracking-widest text-indigo-950 mb-2">{business.name}</h1>
+          <p className="font-semibold text-sm text-slate-800">{business.address}</p>
+          <p className="font-semibold text-sm text-slate-800">Phone: {business.phone}</p>
           
           <div className="absolute bottom-4 right-4 text-right text-[13px]">
             {business.gstin && <div className="font-bold">GSTIN: {business.gstin}</div>}
@@ -63,24 +63,24 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
           {/* Invoice Details Table */}
           <div className="w-1/2 flex flex-col text-[13px]">
             <div className="flex border-b border-black">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Invoice No</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Invoice No</div>
               <div className="w-1/2 p-1.5 font-bold">{data.invoiceNumber}</div>
             </div>
             <div className="flex border-b border-black">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Date</div>
-              <div className="w-1/2 p-1.5">{new Date(data.invoiceDate).toLocaleDateString('en-IN')}</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Date</div>
+              <div className="w-1/2 p-1.5 font-semibold">{new Date(data.invoiceDate).toLocaleDateString('en-IN')}</div>
             </div>
             <div className="flex border-b border-black">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Terms of Payments</div>
-              <div className="w-1/2 p-1.5">{data.paymentMode}</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Terms of Payments</div>
+              <div className="w-1/2 p-1.5 font-semibold">{data.paymentMode}</div>
             </div>
             <div className="flex border-b border-black">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Sales Person</div>
-              <div className="w-1/2 p-1.5">{data.cashierName || '-'}</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Sales Person</div>
+              <div className="w-1/2 p-1.5 font-semibold">{data.cashierName || '-'}</div>
             </div>
             <div className="flex flex-1">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold">Destination</div>
-              <div className="w-1/2 p-1.5">-</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Destination</div>
+              <div className="w-1/2 p-1.5 font-semibold">-</div>
             </div>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
         {/* Items Table */}
         <div className="flex-1 flex flex-col">
           {/* Table Header */}
-          <div className="flex border-b border-black font-bold text-center bg-slate-50 items-stretch text-[13px]">
+          <div className="flex border-b border-black font-bold text-center bg-slate-100/80 items-stretch text-[13px] text-slate-800">
             <div className="w-10 border-r border-black p-2 flex items-center justify-center">SNo</div>
             <div className="flex-1 border-r border-black p-2 flex items-center justify-center">Commodity / Item</div>
             <div className="w-20 border-r border-black p-2 flex items-center justify-center">HSN/SAC</div>
