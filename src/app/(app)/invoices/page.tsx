@@ -88,7 +88,7 @@ export default function InvoicesPage() {
       let url = "/api/invoices";
       const params = new URLSearchParams();
       if (searchQuery) params.append("q", searchQuery);
-      if (statusFilter !== "ALL") params.append("status", statusFilter);
+      if (statusFilter) params.append("status", statusFilter);
       if (params.toString()) url += `?${params.toString()}`;
 
       const res = await fetch(url);
@@ -1249,4 +1249,5 @@ export default function InvoicesPage() {
     </div>
   );
 }
+
 

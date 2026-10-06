@@ -25,16 +25,18 @@ export async function GET(req: NextRequest) {
     };
 
     if (status) {
-      if (status === "PAID" || status === "PARTIAL" || status === "UNPAID") {
+      if (status === "ALL") {
+        // Do nothing, fetch everything (active + cancelled)
+      } else if (status === "PAID" || status === "PARTIAL" || status === "UNPAID") {
         where.paymentStatus = status as PaymentStatus;
-        where.isCancelled = false;
+        where.isCancelled = false; // Only active ones for these filters
       } else if (status === "CANCELLED") {
         where.isCancelled = true;
       } else if (status === "ACTIVE") {
         where.isCancelled = false;
       }
     } else {
-      where.isCancelled = false; // By default, hide cancelled invoices
+      where.isCancelled = false; // By default, hide cancelled invoices if no status provided
     }
 
     if (query) {
