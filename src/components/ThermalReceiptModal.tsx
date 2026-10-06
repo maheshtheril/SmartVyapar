@@ -264,9 +264,9 @@ export default function ThermalReceiptModal({
   const isA4 = paperWidth === 'A4';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm print:static print:inset-auto print:p-0 print:bg-white print:backdrop-blur-none print:block">
       {/* Container Dialog */}
-      <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col rounded-3xl bg-slate-100 shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col rounded-3xl bg-slate-100 shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 print:static print:max-h-none print:w-auto print:max-w-none print:shadow-none print:border-none print:overflow-visible print:bg-white">
         {/* Top Control Bar */}
         <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
           <div className="flex items-center space-x-3">
@@ -811,7 +811,7 @@ export default function ThermalReceiptModal({
             visibility: visible;
           }
                       #a4-receipt-preview {
-              position: fixed !important;
+              position: absolute !important;
               left: 0 !important;
               top: 0 !important;
               width: 100vw !important;
@@ -857,6 +857,9 @@ export default function ThermalReceiptModal({
     </div>
   );
 }
+
+
+
 
 
 
