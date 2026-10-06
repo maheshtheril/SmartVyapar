@@ -810,15 +810,17 @@ export default function ThermalReceiptModal({
           #a4-receipt-preview * {
             visibility: visible;
           }
-          #a4-receipt-preview {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
+                      #a4-receipt-preview {
+              position: fixed !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100vw !important;
+              height: 100vh !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
+              transform: none !important;
+            }
           @page {
             size: A4;
             margin: 0;
@@ -855,4 +857,6 @@ export default function ThermalReceiptModal({
     </div>
   );
 }
+
+
 
