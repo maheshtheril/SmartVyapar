@@ -30,7 +30,7 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
         
         {/* Top Header */}
         <div className="relative border-b border-black p-4 text-center flex flex-col items-center min-h-[120px] justify-center bg-slate-50">
-          <div className="absolute top-4 left-4 flex flex-col items-center justify-center w-24 h-24 bg-white border border-slate-200 rounded-sm shadow-sm">
+          <div className="absolute top-4 left-4 flex flex-col items-center justify-center w-24 h-24 bg-white border border-slate-200 rounded-sm shadow-sm z-10">
             {business.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={business.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain p-1" />
@@ -39,10 +39,12 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
             )}
           </div>
           
-          <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">{data.docTitle || 'TAX INVOICE'}</div>
-          <h1 className="text-3xl font-black uppercase tracking-widest text-indigo-950 mb-2">{business.name}</h1>
-          <p className="font-semibold text-sm text-slate-800">{business.address}</p>
-          <p className="font-semibold text-sm text-slate-800">Phone: {business.phone}</p>
+          <div className="flex flex-col items-center justify-center px-28 w-full">
+            <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">{data.docTitle || 'TAX INVOICE'}</div>
+            <h1 className="text-2xl font-black uppercase tracking-widest text-indigo-950 mb-1 leading-tight">{business.name}</h1>
+            <p className="font-semibold text-sm text-slate-800">{business.address}</p>
+            <p className="font-semibold text-sm text-slate-800">Phone: {business.phone}</p>
+          </div>
           
           <div className="absolute bottom-4 right-4 text-right text-[13px]">
             {business.gstin && <div className="font-bold">GSTIN: {business.gstin}</div>}
