@@ -802,8 +802,8 @@ export default function ThermalReceiptModal({
       <style jsx global>{`
         @media print {
           html, body {
-            height: 265mm !important;
-            max-height: 265mm !important;
+            height: 100% !important;
+            width: 100% !important;
             overflow: hidden !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -822,12 +822,16 @@ export default function ThermalReceiptModal({
               left: 0 !important;
               top: 0 !important;
               width: 100% !important;
-              height: 265mm !important;
-              overflow: hidden !important;
               margin: 0 !important;
               padding: 0 !important;
               background: white !important;
               transform: none !important;
+              page-break-after: avoid !important;
+              page-break-before: avoid !important;
+              page-break-inside: avoid !important;
+              break-after: avoid !important;
+              break-before: avoid !important;
+              break-inside: avoid !important;
             }
           @page {
             size: A4;
@@ -865,6 +869,8 @@ export default function ThermalReceiptModal({
     </div>
   );
 }
+
+
 
 
 
