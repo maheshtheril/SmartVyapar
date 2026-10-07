@@ -915,7 +915,7 @@ export default function NewInvoicePage() {
   };
 
   // Reset New Sale Handler (F9)
-  const handleResetNewSale = () => {
+  const handleResetNewSale = (keepModalOpen?: boolean) => {
     setCustomerName("");
     setCustomerPhone("");
     setPaymentMode("CASH");
@@ -946,8 +946,10 @@ export default function NewInvoicePage() {
         gst: 18,
       },
     ]);
-    setShowReceiptModal(false);
-    setReceiptData(null);
+    if (keepModalOpen !== true) {
+      setShowReceiptModal(false);
+      setReceiptData(null);
+    }
   };
 
   // Submit Invoice to Neon DB (or Offline Storage)
@@ -1102,8 +1104,8 @@ export default function NewInvoicePage() {
         notes: paymentNotes,
       });
 
-      setShowReceiptModal(true);
-      setIsPaymentModalOpen(false);
+      handleResetNewSale(true);
+        setShowReceiptModal(true);
       setIsSubmitting(false);
         isSubmittingRef.current = false;
       return;
@@ -1150,8 +1152,8 @@ export default function NewInvoicePage() {
         customerLoyaltyBalance: data.invoice.customerLoyalty?.currentBalance,
       });
 
-      setShowReceiptModal(true);
-      setIsPaymentModalOpen(false);
+      handleResetNewSale(true);
+        setShowReceiptModal(true);
     } catch (err: any) {
       if (typeof window !== "undefined" && (!navigator.onLine || err.message?.includes("Failed to fetch") || err.message?.includes("network"))) {
         try {
@@ -1180,8 +1182,8 @@ export default function NewInvoicePage() {
             upiUri: currentUpiUri,
             notes: paymentNotes,
           });
-          setShowReceiptModal(true);
-          setIsPaymentModalOpen(false);
+          handleResetNewSale(true);
+        setShowReceiptModal(true);
           return;
         } catch (enqueueErr) {
           alert("Error: " + err.message);
