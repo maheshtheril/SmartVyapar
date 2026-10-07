@@ -6,7 +6,7 @@ export const indianPhoneSchema = z
   .trim()
   .transform((val) => val.replace(/\D/g, "")) // strip spaces, hyphens, +91 prefix
   .transform((val) => (val.startsWith("91") && val.length === 12 ? val.slice(2) : val))
-  .refine((val) => /^[6-9]\d{9}$/.test(val), {
+  .refine((val) => val === "" || val === "0000000000" || /^[6-9]\d{9}$/.test(val), {
     message: "Must be a valid 10-digit Indian mobile number (starts with 6, 7, 8, or 9)",
   });
 
@@ -36,3 +36,4 @@ export const hsnCodeSchema = z
   .min(2, "HSN code too short")
   .max(8, "HSN code too long")
   .default("9983");
+
