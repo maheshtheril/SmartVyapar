@@ -574,7 +574,7 @@ export default function NewInvoicePage() {
         handleAddItem();
       } else if (e.key === 'F3' || e.key === 'F4' || e.key === 'F5' || e.key === 'F6') {
         e.preventDefault();
-        setIsPaymentModalOpen(true);
+        handleOpenPaymentModal();
       } else if (e.key === 'F7') {
         e.preventDefault();
         handleHoldBill();
@@ -594,7 +594,7 @@ export default function NewInvoicePage() {
             handleCreateBill();
           }
         } else if (totalTaxable > 0 && !isSubmitting) {
-          setIsPaymentModalOpen(true);
+          handleOpenPaymentModal();
         }
       } else if (e.key === 'Escape') {
         if (changeDueState !== null) {
@@ -1199,6 +1199,14 @@ export default function NewInvoicePage() {
     playSoundboxChime(grandTotal > 0 ? grandTotal.toFixed(2) : "100");
     setSoundboxPlayed(true);
     setTimeout(() => setSoundboxPlayed(false), 3000);
+  };
+
+  const handleOpenPaymentModal = () => {
+    if (customerPhone && customerPhone.length !== 10) {
+      alert("Error: Mobile number must be exactly 10 digits.");
+      return;
+    }
+    setIsPaymentModalOpen(true);
   };
 
   const handleCopyUpi = () => {
@@ -1806,7 +1814,7 @@ export default function NewInvoicePage() {
           <div className="pt-4 border-t border-slate-200 space-y-2 shrink-0">
             <button
               type="button"
-              onClick={() => setIsPaymentModalOpen(true)}
+              onClick={() => handleOpenPaymentModal()}
               disabled={isSubmitting || totalTaxable === 0}
               className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-bold shadow-md shadow-emerald-600/20 transition flex items-center justify-center space-x-2.5 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer active:scale-98"
             >
@@ -2402,6 +2410,9 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
+
+
 
 
 
