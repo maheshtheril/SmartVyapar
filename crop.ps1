@@ -1,0 +1,10 @@
+Add-Type -AssemblyName System.Drawing
+$img = [System.Drawing.Image]::FromFile("C:\Users\dell\.gemini\antigravity\brain\a3cc0e70-95a9-4ea3-a2dc-5e7fc7ebb947\brothers_automobile_logo_1791330628464.jpg")
+$rect = New-Object System.Drawing.Rectangle(0, 0, $img.Width, [math]::Round($img.Height * 0.55))
+$bmp = New-Object System.Drawing.Bitmap($rect.Width, $rect.Height)
+$g = [System.Drawing.Graphics]::FromImage($bmp)
+$g.DrawImage($img, 0, 0, $rect, [System.Drawing.GraphicsUnit]::Pixel)
+$g.Dispose()
+$img.Dispose()
+$bmp.Save("C:\Users\dell\OneDrive\Desktop\Brothers_Automobile_Logo_Cropped.jpg", [System.Drawing.Imaging.ImageFormat]::Jpeg)
+$bmp.Dispose()

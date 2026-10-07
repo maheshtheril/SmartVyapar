@@ -30,17 +30,18 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
       <div className="border border-black flex flex-col flex-1 m-2 print:m-0 print:h-[296mm]">
         
         {/* Top Header */}
-        <div className="relative border-b border-black p-4 text-center flex flex-col items-center min-h-[120px] justify-center bg-slate-50">
-          <div className="absolute top-4 left-4 flex flex-col items-center justify-center w-24 h-24 bg-white border border-slate-200 rounded-sm shadow-sm z-10">
+        <div className="border-b border-black p-4 flex items-center justify-between min-h-[120px] bg-slate-50">
+          {/* Left: Logo */}
+          <div className="w-1/4 flex items-center justify-start">
             {business.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={business.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain p-1" />
-            ) : (
-              <span className="text-gray-300 text-sm font-bold">LOGO</span>
-            )}
+              <div className="w-24 h-24 bg-white border border-slate-200 rounded-sm shadow-sm flex items-center justify-center p-1">
+                <img src={business.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : null}
           </div>
           
-          <div className="flex flex-col items-center justify-center px-28 w-full">
+          {/* Center: Business Name & Contact */}
+          <div className="w-2/4 flex flex-col items-center justify-center text-center px-2">
             <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">{data.docTitle || 'TAX INVOICE'}</div>
             <h1 className="text-2xl font-black uppercase tracking-[0.05em] text-blue-800 mb-1.5 leading-tight">{business.name}</h1>
             <p className="font-bold text-[13px] text-slate-700 tracking-wide leading-snug flex items-center justify-center text-center">
@@ -51,20 +52,29 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
             </p>
           </div>
           
-          <div className="absolute bottom-4 right-4 text-right text-[13px]">
+          {/* Right: Tax Info */}
+          <div className="w-1/4 flex flex-col items-end justify-end text-right text-[12px]">
             {business.gstin && <div className="font-bold">GSTIN: {business.gstin}</div>}
-            {business.stateCode && <div className="font-bold">State code: {business.stateCode}</div>}
+            {business.stateCode && <div className="font-bold mt-1">State Code: {business.stateCode}</div>}
           </div>
         </div>
 
         {/* Info Row */}
         <div className="flex border-b border-black">
           {/* Billed To */}
-          <div className="w-1/2 border-r border-black p-3">
-            <div className="font-semibold mb-1 text-sm">Billed To :</div>
-            <div className="font-bold text-[14px]">{data.customerName || 'Cash Customer'}</div>
-            {data.customerState && <div className="mt-1 text-[13px]">State: {data.customerState}</div>}
-            {data.customerPhone && <div className="mt-1 text-[13px]">Phone: {data.customerPhone}</div>}
+          <div className="w-1/2 border-r border-black p-4">
+            <div className="font-bold text-[11px] text-slate-500 uppercase tracking-wider mb-1.5">Billed To :</div>
+            <div className="font-bold text-[15px] text-slate-900">{data.customerName || 'Cash Customer'}</div>
+            {data.customerState && (
+              <div className="mt-1.5 text-[12px] text-slate-700 flex items-center">
+                <MapPin className="w-3.5 h-3.5 text-slate-400 mr-1.5" strokeWidth={2.5} /> State Code: {data.customerState}
+              </div>
+            )}
+            {data.customerPhone && (
+              <div className="mt-0.5 text-[12px] text-slate-700 flex items-center">
+                <Phone className="w-3.5 h-3.5 text-slate-400 mr-1.5" strokeWidth={2.5} /> {data.customerPhone}
+              </div>
+            )}
           </div>
           
           {/* Invoice Details Table */}
@@ -263,5 +273,6 @@ function numberToWords(num: number) {
   str += (n[5] !== '00') ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
   return str.trim();
 }
+
 
 
