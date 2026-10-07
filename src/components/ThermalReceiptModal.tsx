@@ -271,7 +271,7 @@ export default function ThermalReceiptModal({
       {/* Container Dialog */}
       <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col rounded-3xl bg-slate-100 shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 print:static print:max-h-none print:w-auto print:max-w-none print:shadow-none print:border-none print:overflow-visible print:bg-white">
         {/* Top Control Bar */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 print:hidden">
           <div className="flex items-center space-x-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
               <CheckCircle2 className="h-5 w-5" />
@@ -340,9 +340,9 @@ export default function ThermalReceiptModal({
         </div>
 
         {/* Modal Body: Left is preview, Right is action cards */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-6 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-6 overflow-y-auto print:block print:p-0 print:m-0 print:overflow-visible">
           {/* Action Panel on Right (or top on mobile) */}
-          <div className="md:col-span-5 order-2 md:order-1 flex flex-col justify-between space-y-4">
+          <div className="md:col-span-5 order-2 md:order-1 flex flex-col justify-between space-y-4 print:hidden">
             <div className="space-y-3">
               {/* Direct ESC/POS Hardware Silent Print (Primary when hardware supported) */}
               {isHardwareSupported && (
@@ -499,7 +499,7 @@ export default function ThermalReceiptModal({
           </div>
 
           {/* Right Column: Thermal Paper Preview (Real Scale) */}
-          <div className="md:col-span-7 order-1 md:order-2 flex justify-center items-start overflow-auto max-h-[85vh]">
+          <div className="md:col-span-7 order-1 md:order-2 flex justify-center items-start overflow-auto max-h-[85vh] print:block print:max-h-none print:overflow-visible">
             {isA4 ? (
               <div id="a4-receipt-preview" className="scale-[0.5] sm:scale-75 md:scale-90 origin-top shadow-2xl print:scale-100 print:shadow-none">
                 <A4InvoicePrint data={data} business={business} />
@@ -882,6 +882,8 @@ export default function ThermalReceiptModal({
   if (!mounted) return modalContent;
   return createPortal(modalContent, document.body);
 }
+
+
 
 
 
