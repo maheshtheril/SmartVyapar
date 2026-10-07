@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Printer, 
   X, 
@@ -263,8 +264,8 @@ export default function ThermalReceiptModal({
   const is58mm = paperWidth === '58mm';
   const isA4 = paperWidth === 'A4';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm print:static print:inset-auto print:p-0 print:bg-white print:backdrop-blur-none print:block">
+  const modalContent = (
+    <div id="thermal-receipt-modal-root" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm print:static print:inset-auto print:p-0 print:bg-white print:backdrop-blur-none print:block">
       {/* Container Dialog */}
       <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col rounded-3xl bg-slate-100 shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 print:static print:max-h-none print:w-auto print:max-w-none print:shadow-none print:border-none print:overflow-visible print:bg-white">
         {/* Top Control Bar */}
@@ -801,14 +802,21 @@ export default function ThermalReceiptModal({
       {/* Embedded CSS for Printing: Targets thermal or A4 */}
       <style jsx global>{`
         @media print {
+          /* COMPLETELY DESTROY ALL BACKGROUND APPS */
+          body > *:not(#thermal-receipt-modal-root) {
+            display: none !important;
+          }
+
           html, body {
             height: 100% !important;
             width: 100% !important;
             overflow: hidden !important;
             margin: 0 !important;
             padding: 0 !important;
+            background: white !important;
           }
-          body * {
+
+          #thermal-receipt-modal-root * {
             visibility: hidden;
           }
           
@@ -868,6 +876,12 @@ export default function ThermalReceiptModal({
       `}</style>
     </div>
   );
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return modalContent;
+  return createPortal(modalContent, document.body);
 }
 
 
