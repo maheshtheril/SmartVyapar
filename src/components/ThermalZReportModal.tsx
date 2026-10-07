@@ -194,7 +194,7 @@ export default function ThermalZReportModal({ isOpen, onClose, data }: ThermalZR
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
       <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden">
         {/* Top Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 bg-slate-50">
