@@ -893,3 +893,6 @@ export default function ThermalReceiptModal({
 
 
 
+
+
+

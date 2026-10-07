@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const {
       tableId,
       customerName = "Dine-in Guest",
-      customerPhone = "9999999999",
+      customerPhone = "",
       paymentMode = "UPI",
     } = body;
 
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
           invoiceNumber,
           invoiceDate: new Date(),
           customerName: `${customerName} (${table.name})`,
-          customerPhone: customerPhone || "9999999999",
+          customerPhone: customerPhone || "",
           customerStateCode: tenant.stateCode,
           isInterState: false,
           subtotal,
@@ -272,3 +272,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

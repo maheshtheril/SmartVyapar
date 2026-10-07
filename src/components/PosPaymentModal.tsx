@@ -298,7 +298,7 @@ export default function PosPaymentModal({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                {businessName} • Counter 1 • {customerName || "Walk-in Cash Customer"} ({items.length} items)
+                {businessName} • Counter 1 • {customerName || "Cash Customer"} ({items.length} items)
               </p>
             </div>
           </div>
@@ -831,3 +831,4 @@ export default function PosPaymentModal({
     </div>
   );
 }
+

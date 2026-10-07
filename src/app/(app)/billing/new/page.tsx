@@ -1013,7 +1013,7 @@ export default function NewInvoicePage() {
     }
 
     const invoicePayload = {
-      customerName: customerName || "Walk-in Cash Customer",
+      customerName: customerName || "Cash Customer",
       customerPhone: customerPhone || "9999999999",
       customerStateCode: customerState,
       paymentStatus: (isStreamActive || isSplitMode) ? (computedDue > 0 ? "PARTIAL" : "PAID") : paymentStatus,
@@ -1079,7 +1079,7 @@ export default function NewInvoicePage() {
       setReceiptData({
         invoiceNumber: offlineRecord.offlineInvoiceNumber,
         invoiceDate: offlineRecord.createdAt,
-        customerName: customerName || "Walk-in Cash Customer",
+        customerName: customerName || "Cash Customer",
         customerPhone: customerPhone,
         customerState: customerState,
         cashierName: "Counter 1 (Offline)",
@@ -1124,7 +1124,7 @@ export default function NewInvoicePage() {
       setReceiptData({
         invoiceNumber: data.invoice.invoiceNumber,
         invoiceDate: data.invoice.invoiceDate || new Date().toISOString(),
-        customerName: customerName || "Walk-in Cash Customer",
+        customerName: customerName || "Cash Customer",
         customerPhone: customerPhone,
         customerState: customerState,
         cashierName: "Counter 1",
@@ -1159,7 +1159,7 @@ export default function NewInvoicePage() {
           setReceiptData({
             invoiceNumber: offlineRecord.offlineInvoiceNumber,
             invoiceDate: offlineRecord.createdAt,
-            customerName: customerName || "Walk-in Cash Customer",
+            customerName: customerName || "Cash Customer",
             customerPhone: customerPhone,
             customerState: customerState,
             cashierName: "Counter 1 (Offline)",
@@ -1781,7 +1781,7 @@ export default function NewInvoicePage() {
                   Customer & Billing State
                 </span>
                 <div className="text-xs font-bold text-slate-900 flex items-center space-x-2">
-                  <span>{customerName || "Walk-in Cash Customer"}</span>
+                  <span>{customerName || "Cash Customer"}</span>
                   {customerPhone && (
                     <span className="font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded text-[11px]">
                       📱 {customerPhone}
@@ -2402,6 +2402,8 @@ export default function NewInvoicePage() {
     </div>
   );
 }
+
+
 
 
 
