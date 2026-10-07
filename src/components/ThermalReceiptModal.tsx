@@ -23,6 +23,7 @@ import {
   printDirectHardware, 
   kickCashDrawer, 
   getHardwarePrinterConfig, 
+  saveHardwarePrinterConfig,
   isWebSerialSupported, 
   isWebUsbSupported 
 } from '@/lib/escpos';
@@ -296,7 +297,7 @@ export default function ThermalReceiptModal({
             <div className="flex items-center rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-semibold">
               <button
                 type="button"
-                onClick={() => setPaperWidth('80mm')}
+                onClick={() => { setPaperWidth('80mm'); saveHardwarePrinterConfig({ paperWidth: '80mm' }); }}
                 className={`rounded-lg px-2.5 py-1 transition ${
                   paperWidth === '80mm'
                     ? 'bg-white text-indigo-600 shadow-sm'
@@ -307,7 +308,7 @@ export default function ThermalReceiptModal({
               </button>
               <button
                 type="button"
-                onClick={() => setPaperWidth('58mm')}
+                onClick={() => { setPaperWidth('58mm'); saveHardwarePrinterConfig({ paperWidth: '58mm' }); }}
                   className={`rounded-lg px-2.5 py-1 transition ${
                     paperWidth === '58mm'
                       ? 'bg-white text-indigo-600 shadow-sm'
@@ -318,7 +319,7 @@ export default function ThermalReceiptModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaperWidth('A4')}
+                  onClick={() => { setPaperWidth('A4'); saveHardwarePrinterConfig({ paperWidth: 'A4' }); }}
                   className={`rounded-lg px-2.5 py-1 transition ${
                     paperWidth === 'A4'
                       ? 'bg-white text-indigo-600 shadow-sm'
