@@ -103,7 +103,7 @@ export interface HardwarePrinterConfig {
   baudRate?: number;
   autoPrintOnSave?: boolean;
   kickDrawerOnPrint?: boolean;
-  paperWidth?: "58mm" | "80mm";
+  paperWidth?: "58mm" | "80mm" | "A4";
 }
 
 const STORAGE_KEY = "sv_hardware_printer_config";
