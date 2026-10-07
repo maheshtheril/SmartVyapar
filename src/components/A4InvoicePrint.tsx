@@ -26,24 +26,24 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
   };
 
   return (
-    <div className="bg-white w-full max-w-[210mm] mx-auto text-black font-sans min-h-[297mm] flex flex-col border-2 border-slate-300 p-1 text-[13px] leading-tight print:border-none print:p-0 print:h-[250mm] print:min-h-[250mm] overflow-hidden print:page-break-after-avoid print:page-break-inside-avoid print:break-inside-avoid">
-      <div className="border border-black flex flex-col flex-1 m-2 print:m-0 print:h-[250mm]">
+    <div className="bg-white w-[210mm] mx-auto text-black font-sans min-h-[297mm] flex flex-col border border-slate-300 text-[13px] leading-tight print:w-full print:h-[100vh] print:max-w-none print:min-h-0 print:border-none print:p-0 print:m-0 overflow-hidden print:page-break-after-avoid print:page-break-inside-avoid print:break-inside-avoid box-border">
+      <div className="border border-black flex flex-col flex-1 m-4 print:m-0 print:h-full box-border">
         
         {/* Top Header */}
         <div className="border-b border-black p-4 flex items-center justify-between min-h-[120px] bg-slate-50">
           {/* Left: Logo */}
-          <div className="w-1/4 flex items-center justify-start">
+          <div className="w-1/4 flex items-center justify-start pl-4">
             {business.logoUrl ? (
-              <div className="w-24 h-24 bg-white border border-slate-200 rounded-sm shadow-sm flex items-center justify-center p-1">
-                <img src={business.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+              <div className="w-40 h-32 flex items-center justify-start">
+                <img src={business.logoUrl} alt="Logo" className="max-w-[160px] max-h-[120px] object-contain" />
               </div>
             ) : null}
           </div>
           
           {/* Center: Business Name & Contact */}
           <div className="w-2/4 flex flex-col items-center justify-center text-center px-2">
-            <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">{data.docTitle || 'TAX INVOICE'}</div>
-            <h1 className="text-2xl font-black uppercase tracking-[0.05em] text-blue-800 mb-1.5 leading-tight">{business.name}</h1>
+            <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">{data.docTitle || (business.isComposition ? 'BILL OF SUPPLY' : 'TAX INVOICE')}</div>
+            <h1 className="text-2xl font-black uppercase tracking-[0.05em] mb-1.5 leading-tight" style={{ color: "#1e3a8a" }}>{business.name}</h1>
             <p className="font-bold text-[13px] text-slate-700 tracking-wide leading-snug flex items-center justify-center text-center">
               <MapPin className="w-3.5 h-3.5 text-slate-400 mr-1 flex-shrink-0" strokeWidth={2.5} /> {business.address}
             </p>
