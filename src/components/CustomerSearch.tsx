@@ -243,11 +243,34 @@ export default function CustomerSearch({
           )}
         </div>
 
+        {/* Customer Name Input (Walk-in Name Override) */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1">
+            <label className={`block text-xs font-bold ${isDark ? 'text-indigo-400' : 'text-slate-700'}`}>
+              Customer Name (Optional)
+            </label>
+          </div>
+          <div className="relative flex items-center">
+            <User className={`absolute left-3 h-4 w-4 ${isDark ? 'text-indigo-400' : 'text-slate-400'}`} />
+            <input
+              type="text"
+              placeholder="Walk-in Customer Name"
+              value={customerName === "Cash / Walk-in Customer" || customerName === "Cash Customer" ? "" : customerName}
+              onChange={(e) => onNameChange(e.target.value)}
+              className={`w-full rounded-xl border pl-9 pr-3 py-2 text-xs font-bold tracking-wide focus:outline-none transition shadow-sm ${
+                isDark
+                  ? 'bg-slate-950 border-slate-700 text-indigo-300 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                  : 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500'
+              }`}
+            />
+          </div>
+        </div>
+
         {/* Customer Phone (WhatsApp) Input */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className={`block text-xs font-bold ${isDark ? 'text-emerald-400' : 'text-slate-700'}`}>
-              Customer Mobile (WhatsApp) *
+              Customer Mobile (Optional)
             </label>
             {isPhoneValid ? (
               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.2 rounded-full">
@@ -332,4 +355,5 @@ export default function CustomerSearch({
     </div>
   );
 }
+
 
