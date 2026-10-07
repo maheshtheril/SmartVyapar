@@ -97,6 +97,8 @@ export default function ThermalReceiptModal({
   business,
   onNewSale,
 }: ThermalReceiptModalProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm' | 'A4'>('80mm');
   const [autoPrintTriggered, setAutoPrintTriggered] = useState(false);
   const [printingDirect, setPrintingDirect] = useState(false);
@@ -877,12 +879,10 @@ export default function ThermalReceiptModal({
     </div>
   );
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   if (!mounted) return modalContent;
   return createPortal(modalContent, document.body);
 }
+
 
 
 
