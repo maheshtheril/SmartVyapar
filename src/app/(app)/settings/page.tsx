@@ -390,6 +390,22 @@ function SettingsContent() {
     }
   }, [activeTab]);
 
+  // Handle Logo Upload (Base64)
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Logo must be less than 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfile({ ...profile, logoUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Handle Profile Update
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -717,17 +733,16 @@ function SettingsContent() {
 
                 <div className="flex-1 space-y-2 w-full">
                   <label className="block text-xs font-bold text-slate-700">
-                    Logo Image URL (PNG, JPG, or SVG)
+                    Upload Logo (Drag & Drop)
                   </label>
                   <input
-                    type="url"
-                    value={profile.logoUrl}
-                    onChange={(e) => setProfile({ ...profile, logoUrl: e.target.value })}
-                    placeholder="https://your-domain.com/logo.png or image CDN link"
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs focus:border-indigo-600 focus:outline-none"
+                    type="file"
+                    accept="image/png, image/jpeg, image/svg+xml"
+                    onChange={handleLogoUpload}
+                    className="w-full rounded-xl border-2 border-dashed border-slate-300 px-3 py-3 text-xs focus:border-indigo-600 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer text-slate-500 bg-slate-50 hover:bg-slate-100 transition"
                   />
-                  <p className="text-[11px] text-slate-500">
-                    Your logo will be printed at the top of tax invoices, thermal billing receipts, and POS receipts.
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Drag & Drop or click to browse. Max size: 2MB. 
                   </p>
                 </div>
               </div>
@@ -2203,6 +2218,7 @@ export default function SettingsPage() {
     </React.Suspense>
   );
 }
+
 
 
 
