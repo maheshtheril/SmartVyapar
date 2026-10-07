@@ -801,6 +801,13 @@ export default function ThermalReceiptModal({
       {/* Embedded CSS for Printing: Targets thermal or A4 */}
       <style jsx global>{`
         @media print {
+          html, body {
+            height: 296mm !important;
+            max-height: 296mm !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -810,12 +817,13 @@ export default function ThermalReceiptModal({
           #a4-receipt-preview * {
             visibility: visible;
           }
-                      #a4-receipt-preview {
+          #a4-receipt-preview {
               position: absolute !important;
               left: 0 !important;
               top: 0 !important;
-              width: 100vw !important;
-              height: 100vh !important;
+              width: 100% !important;
+              height: 296mm !important;
+              overflow: hidden !important;
               margin: 0 !important;
               padding: 0 !important;
               background: white !important;
