@@ -26,7 +26,7 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
   };
 
   return (
-    <div className="bg-white w-[210mm] mx-auto text-black font-sans min-h-[297mm] flex flex-col border border-slate-300 text-[13px] leading-tight print:w-full print:h-[100vh] print:max-w-none print:min-h-0 print:border-none print:p-0 print:m-0 overflow-hidden print:page-break-after-avoid print:page-break-inside-avoid print:break-inside-avoid box-border">
+    <div className="bg-white w-[210mm] mx-auto text-black font-sans min-h-[297mm] flex flex-col border border-slate-300 text-[13px] leading-tight print:w-full print:h-[100vh] print:max-w-none print:min-h-0 print:border-none print:p-6 print:m-0 overflow-hidden print:page-break-after-avoid print:page-break-inside-avoid print:break-inside-avoid box-border">
       <div className="border border-black flex flex-col flex-1 m-4 print:m-0 print:h-full box-border">
         
         {/* Top Header */}
