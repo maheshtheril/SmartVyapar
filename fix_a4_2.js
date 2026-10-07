@@ -1,22 +1,12 @@
-const fs = require('fs');
 
-const path = 'src/components/ThermalReceiptModal.tsx';
-let c = fs.readFileSync(path, 'utf8');
+const fs = require("fs");
+const file = "src/components/A4InvoicePrint.tsx";
+let content = fs.readFileSync(file, "utf8");
 
-c = c.replace(
-  /<div id="thermal-receipt-preview" className="receipt-container text-black bg-white p-2">/g,
-  `{paperWidth === 'A4' ? (\n              <div id="thermal-receipt-preview"><A4InvoicePrint data={data} business={business} /></div>\n            ) : (\n              <div id="thermal-receipt-preview" className="receipt-container text-black bg-white p-2">`
-);
+content = content.replace(`className="max-w-[140px] max-h-[110px] object-contain print:brightness-0 print:contrast-200" style={{ filter: "sepia(1) hue-rotate(180deg) saturate(3) brightness(0.6) contrast(1.2)" }}`, `className="max-w-[160px] max-h-[120px] object-contain"`);
 
-c = c.replace(
-  /<\/div>\n\s*<\/div>\n\s*\{!\(hwConfig\.type === 'none' \|\| !isHardwareSupported\) && paperWidth !== 'A4' && \(/g,
-  `</div>\n            )}\n            </div>\n\n            {!(hwConfig.type === 'none' || !isHardwareSupported) && paperWidth !== 'A4' && (`
-);
+// change text-blue-800 to a custom color
+content = content.replace(`<h1 className="text-2xl font-black uppercase tracking-[0.05em] text-blue-800 mb-1.5 leading-tight">{business.name}</h1>`, `<h1 className="text-2xl font-black uppercase tracking-[0.05em] mb-1.5 leading-tight" style={{ color: "#1e3a8a" }}>{business.name}</h1>`);
 
-c = c.replace(
-  /<\/div>\n\s*<\/div>\n\s*\{!\(hwConfig\.type === 'none' \|\| !isHardwareSupported\) && \(/g,
-  `</div>\n            )}\n            </div>\n\n            {!(hwConfig.type === 'none' || !isHardwareSupported) && paperWidth !== 'A4' && (`
-);
+fs.writeFileSync(file, content, "utf8");
 
-fs.writeFileSync(path, c);
-console.log("Updated ThermalReceiptModal correctly");

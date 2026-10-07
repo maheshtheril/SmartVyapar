@@ -1,57 +1,68 @@
-import re
+import sys
 
-with open('src/components/ThermalReceiptModal.tsx', 'r', encoding='utf-8') as f:
+file = 'src/app/(app)/billing/new/page.tsx'
+with open(file, 'r', encoding='utf8') as f:
     content = f.read()
 
-# 1. Add createPortal import
-if 'createPortal' not in content:
-    content = content.replace("import React, { useState, useEffect } from 'react';", "import React, { useState, useEffect } from 'react';\nimport { createPortal } from 'react-dom';")
+content = content.replace('const handleResetNewSale = () => {', 'const handleResetNewSale = (keepModalOpen?: boolean) => {')
 
-# 2. Change eturn ( to const modalContent = (
-content = re.sub(r'  return \(\n    <div className="fixed inset-0', '  const modalContent = (\n    <div id="thermal-receipt-modal-root" className="fixed inset-0', content)
+target1 = '''      ]);
+    setShowReceiptModal(false);
+    setReceiptData(null);
+  };'''
 
-# 3. Replace the CSS block
-css_old = r'''        @media print {
-          html, body {
-            height: 265mm !important;
-            max-height: 265mm !important;
-            overflow: hidden !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          body \* {
-            visibility: hidden;
-          }'''
-css_new = r'''        @media print {
-          body > *:not(#thermal-receipt-modal-root) {
-            display: none !important;
-          }
-          html, body {
-            height: 100% !important;
-            width: 100% !important;
-            overflow: hidden !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          #thermal-receipt-modal-root * {
-            visibility: hidden;
-          }'''
-# Wait, I need to match whatever is currently there.
-# Let's just use a simpler regex for CSS.
-content = re.sub(r'        @media print \{.*?\$\{isA4', css_new + '\n           with the portal return
-end_old = r'    </div>\n  );\n}'
-end_new = r'''    </div>
-  );
+replacement1 = '''      ]);
+    if (keepModalOpen !== true) {
+      setShowReceiptModal(false);
+      setReceiptData(null);
+    }
+  };'''
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+content = content.replace(target1, replacement1)
 
-  if (!mounted) return modalContent;
-  return createPortal(modalContent, document.body);
-}'''
-content = re.sub(end_old, end_new, content)
+target_off = '''        setShowReceiptModal(true);
+        setIsPaymentModalOpen(false);
+        setIsSubmitting(false);
+        isSubmittingRef.current = false;
+        return;
+      }
 
-with open('src/components/ThermalReceiptModal.tsx', 'w', encoding='utf-8') as f:
+      try {'''
+
+replacement_off = '''        handleResetNewSale(true);
+        setShowReceiptModal(true);
+        setIsSubmitting(false);
+        isSubmittingRef.current = false;
+        return;
+      }
+
+      try {'''
+
+content = content.replace(target_off, replacement_off)
+
+
+target_try = '''        setShowReceiptModal(true);
+        setIsPaymentModalOpen(false);
+      } catch (err: any) {'''
+
+replacement_try = '''        handleResetNewSale(true);
+        setShowReceiptModal(true);
+      } catch (err: any) {'''
+
+content = content.replace(target_try, replacement_try)
+
+
+target_catch = '''            setShowReceiptModal(true);
+            setIsPaymentModalOpen(false);
+            return;
+          } catch (enqueueErr) {'''
+
+replacement_catch = '''            handleResetNewSale(true);
+            setShowReceiptModal(true);
+            return;
+          } catch (enqueueErr) {'''
+
+content = content.replace(target_catch, replacement_catch)
+
+with open(file, 'w', encoding='utf8') as f:
     f.write(content)
-
-print("Done")

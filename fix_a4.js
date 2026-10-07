@@ -1,49 +1,40 @@
-const fs = require('fs');
 
-const path = 'src/components/ThermalReceiptModal.tsx';
-let c = fs.readFileSync(path, 'utf8');
+const fs = require("fs");
+const file = "src/components/A4InvoicePrint.tsx";
+let content = fs.readFileSync(file, "utf8");
 
-if (!c.includes('import A4InvoicePrint')) {
-  c = c.replace(
-    /import QrCodeCanvas from '\.\/QrCodeCanvas';/,
-    `import QrCodeCanvas from './QrCodeCanvas';\nimport A4InvoicePrint from './A4InvoicePrint';`
-  );
-}
+// Fix wrapper classes
+const wrapperTarget = `    <div className="bg-white w-full max-w-[210mm] mx-auto text-black font-sans min-h-[297mm] flex flex-col border-2 border-slate-300 p-1 text-[13px] leading-tight print:border-none print:p-0 print:h-[250mm] print:min-h-[250mm] overflow-hidden print:page-break-after-avoid print:page-break-inside-avoid print:break-inside-avoid">
+      <div className="border border-black flex flex-col flex-1 m-2 print:m-0 print:h-[250mm]">`;
 
-c = c.replace(
-  /const \[paperWidth, setPaperWidth\] = useState<'80mm' \| '58mm'>\('80mm'\);/g,
-  `const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm' | 'A4'>('80mm');`
-);
+const wrapperReplacement = `    <div className="bg-white w-[210mm] mx-auto text-black font-sans min-h-[297mm] flex flex-col border border-slate-300 text-[13px] leading-tight print:w-full print:h-[100vh] print:max-w-none print:min-h-0 print:border-none print:p-0 print:m-0 overflow-hidden print:page-break-after-avoid print:page-break-inside-avoid print:break-inside-avoid box-border">
+      <div className="border border-black flex flex-col flex-1 m-4 print:m-0 print:h-full box-border">`;
 
-c = c.replace(
-  /onClick=\{\(\) => setPaperWidth\('58mm'\)\}\n\s*className=\{\`rounded-lg px-2\.5 py-1 transition \$\{\n\s*paperWidth === '58mm'\n\s*\? 'bg-white text-indigo-600 shadow-sm'\n\s*: 'text-slate-600 hover:text-slate-900'\n\s*\}\`\}\n\s*>\n\s*2-Inch \(58mm\)\n\s*<\/button>/g,
-  `onClick={() => setPaperWidth('58mm')}\n                  className={\`rounded-lg px-2.5 py-1 transition \${\n                    paperWidth === '58mm'\n                      ? 'bg-white text-indigo-600 shadow-sm'\n                      : 'text-slate-600 hover:text-slate-900'\n                  }\`}\n                >\n                  2-Inch (58mm)\n                </button>\n                <button\n                  type="button"\n                  onClick={() => setPaperWidth('A4')}\n                  className={\`rounded-lg px-2.5 py-1 transition \${\n                    paperWidth === 'A4'\n                      ? 'bg-white text-indigo-600 shadow-sm'\n                      : 'text-slate-600 hover:text-slate-900'\n                  }\`}\n                >\n                  A4 (Full Size)\n                </button>`
-);
+content = content.replace(wrapperTarget, wrapperReplacement);
+content = content.replace(wrapperTarget.replace(/\n/g, "\r\n"), wrapperReplacement.replace(/\n/g, "\r\n"));
 
-c = c.replace(
-  /<div id="print-receipt-content" className="receipt-container text-black bg-white p-2">/g,
-  `{paperWidth === 'A4' ? (\n              <div id="print-receipt-content"><A4InvoicePrint data={data} business={business} /></div>\n            ) : (\n              <div id="print-receipt-content" className="receipt-container text-black bg-white p-2">`
-);
+// Fix logo block
+const logoTarget = `          {/* Left: Logo */}
+          <div className="w-1/4 flex items-center justify-start">
+            {business.logoUrl ? (
+              <div className="w-24 h-24 bg-white border border-slate-200 rounded-sm shadow-sm flex items-center justify-center p-1">
+                <img src={business.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : null}
+          </div>`;
 
-c = c.replace(
-  /<\/div>\n\s*<\/div>\n\s*\{!\(hwConfig\.type === 'none' \|\| !isHardwareSupported\) && \(/g,
-  `</div>\n            )}\n            </div>\n\n            {!(hwConfig.type === 'none' || !isHardwareSupported) && paperWidth !== 'A4' && (`
-);
+const logoReplacement = `          {/* Left: Logo */}
+          <div className="w-1/4 flex items-center justify-start pl-4">
+            {business.logoUrl ? (
+              <div className="w-40 h-32 flex items-center justify-start">
+                <img src={business.logoUrl} alt="Logo" className="max-w-[140px] max-h-[110px] object-contain print:brightness-0 print:contrast-200" style={{ filter: "sepia(1) hue-rotate(180deg) saturate(3) brightness(0.6) contrast(1.2)" }} />
+              </div>
+            ) : null}
+          </div>`;
 
-c = c.replace(
-  /const is58mm = paperWidth === '58mm';/g,
-  `const is58mm = paperWidth === '58mm';\n  const isA4 = paperWidth === 'A4';`
-);
+content = content.replace(logoTarget, logoReplacement);
+content = content.replace(logoTarget.replace(/\n/g, "\r\n"), logoReplacement.replace(/\n/g, "\r\n"));
 
-c = c.replace(
-  /width: \$\{paperWidth\};/g,
-  `width: \${isA4 ? '210mm' : paperWidth};`
-);
 
-c = c.replace(
-  /size: \$\{paperWidth\} auto;/g,
-  `size: \${isA4 ? 'A4' : \`\${paperWidth} auto\`};`
-);
+fs.writeFileSync(file, content, "utf8");
 
-fs.writeFileSync(path, c);
-console.log("Updated ThermalReceiptModal");

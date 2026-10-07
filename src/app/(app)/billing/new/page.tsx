@@ -915,7 +915,7 @@ export default function NewInvoicePage() {
   };
 
   // Reset New Sale Handler (F9)
-  const handleResetNewSale = (keepModalOpen?: boolean) => {
+  const handleResetNewSale = () => {
     setCustomerName("");
     setCustomerPhone("");
     setPaymentMode("CASH");
@@ -946,10 +946,8 @@ export default function NewInvoicePage() {
         gst: 18,
       },
     ]);
-    if (keepModalOpen !== true) {
-      setShowReceiptModal(false);
-      setReceiptData(null);
-    }
+    setShowReceiptModal(false);
+    setReceiptData(null);
   };
 
   // Submit Invoice to Neon DB (or Offline Storage)
@@ -1104,8 +1102,9 @@ export default function NewInvoicePage() {
         notes: paymentNotes,
       });
 
-      handleResetNewSale(true);
-        setShowReceiptModal(true);
+      setBillItems([{ id: `row-${Date.now()}`, productId: "", name: "", hsn: "", quantity: 1, price: 0, gst: 18 }]);
+      setShowReceiptModal(true);
+      setIsPaymentModalOpen(false);
       setIsSubmitting(false);
         isSubmittingRef.current = false;
       return;
@@ -1152,8 +1151,9 @@ export default function NewInvoicePage() {
         customerLoyaltyBalance: data.invoice.customerLoyalty?.currentBalance,
       });
 
-      handleResetNewSale(true);
-        setShowReceiptModal(true);
+      setBillItems([{ id: `row-${Date.now()}`, productId: "", name: "", hsn: "", quantity: 1, price: 0, gst: 18 }]);
+      setShowReceiptModal(true);
+      setIsPaymentModalOpen(false);
     } catch (err: any) {
       if (typeof window !== "undefined" && (!navigator.onLine || err.message?.includes("Failed to fetch") || err.message?.includes("network"))) {
         try {
@@ -1182,8 +1182,9 @@ export default function NewInvoicePage() {
             upiUri: currentUpiUri,
             notes: paymentNotes,
           });
-          handleResetNewSale(true);
-        setShowReceiptModal(true);
+          setBillItems([{ id: `row-${Date.now()}`, productId: "", name: "", hsn: "", quantity: 1, price: 0, gst: 18 }]);
+          setShowReceiptModal(true);
+          setIsPaymentModalOpen(false);
           return;
         } catch (enqueueErr) {
           alert("Error: " + err.message);
