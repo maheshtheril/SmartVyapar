@@ -25,9 +25,11 @@ interface SupplierPickerProps {
   /** Suppliers derived from past bills (kept for backward compatibility) */
   billSuppliers: SupplierPickerOption[];
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  /** Parent form validation: highlight the field and show this message */
+  errorText?: string;
 }
 
-export default function SupplierPicker({ value, onChange, onSelect, billSuppliers, inputRef }: SupplierPickerProps) {
+export default function SupplierPicker({ value, onChange, onSelect, billSuppliers, inputRef, errorText }: SupplierPickerProps) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const [masterSuppliers, setMasterSuppliers] = useState<SupplierPickerOption[]>([]);
@@ -138,10 +140,12 @@ export default function SupplierPicker({ value, onChange, onSelect, billSupplier
           onFocus={() => setOpen(true)}
           onChange={(e) => { onChange(e.target.value); setOpen(true); }}
           onKeyDown={onKeyDown}
-          className="w-full text-xs font-semibold border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+          data-vfield="supplier"
+          className={`w-full text-xs font-semibold border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 ${errorText ? 'border-rose-500 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-300 bg-white'}`}
         />
         <Building2 className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
       </div>
+      {errorText && <p className="text-[10px] text-rose-600 font-semibold mt-1">✕ {errorText}</p>}
 
       {open && (
         <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-2xl max-h-64 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/5">

@@ -827,20 +827,57 @@ export default function PurchaseInwardPage() {
     setBatchBarcodeQuantities(qtys);
   };
 
+  // Live validation (same rules as before, now collected and shown inline)
+  const [showValidation, setShowValidation] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  useEffect(() => { setShowValidation(false); setSubmitError(null); }, [isNewBillOpen]);
+
+  const validation = useMemo(() => {
+    const rows: Record<number, { name?: string; qty?: string; price?: string }> = {};
+    const messages: string[] = [];
+    let supplier: string | undefined;
+    let billNo: string | undefined;
+
+    if (!supplierName.trim()) {
+      supplier = 'Select or type the supplier name';
+      messages.push('Supplier name is required');
+    }
+    if (!billNumber.trim()) {
+      billNo = 'Enter the supplier\'s invoice number';
+      messages.push('Supplier Bill / Inv # is required');
+    }
+    items.forEach((it, idx) => {
+      const r: { name?: string; qty?: string; price?: string } = {};
+      if (!it.productName.trim()) { r.name = 'required'; messages.push(`Row ${idx + 1}: item name is empty`); }
+      if (!(Number(it.quantity) > 0)) { r.qty = 'required'; messages.push(`Row ${idx + 1}: quantity must be greater than 0`); }
+      if (!(Number(it.purchasePrice) >= 0)) { r.price = 'required'; messages.push(`Row ${idx + 1}: cost price is invalid`); }
+      if (r.name || r.qty || r.price) rows[idx] = r;
+    });
+    return { supplier, billNumber: billNo, rows, messages };
+  }, [supplierName, billNumber, items]);
+
+  const rowHas = (idx: number, field: 'name' | 'qty' | 'price') =>
+    showValidation && !!validation.rows[idx]?.[field];
+
   // Submit Purchase Bill & GRN
   const handleSubmitBill = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setSubmitError(null);
 
-    if (!supplierName.trim()) {
-      alert('Please enter or select a Supplier Name');
-      return;
-    }
-    if (!billNumber.trim()) {
-      alert('Please enter Supplier Bill / Invoice Number');
-      return;
-    }
-    if (items.some((it) => !it.productName.trim() || Number(it.quantity) <= 0 || Number(it.purchasePrice) < 0)) {
-      alert('Please verify line items: ensure description, quantity (> 0), and price are entered.');
+    if (validation.messages.length > 0) {
+      setShowValidation(true);
+      // Jump to the first field that needs attention
+      const firstRow = Object.keys(validation.rows).map(Number).sort((a, b) => a - b)[0];
+      const target = validation.supplier ? 'supplier'
+        : validation.billNumber ? 'billNumber'
+        : firstRow !== undefined
+          ? `row-${firstRow}-${validation.rows[firstRow].name ? 'name' : validation.rows[firstRow].qty ? 'qty' : 'price'}`
+          : '';
+      setTimeout(() => {
+        const el = document.querySelector<HTMLElement>(`[data-vfield="${target}"]`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el?.focus();
+      }, 50);
       return;
     }
 
@@ -903,7 +940,13 @@ export default function PurchaseInwardPage() {
       loadBills();
       resetForm();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      const raw = String(err?.message || 'Failed to post purchase bill');
+      const friendly = /unique constraint|already exists|duplicate/i.test(raw)
+        ? `Bill "${billNumber}" from "${supplierName}" is already recorded. Check the Supplier Bill / Inv # or open it from the register.`
+        : raw;
+      setSubmitError(friendly);
+      setShowValidation(false);
+      document.querySelector('[data-vfield="billNumber"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } finally {
       setSubmitting(false);
     }
@@ -1318,6 +1361,31 @@ export default function PurchaseInwardPage() {
                 </div>
               )}
 
+              {((showValidation && validation.messages.length > 0) || submitError) && (
+                <div role="alert" className="px-4 py-3 rounded-xl bg-rose-50 border border-rose-300 text-xs text-rose-800">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      {submitError ? (
+                        <p className="font-bold">{submitError}</p>
+                      ) : (
+                        <>
+                          <p className="font-bold">
+                            Cannot save yet - {validation.messages.length} {validation.messages.length === 1 ? 'issue needs' : 'issues need'} fixing:
+                          </p>
+                          <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                            {validation.messages.map((m) => <li key={m}>{m}</li>)}
+                          </ul>
+                        </>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => { setSubmitError(null); setShowValidation(false); }} className="text-rose-400 hover:text-rose-700 shrink-0">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Voucher Top Metadata Grid (Vendor, Bill #, Dates, Warehouse, Terms) */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
@@ -1357,6 +1425,7 @@ export default function PurchaseInwardPage() {
                       }}
                       billSuppliers={registeredSuppliers}
                       inputRef={supplierInputRef}
+                      errorText={showValidation ? validation.supplier : undefined}
                     />
                   </div>
 
@@ -1395,8 +1464,12 @@ export default function PurchaseInwardPage() {
                       placeholder="e.g. BOS-2026-99"
                       value={billNumber}
                       onChange={(e) => setBillNumber(e.target.value)}
-                      className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-mono font-bold"
+                      data-vfield="billNumber"
+                      className={`w-full text-xs border rounded-lg px-3 py-2 focus:ring-2 font-mono font-bold ${showValidation && validation.billNumber ? 'border-rose-500 bg-rose-50 focus:ring-rose-300' : 'border-slate-300 bg-white focus:ring-blue-500'}`}
                     />
+                    {showValidation && validation.billNumber && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1">✕ {validation.billNumber}</p>
+                    )}
                   </div>
 
                   {/* Bill Date (Col 10) */}
@@ -1581,7 +1654,8 @@ export default function PurchaseInwardPage() {
                                       updateItem(idx, 'productName', e.target.value);
                                       setActiveItemDropdownIdx(idx);
                                     }}
-                                    className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-[11px] font-mono focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                                    data-vfield={`row-${idx}-name`}
+                                    className={`w-full border rounded px-2.5 py-1.5 text-[11px] font-mono focus:ring-2 focus:ring-blue-500 ${rowHas(idx, 'name') ? 'border-rose-500 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-300 bg-slate-50'}`}
                                   />
                                 </div>
                                 {/* Searchable Dropdown for Catalog Items */}
@@ -1705,7 +1779,8 @@ export default function PurchaseInwardPage() {
                                 value={row.quantity}
                                 onFocus={(e) => e.target.select()}
                                 onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                                className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold"
+                                data-vfield={`row-${idx}-qty`}
+                                className={`w-full text-center border rounded px-1.5 py-1.5 text-xs font-mono font-bold ${rowHas(idx, 'qty') ? 'border-rose-500 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-300'}`}
                               />
                             </td>
 
@@ -1736,7 +1811,8 @@ export default function PurchaseInwardPage() {
                                 value={row.purchasePrice}
                                 onFocus={(e) => e.target.select()}
                                 onChange={(e) => updateItem(idx, 'purchasePrice', e.target.value)}
-                                className="w-full text-right border border-slate-300 rounded px-2 py-1.5 text-xs font-mono font-bold"
+                                data-vfield={`row-${idx}-price`}
+                                className={`w-full text-right border rounded px-2 py-1.5 text-xs font-mono font-bold ${rowHas(idx, 'price') ? 'border-rose-500 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-300'}`}
                               />
                             </td>
 
