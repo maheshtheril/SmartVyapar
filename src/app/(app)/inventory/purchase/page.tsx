@@ -40,6 +40,7 @@ import {
 import BarcodeSvg from '@/components/BarcodeSvg';
 import PurchaseReturnModal from '@/components/PurchaseReturnModal';
 import SupplierPicker from '@/components/SupplierPicker';
+import { checkGstin } from '@/lib/gstin';
 
 const compressImage = async (file: File): Promise<File> => {
   if (file.type === 'application/pdf') return file;
@@ -1369,8 +1370,18 @@ export default function PurchaseInwardPage() {
                       placeholder="29AAACB2021A1Z8"
                       value={supplierGstin}
                       onChange={(e) => setSupplierGstin(e.target.value.toUpperCase())}
-                      className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 font-mono"
+                      className={`w-full text-xs border rounded-lg px-3 py-2 focus:ring-2 font-mono ${
+                        checkGstin(supplierGstin).entered && !checkGstin(supplierGstin).valid
+                          ? 'border-rose-500 bg-rose-50 focus:ring-rose-300'
+                          : 'border-slate-300 bg-white focus:ring-blue-500'
+                      }`}
                     />
+                    {checkGstin(supplierGstin).entered && !checkGstin(supplierGstin).valid && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1">✕ {checkGstin(supplierGstin).error}</p>
+                    )}
+                    {checkGstin(supplierGstin).entered && checkGstin(supplierGstin).valid && (
+                      <p className="text-[10px] text-emerald-700 mt-1">✓ {checkGstin(supplierGstin).stateName}</p>
+                    )}
                   </div>
 
                   {/* Bill Number (Cols 8-9) */}

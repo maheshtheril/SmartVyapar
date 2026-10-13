@@ -253,6 +253,15 @@ function QuickAddSupplierDialog({
   const emailOk = !email || /^\S+@\S+\.\S+$/.test(email);
   const blocked = !name.trim() || !gstCheck.valid || !!gstinDuplicate || !!exactNameDuplicate || !phoneOk || !emailOk;
 
+  const problems: string[] = [];
+  if (!name.trim()) problems.push('Supplier name is required');
+  if (exactNameDuplicate) problems.push('Supplier name already exists');
+  if (gstCheck.entered && !gstCheck.valid) problems.push(`GSTIN: ${gstCheck.error}`);
+  if (gstinDuplicate) problems.push(`GSTIN already used by "${gstinDuplicate.name}"`);
+  if (!phoneOk) problems.push('Phone number is invalid');
+  if (!emailOk) problems.push('Email address is invalid');
+  const bad = '!border-rose-500 !bg-rose-50 !ring-2 !ring-rose-200';
+
   const save = async () => {
     if (blocked || saving) return;
     setSaving(true);
@@ -301,7 +310,7 @@ function QuickAddSupplierDialog({
         <div className="p-5 space-y-3">
           <div>
             <label className={label}>Supplier / Vendor Name <span className="text-rose-500">*</span></label>
-            <input autoFocus className={input} value={name} onChange={(e) => setName(e.target.value)} />
+            <input autoFocus className={`${input} ${exactNameDuplicate || !name.trim() ? bad : ''}`} value={name} onChange={(e) => setName(e.target.value)} />
             {exactNameDuplicate && (
               <p className="text-[10px] text-rose-600 mt-1">A supplier with this name already exists. Select it from the list instead.</p>
             )}
@@ -320,14 +329,16 @@ function QuickAddSupplierDialog({
             <div>
               <label className={label}>GSTIN <span className="font-normal text-slate-400">(optional)</span></label>
               <input
-                className={`${input} font-mono ${gstCheck.entered && !gstCheck.valid ? 'border-rose-400' : ''}`}
+                className={`${input} font-mono ${(gstCheck.entered && !gstCheck.valid) || gstinDuplicate ? bad : ''}`}
                 maxLength={15}
                 placeholder="29AAACB2021A1Z8"
                 value={gstin}
                 onChange={(e) => setGstin(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''))}
               />
-              {gstCheck.entered && !gstCheck.valid && gstin.length === 15 && (
-                <p className="text-[10px] text-rose-600 mt-1">{gstCheck.error}</p>
+              {gstCheck.entered && !gstCheck.valid && (
+                <p className="text-[10px] text-rose-600 font-semibold mt-1">
+                  ✕ {gstCheck.error}
+                </p>
               )}
               {gstCheck.entered && gstCheck.valid && (
                 <p className="text-[10px] text-emerald-700 mt-1">✓ Valid · {gstCheck.stateName}</p>
@@ -338,13 +349,15 @@ function QuickAddSupplierDialog({
             </div>
             <div>
               <label className={label}>Phone</label>
-              <input className={`${input} ${!phoneOk ? 'border-rose-400' : ''}`} value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <input className={`${input} ${!phoneOk ? bad : ''}`} value={phone} onChange={(e) => setPhone(e.target.value)} />
+              {!phoneOk && <p className="text-[10px] text-rose-600 font-semibold mt-1">✕ Enter a valid phone number (7-15 digits)</p>}
             </div>
           </div>
 
           <div>
             <label className={label}>Email</label>
-            <input className={`${input} ${!emailOk ? 'border-rose-400' : ''}`} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input className={`${input} ${!emailOk ? bad : ''}`} value={email} onChange={(e) => setEmail(e.target.value)} />
+            {!emailOk && <p className="text-[10px] text-rose-600 font-semibold mt-1">✕ Enter a valid email address</p>}
           </div>
           <div>
             <label className={label}>Address</label>
@@ -354,17 +367,28 @@ function QuickAddSupplierDialog({
           {serverError && <p className="text-xs text-rose-600">{serverError}</p>}
         </div>
 
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50 rounded-b-xl">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg">Cancel (Esc)</button>
-          <button
-            type="button"
-            disabled={blocked || saving}
-            onClick={save}
-            className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg flex items-center gap-1.5"
-          >
-            {saving && <Loader2 className="w-3 h-3 animate-spin" />} Save &amp; Select (Enter)
-          </button>
+        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 rounded-b-xl">
+          {problems.length > 0 && (
+            <div className="mb-2 text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+              <span className="font-bold">Please fix before saving:</span>
+              <ul className="list-disc ml-4 mt-0.5">
+                {problems.map((p) => <li key={p}>{p}</li>)}
+              </ul>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg">Cancel (Esc)</button>
+            <button
+              type="button"
+              disabled={blocked || saving}
+              onClick={save}
+              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg flex items-center gap-1.5"
+            >
+              {saving && <Loader2 className="w-3 h-3 animate-spin" />} Save &amp; Select (Enter)
+            </button>
+          </div>
         </div>
+
       </div>
     </div>,
     document.body
