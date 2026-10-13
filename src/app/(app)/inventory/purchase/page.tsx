@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import BarcodeSvg from '@/components/BarcodeSvg';
 import PurchaseReturnModal from '@/components/PurchaseReturnModal';
+import SupplierPicker from '@/components/SupplierPicker';
 
 const compressImage = async (file: File): Promise<File> => {
   if (file.type === 'application/pdf') return file;
@@ -1345,61 +1346,17 @@ export default function PurchaseInwardPage() {
                       </div>
                     </div>
 
-                    <div className="relative">
-                      <input
-                        ref={supplierInputRef}
-                        type="text"
-                        required
-                        placeholder="Search supplier name, GSTIN, or enter vendor..."
-                        value={supplierName}
-                        onFocus={() => setSupplierDropdownOpen(true)}
-                        onChange={(e) => {
-                          setSupplierName(e.target.value);
-                          setSupplierDropdownOpen(true);
-                        }}
-                        className="w-full text-xs font-semibold border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500"
-                      />
-                      <Building2 className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-
-                    {/* Supplier Combobox Dropdown */}
-                    {supplierDropdownOpen && (
-                      <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-2xl max-h-52 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/5">
-                        {filteredSuppliers.length > 0 ? (
-                          filteredSuppliers.map((sup) => (
-                            <div
-                              key={sup.name}
-                              onMouseDown={() => {
-                                setSupplierName(sup.name);
-                                setSupplierGstin(sup.gstin || '');
-                                setSupplierPhone(sup.phone || '');
-                                setSupplierDropdownOpen(false);
-                              }}
-                              className="p-2 hover:bg-blue-50 cursor-pointer flex items-center justify-between transition text-xs"
-                            >
-                              <div>
-                                <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                                  {sup.name}
-                                  {sup.name === supplierName && <Check className="w-3 h-3 text-blue-600" />}
-                                </div>
-                                <div className="text-[10px] text-slate-500 font-mono">
-                                  {sup.gstin ? `GSTIN: ${sup.gstin}` : 'No GSTIN'} {sup.phone ? `| Ph: ${sup.phone}` : ''}
-                                </div>
-                              </div>
-                              <span className={`text-[9px] font-semibold px-2 py-0.5 rounded ${
-                                sup.isPreset ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'
-                              }`}>
-                                {sup.isPreset ? 'Verified Preset' : `${sup.billsCount || 1} Bills`}
-                              </span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-3 text-xs text-slate-500 text-center">
-                            No registered supplier matches. Entering &quot;{supplierName}&quot; will record as new vendor.
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <SupplierPicker
+                      value={supplierName}
+                      onChange={setSupplierName}
+                      onSelect={(s) => {
+                        setSupplierName(s.name);
+                        setSupplierGstin(s.gstin);
+                        setSupplierPhone(s.phone);
+                      }}
+                      billSuppliers={registeredSuppliers}
+                      inputRef={supplierInputRef}
+                    />
                   </div>
 
                   {/* Supplier GSTIN (Cols 6-7) */}
