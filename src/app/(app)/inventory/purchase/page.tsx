@@ -606,7 +606,8 @@ export default function PurchaseInwardPage() {
             finalProductName = it.productName; // Keeping raw for mapping
           }
 
-          const gstRate = Number(it.gstRate || 18);
+          const scannedGst = it.gstRate === undefined || it.gstRate === null || String(it.gstRate) === '' ? 18 : Number(it.gstRate);
+          const gstRate = scannedGst;
             const landedCost = currentTenant?.isComposition ? cost * (1 + gstRate / 100) : cost;
             if (match && Number(match.sellingPrice || 0) > 0) {
               sp = Number(match.sellingPrice);
@@ -631,7 +632,7 @@ export default function PurchaseInwardPage() {
             marginPercent: margin,
             sellingPrice: sp,
             mrp: Number(it.mrp || sp),
-            gstRate: Number(it.gstRate || 18),
+            gstRate: scannedGst,
             batchNumber: it.batchNumber || '',
             mfgDate: it.mfgDate || '',
             expiryDate: it.expiryDate || '',
