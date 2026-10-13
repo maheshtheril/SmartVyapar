@@ -41,6 +41,7 @@ import BarcodeSvg from '@/components/BarcodeSvg';
 import PurchaseReturnModal from '@/components/PurchaseReturnModal';
 import SupplierPicker from '@/components/SupplierPicker';
 import { checkGstin } from '@/lib/gstin';
+import NewItemDialog, { NewItemDetails } from '@/components/NewItemDialog';
 
 const compressImage = async (file: File): Promise<File> => {
   if (file.type === 'application/pdf') return file;
@@ -832,6 +833,47 @@ export default function PurchaseInwardPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   useEffect(() => { setShowValidation(false); setSubmitError(null); }, [isNewBillOpen]);
 
+  // Quick-add item (confirm details) - front-end only; product is still created on posting
+  const [newItemDialogIdx, setNewItemDialogIdx] = useState<number | null>(null);
+
+  const applyNewItemDetails = (idx: number, d: NewItemDetails) => {
+    setItems((prev) => prev.map((r, i) => i !== idx ? r : {
+      ...r,
+      productName: d.productName,
+      suggestedDisplayName: d.suggestedDisplayName,
+      partNumber: d.partNumber,
+      hsnCode: d.hsnCode,
+      gstRate: d.gstRate,
+      unit: d.unit,
+    }));
+    setNewItemDialogIdx(null);
+  };
+
+  const applyExistingProduct = (idx: number, p: any) => {
+    setItems((prev) => prev.map((r, i) => i !== idx ? r : {
+      ...r, // keeps the supplier's raw name for mapping, like the dropdown selection does
+      productId: p.id,
+      suggestedDisplayName: p.displayName || p.name,
+      partNumber: p.partNumber || r.partNumber,
+      hsnCode: p.hsnCode || r.hsnCode,
+      unit: p.baseUnit || r.unit,
+      purchasePrice: p.purchasePrice && Number(p.purchasePrice) > 0 ? Number(p.purchasePrice) : r.purchasePrice,
+      sellingPrice: p.sellingPrice ? Number(p.sellingPrice) : r.sellingPrice,
+      mrp: p.mrp ? Number(p.mrp) : r.mrp,
+      gstRate: p.gstRate ? Number(p.gstRate) : r.gstRate,
+    }));
+    setNewItemDialogIdx(null);
+  };
+
+  // Rows that will create a brand-new catalogue item when posted (informational, never blocking)
+  const newItemSummary = useMemo(() => {
+    const names = new Set(products.map((p) => String(p.name).trim().toLowerCase()));
+    const rows = items
+      .map((it, idx) => ({ it, idx }))
+      .filter(({ it }) => !it.productId && it.productName.trim() && !names.has(it.productName.trim().toLowerCase()));
+    return { rows: rows.map((r) => r.idx + 1), missingHsn: rows.filter(({ it }) => !String(it.hsnCode || '').trim()).length };
+  }, [items, products]);
+
   const validation = useMemo(() => {
     const rows: Record<number, { name?: string; qty?: string; price?: string }> = {};
     const messages: string[] = [];
@@ -1386,6 +1428,37 @@ export default function PurchaseInwardPage() {
                 </div>
               )}
 
+              {newItemSummary.rows.length > 0 && (
+                <div className="px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900 flex items-start gap-2">
+                  <PackagePlus className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">
+                      This bill will create {newItemSummary.rows.length} new catalogue {newItemSummary.rows.length === 1 ? 'item' : 'items'}
+                      {' '}(row {newItemSummary.rows.join(', ')}).
+                    </p>
+                    {newItemSummary.missingHsn > 0 && (
+                      <p className="text-[11px] mt-0.5">{newItemSummary.missingHsn} without an HSN code. Add one via &quot;Create new item&quot; in the item dropdown.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {newItemDialogIdx !== null && items[newItemDialogIdx] && (
+                <NewItemDialog
+                  initial={{
+                    productName: items[newItemDialogIdx].productName,
+                    suggestedDisplayName: items[newItemDialogIdx].suggestedDisplayName || '',
+                    partNumber: items[newItemDialogIdx].partNumber || '',
+                    hsnCode: items[newItemDialogIdx].hsnCode || '',
+                    unit: items[newItemDialogIdx].unit,
+                  }}
+                  products={products}
+                  onClose={() => setNewItemDialogIdx(null)}
+                  onConfirm={(d) => applyNewItemDetails(newItemDialogIdx, d)}
+                  onUseExisting={(p) => applyExistingProduct(newItemDialogIdx, p)}
+                />
+              )}
+
               {/* Voucher Top Metadata Grid (Vendor, Bill #, Dates, Warehouse, Terms) */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
@@ -1704,6 +1777,20 @@ export default function PurchaseInwardPage() {
                                     ) : (
                                       <div className="p-4 text-center text-xs text-slate-500">
                                         No matching products found. Will create new item.
+                                      </div>
+                                    )}
+                                    {row.productName.trim() && !row.productId &&
+                                      !products.some((p) => String(p.name).trim().toLowerCase() === row.productName.trim().toLowerCase()) && (
+                                      <div
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          setNewItemDialogIdx(idx);
+                                          setActiveItemDropdownIdx(null);
+                                        }}
+                                        className="p-2.5 cursor-pointer flex items-center gap-2 text-xs font-semibold text-blue-700 bg-slate-50 hover:bg-blue-50 border-t border-slate-200"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        Create new item &quot;{row.productName.trim()}&quot;
                                       </div>
                                     )}
                                   </div>
