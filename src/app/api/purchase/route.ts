@@ -154,6 +154,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Data-integrity validation (only for values that were explicitly supplied)
+    const provided = (v: any) => v !== undefined && v !== null && v !== "";
+    for (let i = 0; i < items.length; i++) {
+      const it: any = items[i];
+      const row = `Row ${i + 1}`;
+      if (!String(it?.productName || "").trim()) {
+        return NextResponse.json({ error: `${row}: item name is required` }, { status: 400 });
+      }
+      if (provided(it.quantity) && !(Number.isFinite(Number(it.quantity)) && Number(it.quantity) > 0)) {
+        return NextResponse.json({ error: `${row}: quantity must be greater than 0` }, { status: 400 });
+      }
+      if (provided(it.purchasePrice) && !(Number.isFinite(Number(it.purchasePrice)) && Number(it.purchasePrice) >= 0)) {
+        return NextResponse.json({ error: `${row}: cost price cannot be negative` }, { status: 400 });
+      }
+      if (provided(it.discountPercent) && !(Number(it.discountPercent) >= 0 && Number(it.discountPercent) <= 100)) {
+        return NextResponse.json({ error: `${row}: discount must be between 0 and 100` }, { status: 400 });
+      }
+      if (provided(it.gstRate) && !(Number(it.gstRate) >= 0 && Number(it.gstRate) <= 100)) {
+        return NextResponse.json({ error: `${row}: GST rate must be between 0 and 100` }, { status: 400 });
+      }
+    }
+
     // Fetch tenant to determine tax jurisdiction
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -209,7 +231,7 @@ export async function POST(req: NextRequest) {
       const baseCost = discountedRate / pkgSize;
 
       const taxable = Math.round(discountedRate * qty * 100) / 100;
-      const gstRate = Number(item.gstRate || 18);
+      const gstRate = (item.gstRate === undefined || item.gstRate === null || item.gstRate === "") ? 18 : Number(item.gstRate);
 
       let itemCgst = 0;
       let itemSgst = 0;

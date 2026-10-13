@@ -697,7 +697,7 @@ export default function PurchaseInwardPage() {
         row.hsnCode = selected.hsnCode || '';
         row.unit = selected.baseUnit || 'PCS';
         row.purchasePrice = Number(selected.purchasePrice || 0);
-        row.gstRate = Number(selected.gstRate || 18);
+        row.gstRate = selected.gstRate === undefined || selected.gstRate === null || String(selected.gstRate) === '' ? 18 : Number(selected.gstRate);
         row.sellingPrice = Number(selected.sellingPrice || 0);
         row.mrp = Number(selected.mrp || selected.sellingPrice || 0);
         if (row.purchasePrice > 0 && row.sellingPrice > 0) {
@@ -781,7 +781,7 @@ export default function PurchaseInwardPage() {
     totalQuantity += qty;
     const cost = Number(item.purchasePrice || 0) * (1 - Number(item.discountPercent || 0) / 100);
     const taxable = Math.round(cost * qty * 100) / 100;
-    const gst = Number(item.gstRate || 18);
+    const gst = item.gstRate === undefined || item.gstRate === null || String(item.gstRate) === '' ? 18 : Number(item.gstRate);
     const taxAmt = Math.round((taxable * gst / 100) * 100) / 100;
 
     totalTaxable += taxable;
@@ -1013,7 +1013,7 @@ export default function PurchaseInwardPage() {
           mrp: Number(it.mrp || it.sellingPrice || 0),
             suggestedDisplayName: it.suggestedDisplayName || undefined,
             partNumber: it.partNumber || undefined,
-            gstRate: Number(it.gstRate || 18),
+            gstRate: it.gstRate === undefined || it.gstRate === null || String(it.gstRate) === '' ? 18 : Number(it.gstRate),
           batchNumber: it.batchNumber || undefined,
           mfgDate: it.mfgDate || undefined,
           expiryDate: it.expiryDate || undefined,
@@ -1778,7 +1778,7 @@ export default function PurchaseInwardPage() {
                         const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
                           const unitProfit = Math.round((sp - landedCost) * 100) / 100;
                         const taxable = Math.round(cost * Number(row.quantity || 0) * 100) / 100;
-                        const gst = Number(row.gstRate || 18);
+                        const gst = row.gstRate === undefined || row.gstRate === null || String(row.gstRate) === '' ? 18 : Number(row.gstRate);
                         const lineTotal = Math.round((taxable * (1 + gst / 100)) * 100) / 100;
 
                         return (
