@@ -874,6 +874,61 @@ export default function PurchaseInwardPage() {
     return { rows: rows.map((r) => r.idx + 1), missingHsn: rows.filter(({ it }) => !String(it.hsnCode || '').trim()).length };
   }, [items, products]);
 
+  // ---- Draft autosave (browser-local; protects half-entered bills from refresh/crash) ----
+  const draftKey = `ziona:purchase-draft:${tenant?.id || 'default'}`;
+  const [pendingDraft, setPendingDraft] = useState<any | null>(null);
+
+  const isMeaningfulDraft = (d: any) =>
+    !!d && (String(d.supplierName || '').trim() || String(d.billNumber || '').trim() ||
+      (Array.isArray(d.items) && d.items.some((it: any) => String(it.productName || '').trim())));
+
+  const clearDraft = () => {
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+    setPendingDraft(null);
+  };
+
+  // On opening the form: offer to restore a saved draft (only if the form is still empty)
+  useEffect(() => {
+    if (!isNewBillOpen) return;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      const formEmpty = !supplierName.trim() && !billNumber.trim() && !items.some((it) => it.productName.trim());
+      if (formEmpty && isMeaningfulDraft(d)) setPendingDraft(d);
+    } catch { /* ignore corrupt draft */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNewBillOpen, draftKey]);
+
+  const restoreDraft = () => {
+    const d = pendingDraft;
+    if (!d) return;
+    setSupplierName(d.supplierName || '');
+    setSupplierGstin(d.supplierGstin || '');
+    setSupplierPhone(d.supplierPhone || '');
+    setBillNumber(d.billNumber || '');
+    if (d.billDate) setBillDate(d.billDate);
+    if (d.warehouseId) setWarehouseId(d.warehouseId);
+    if (d.paymentTerms) setPaymentTerms(d.paymentTerms);
+    setNotes(d.notes || '');
+    if (Array.isArray(d.items) && d.items.length > 0) setItems(d.items);
+    setPendingDraft(null);
+  };
+
+  // Debounced autosave while the form is open (paused while a restore decision is pending)
+  useEffect(() => {
+    if (!isNewBillOpen || submitting || pendingDraft) return;
+    const t = setTimeout(() => {
+      try {
+        const snapshot = { supplierName, supplierGstin, supplierPhone, billNumber, billDate, warehouseId, paymentTerms, notes, items, savedAt: Date.now() };
+        if (isMeaningfulDraft(snapshot)) localStorage.setItem(draftKey, JSON.stringify(snapshot));
+        else localStorage.removeItem(draftKey);
+      } catch { /* storage full/unavailable: ignore */ }
+    }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNewBillOpen, submitting, pendingDraft, supplierName, supplierGstin, supplierPhone, billNumber, billDate, warehouseId, paymentTerms, notes, items]);
+
   const validation = useMemo(() => {
     const rows: Record<number, { name?: string; qty?: string; price?: string }> = {};
     const messages: string[] = [];
@@ -981,6 +1036,7 @@ export default function PurchaseInwardPage() {
       setIsNewBillOpen(false);
       loadBills();
       resetForm();
+      clearDraft();
     } catch (err: any) {
       const raw = String(err?.message || 'Failed to post purchase bill');
       const friendly = /unique constraint|already exists|duplicate/i.test(raw)
@@ -1425,6 +1481,23 @@ export default function PurchaseInwardPage() {
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                </div>
+              )}
+
+              {pendingDraft && (
+                <div className="px-4 py-3 rounded-xl bg-blue-50 border border-blue-300 text-xs text-blue-900 flex items-center gap-3">
+                  <RotateCcw className="w-4 h-4 shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-bold">You have an unsaved draft bill</p>
+                    <p className="text-[11px] text-blue-800">
+                      {pendingDraft.supplierName ? `${pendingDraft.supplierName} · ` : ''}
+                      {pendingDraft.billNumber ? `Bill ${pendingDraft.billNumber} · ` : ''}
+                      {(pendingDraft.items || []).filter((it: any) => String(it.productName || '').trim()).length} item(s)
+                      {pendingDraft.savedAt ? ` · saved ${new Date(pendingDraft.savedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}
+                    </p>
+                  </div>
+                  <button type="button" onClick={restoreDraft} className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold">Restore</button>
+                  <button type="button" onClick={clearDraft} className="px-3 py-1.5 rounded-lg bg-white border border-blue-300 hover:bg-blue-100 font-semibold">Discard</button>
                 </div>
               )}
 
