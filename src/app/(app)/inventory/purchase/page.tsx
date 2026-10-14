@@ -1078,7 +1078,7 @@ export default function PurchaseInwardPage() {
         items: items.map((it) => ({
           productId: it.productId || undefined,
           productName: it.productName,
-          hsnCode: it.hsnCode,
+          hsnCode: (it.hsnCode && it.hsnCode.trim()) ? it.hsnCode.trim() : '9999',
           unit: it.unit,
           quantity: Number(it.quantity),
           packageSize: Number(it.packageSize || 1),

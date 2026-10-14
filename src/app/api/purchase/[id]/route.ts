@@ -248,19 +248,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           });
         }
         if (!product) {
+          const safeHsn = (item.hsnCode && typeof item.hsnCode === 'string' && item.hsnCode.trim())
+            ? item.hsnCode.trim()
+            : "9999";
           product = await tx.product.create({
             data: {
-              tenantId,
+              tenant: { connect: { id: tenantId } },
               name: item.productName,
-              displayName: item.suggestedDisplayName || null,
-              partNumber: item.partNumber || undefined,
-              hsnCode: item.hsnCode || "9999",
-              baseUnit: item.unit,
-              purchasePrice: item.baseCostPrice,
-              sellingPrice: item.sellingPrice,
-              mrp: item.mrp,
-              gstRate: item.gstRate,
-              currentStock: item.baseQuantity,
+              displayName: item.suggestedDisplayName || item.productName,
+              partNumber: item.partNumber ? String(item.partNumber).trim() : null,
+              hsnCode: safeHsn,
+              baseUnit: item.unit || "PCS",
+              purchasePrice: Number(item.baseCostPrice || 0),
+              sellingPrice: Number(item.sellingPrice || 0),
+              mrp: item.mrp ? Number(item.mrp) : (item.sellingPrice ? Number(item.sellingPrice) : Number(item.baseCostPrice || 0)),
+              gstRate: item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 18,
+              currentStock: Number(item.baseQuantity || 0),
               minStockAlert: 5,
             },
           });
