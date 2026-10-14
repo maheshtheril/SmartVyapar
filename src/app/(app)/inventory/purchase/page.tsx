@@ -720,18 +720,43 @@ export default function PurchaseInwardPage() {
   };
 
   const selectProduct = (idx: number, prod: any) => {
-    updateItem(idx, 'productId', prod.id);
-    updateItem(idx, 'productName', prod.name);
-    updateItem(idx, 'suggestedDisplayName', prod.displayName || prod.name);
-    if (prod.partNumber) updateItem(idx, 'partNumber', prod.partNumber);
-    if (prod.hsnCode) updateItem(idx, 'hsnCode', prod.hsnCode);
-    if (prod.baseUnit) updateItem(idx, 'unit', prod.baseUnit);
-    if (prod.purchasePrice && Number(prod.purchasePrice) > 0) updateItem(idx, 'purchasePrice', prod.purchasePrice);
-    if (prod.sellingPrice) updateItem(idx, 'sellingPrice', prod.sellingPrice);
-    if (prod.mrp) updateItem(idx, 'mrp', prod.mrp);
-    if (prod.gstRate !== undefined && prod.gstRate !== null && String(prod.gstRate) !== '') updateItem(idx, 'gstRate', prod.gstRate);
+    setItems((prevItems) => {
+      const updated = [...prevItems];
+      const row: any = { ...updated[idx] };
+      row.productId = prod.id;
+      row.productName = prod.name;
+      row.suggestedDisplayName = prod.displayName || prod.name;
+      if (prod.partNumber) row.partNumber = prod.partNumber;
+      if (prod.hsnCode) row.hsnCode = prod.hsnCode;
+      if (prod.baseUnit) row.unit = prod.baseUnit;
+      if (prod.purchasePrice && Number(prod.purchasePrice) > 0) row.purchasePrice = prod.purchasePrice;
+      if (prod.sellingPrice) row.sellingPrice = prod.sellingPrice;
+      if (prod.mrp) row.mrp = prod.mrp;
+      if (prod.gstRate !== undefined && prod.gstRate !== null && String(prod.gstRate) !== '') row.gstRate = prod.gstRate;
+
+      // Recalculate margins
+      const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
+      const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
+      if (row.sellingPrice && landedCost > 0) {
+        row.marginPercent = Math.round(((Number(row.sellingPrice) - landedCost) / landedCost) * 1000) / 10;
+      } else if (row.marginPercent) {
+        row.sellingPrice = Math.round(landedCost * (1 + Number(row.marginPercent || 0) / 100) * 100) / 10;
+      }
+
+      updated[idx] = row;
+      return updated;
+    });
+
     setActiveItemDropdownIdx(null);
     setHighlightedDropdownIdx(0);
+
+    setTimeout(() => {
+      const qtyInput = document.querySelector(`[data-vfield="row-${idx}-qty"]`) as HTMLInputElement | null;
+      if (qtyInput) {
+        qtyInput.focus();
+        qtyInput.select();
+      }
+    }, 50);
   };
 
   // Handle line item field change with bidirectional margin calculation
@@ -1851,20 +1876,53 @@ export default function PurchaseInwardPage() {
                                     }}
                                     onBlur={() => setTimeout(() => setActiveItemDropdownIdx(null), 200)}
                                     onKeyDown={(e) => {
-                                      if (activeItemDropdownIdx === idx) {
+                                      const isDown = e.key === 'ArrowDown' || e.key === 'Down' || e.keyCode === 40;
+                                      const isUp = e.key === 'ArrowUp' || e.key === 'Up' || e.keyCode === 38;
+                                      const isEnter = e.key === 'Enter' || e.keyCode === 13;
+                                      const isTab = e.key === 'Tab';
+                                      const isEsc = e.key === 'Escape' || e.keyCode === 27;
+
+                                      if (isDown) {
+                                        e.preventDefault();
                                         const filtered = getFilteredProducts(row.productName);
-                                        if (e.key === 'ArrowDown') {
+                                        if (activeItemDropdownIdx !== idx) {
+                                          setActiveItemDropdownIdx(idx);
+                                          setHighlightedDropdownIdx(0);
+                                        } else if (filtered.length > 0) {
+                                          setHighlightedDropdownIdx((prev) => {
+                                            const next = prev < filtered.length - 1 ? prev + 1 : 0;
+                                            setTimeout(() => {
+                                              document.getElementById(`new-prod-opt-${idx}-${next}`)?.scrollIntoView({ block: 'nearest' });
+                                            }, 10);
+                                            return next;
+                                          });
+                                        }
+                                      } else if (isUp) {
+                                        e.preventDefault();
+                                        const filtered = getFilteredProducts(row.productName);
+                                        if (activeItemDropdownIdx !== idx) {
+                                          setActiveItemDropdownIdx(idx);
+                                          setHighlightedDropdownIdx(0);
+                                        } else if (filtered.length > 0) {
+                                          setHighlightedDropdownIdx((prev) => {
+                                            const next = prev > 0 ? prev - 1 : filtered.length - 1;
+                                            setTimeout(() => {
+                                              document.getElementById(`new-prod-opt-${idx}-${next}`)?.scrollIntoView({ block: 'nearest' });
+                                            }, 10);
+                                            return next;
+                                          });
+                                        }
+                                      } else if (isEnter || (isTab && activeItemDropdownIdx === idx)) {
+                                        const filtered = getFilteredProducts(row.productName);
+                                        if (activeItemDropdownIdx === idx && filtered.length > 0) {
                                           e.preventDefault();
-                                          setHighlightedDropdownIdx((prev) => (prev < filtered.length - 1 ? prev + 1 : 0));
-                                        } else if (e.key === 'ArrowUp') {
-                                          e.preventDefault();
-                                          setHighlightedDropdownIdx((prev) => (prev > 0 ? prev - 1 : Math.max(0, filtered.length - 1)));
-                                        } else if (e.key === 'Enter') {
-                                          if (filtered.length > 0 && highlightedDropdownIdx >= 0 && highlightedDropdownIdx < filtered.length) {
-                                            e.preventDefault();
-                                            selectProduct(idx, filtered[highlightedDropdownIdx]);
+                                          const targetIdx = (highlightedDropdownIdx >= 0 && highlightedDropdownIdx < filtered.length) ? highlightedDropdownIdx : 0;
+                                          if (filtered[targetIdx]) {
+                                            selectProduct(idx, filtered[targetIdx]);
                                           }
-                                        } else if (e.key === 'Escape') {
+                                        }
+                                      } else if (isEsc) {
+                                        if (activeItemDropdownIdx === idx) {
                                           e.preventDefault();
                                           setActiveItemDropdownIdx(null);
                                         }
@@ -1896,44 +1954,50 @@ export default function PurchaseInwardPage() {
                                           return (
                                             <div
                                               key={prod.id}
-                                              ref={(el) => {
-                                                if (isHighlighted && el) {
-                                                  el.scrollIntoView({ block: 'nearest' });
+                                              id={`new-prod-opt-${idx}-${pIdx}`}
+                                              onMouseMove={() => {
+                                                if (highlightedDropdownIdx !== pIdx) {
+                                                  setHighlightedDropdownIdx(pIdx);
                                                 }
                                               }}
-                                              onMouseEnter={() => setHighlightedDropdownIdx(pIdx)}
                                               onMouseDown={(e) => {
                                                 e.preventDefault();
                                                 selectProduct(idx, prod);
                                               }}
                                               className={`p-3 cursor-pointer flex justify-between items-center transition ${
-                                                isHighlighted ? 'bg-blue-50/90 border-l-4 border-blue-600' : 'hover:bg-slate-50'
+                                                isHighlighted ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-50 text-slate-900'
                                               }`}
                                             >
                                               <div className="flex-1 min-w-0 pr-4">
                                                 <div className="flex items-center gap-2">
-                                                  <p className="text-xs font-bold text-slate-900 truncate">
+                                                  <p className={`text-xs font-bold truncate ${isHighlighted ? 'text-white' : 'text-slate-900'}`}>
                                                     {prod.displayName || prod.name}
                                                   </p>
                                                   {prod.brand && (
-                                                    <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                                                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${
+                                                      isHighlighted ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-600'
+                                                    }`}>
                                                       {prod.brand}
                                                     </span>
                                                   )}
                                                 </div>
-                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-slate-500 font-mono">
-                                                  {prod.partNumber && <span>Part: <strong className="text-slate-700">{prod.partNumber}</strong></span>}
+                                                <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] font-mono ${
+                                                  isHighlighted ? 'text-blue-100' : 'text-slate-500'
+                                                }`}>
+                                                  {prod.partNumber && <span>Part: <strong className={isHighlighted ? 'text-white' : 'text-slate-700'}>{prod.partNumber}</strong></span>}
                                                   {prod.sku && <span>SKU: {prod.sku}</span>}
-                                                  <span>Stock: <strong className={Number(prod.currentStock || 0) > 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold'}>{prod.currentStock || 0} {prod.baseUnit}</strong></span>
+                                                  <span>Stock: <strong className={isHighlighted ? 'text-white' : (Number(prod.currentStock || 0) > 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold')}>{prod.currentStock || 0} {prod.baseUnit}</strong></span>
                                                   {prod.mrp && <span>MRP: ₹{prod.mrp}</span>}
                                                 </div>
                                               </div>
                                               <div className="text-right shrink-0">
-                                                <p className="text-xs font-black font-mono text-emerald-700">₹{Number(prod.sellingPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                                <p className={`text-xs font-black font-mono ${isHighlighted ? 'text-white' : 'text-emerald-700'}`}>
+                                                  ₹{Number(prod.sellingPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </p>
                                                 <span className={`inline-block mt-0.5 text-[9px] font-bold uppercase px-2 py-0.5 rounded transition ${
-                                                  isHighlighted ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600'
+                                                  isHighlighted ? 'bg-white text-blue-700 shadow-xs font-black' : 'bg-slate-100 text-slate-600'
                                                 }`}>
-                                                  {isHighlighted ? '↵ Enter' : 'Select'}
+                                                  {isHighlighted ? '↵ Enter to Select' : 'Select'}
                                                 </span>
                                               </div>
                                             </div>
@@ -2778,6 +2842,14 @@ export default function PurchaseInwardPage() {
           });
           setActiveItemDropdownIdx(null);
           setHighlightedDropdownIdx(0);
+
+          setTimeout(() => {
+            const qtyInput = document.querySelector(`[data-vfield="edit-row-${idx}-qty"]`) as HTMLInputElement | null;
+            if (qtyInput) {
+              qtyInput.focus();
+              qtyInput.select();
+            }
+          }, 50);
         };
 
         return (
@@ -2945,20 +3017,53 @@ export default function PurchaseInwardPage() {
                                   }}
                                   onBlur={() => setTimeout(() => setActiveItemDropdownIdx(null), 200)}
                                   onKeyDown={(e) => {
-                                    if (activeItemDropdownIdx === idx) {
+                                    const isDown = e.key === 'ArrowDown' || e.key === 'Down' || e.keyCode === 40;
+                                    const isUp = e.key === 'ArrowUp' || e.key === 'Up' || e.keyCode === 38;
+                                    const isEnter = e.key === 'Enter' || e.keyCode === 13;
+                                    const isTab = e.key === 'Tab';
+                                    const isEsc = e.key === 'Escape' || e.keyCode === 27;
+
+                                    if (isDown) {
+                                      e.preventDefault();
                                       const filtered = getFilteredProducts(row.productName);
-                                      if (e.key === 'ArrowDown') {
+                                      if (activeItemDropdownIdx !== idx) {
+                                        setActiveItemDropdownIdx(idx);
+                                        setHighlightedDropdownIdx(0);
+                                      } else if (filtered.length > 0) {
+                                        setHighlightedDropdownIdx((prev) => {
+                                          const next = prev < filtered.length - 1 ? prev + 1 : 0;
+                                          setTimeout(() => {
+                                            document.getElementById(`edit-prod-opt-${idx}-${next}`)?.scrollIntoView({ block: 'nearest' });
+                                          }, 10);
+                                          return next;
+                                        });
+                                      }
+                                    } else if (isUp) {
+                                      e.preventDefault();
+                                      const filtered = getFilteredProducts(row.productName);
+                                      if (activeItemDropdownIdx !== idx) {
+                                        setActiveItemDropdownIdx(idx);
+                                        setHighlightedDropdownIdx(0);
+                                      } else if (filtered.length > 0) {
+                                        setHighlightedDropdownIdx((prev) => {
+                                          const next = prev > 0 ? prev - 1 : filtered.length - 1;
+                                          setTimeout(() => {
+                                            document.getElementById(`edit-prod-opt-${idx}-${next}`)?.scrollIntoView({ block: 'nearest' });
+                                          }, 10);
+                                          return next;
+                                        });
+                                      }
+                                    } else if (isEnter || (isTab && activeItemDropdownIdx === idx)) {
+                                      const filtered = getFilteredProducts(row.productName);
+                                      if (activeItemDropdownIdx === idx && filtered.length > 0) {
                                         e.preventDefault();
-                                        setHighlightedDropdownIdx((prev) => (prev < filtered.length - 1 ? prev + 1 : 0));
-                                      } else if (e.key === 'ArrowUp') {
-                                        e.preventDefault();
-                                        setHighlightedDropdownIdx((prev) => (prev > 0 ? prev - 1 : Math.max(0, filtered.length - 1)));
-                                      } else if (e.key === 'Enter') {
-                                        if (filtered.length > 0 && highlightedDropdownIdx >= 0 && highlightedDropdownIdx < filtered.length) {
-                                          e.preventDefault();
-                                          selectEditProduct(idx, filtered[highlightedDropdownIdx]);
+                                        const targetIdx = (highlightedDropdownIdx >= 0 && highlightedDropdownIdx < filtered.length) ? highlightedDropdownIdx : 0;
+                                        if (filtered[targetIdx]) {
+                                          selectEditProduct(idx, filtered[targetIdx]);
                                         }
-                                      } else if (e.key === 'Escape') {
+                                      }
+                                    } else if (isEsc) {
+                                      if (activeItemDropdownIdx === idx) {
                                         e.preventDefault();
                                         setActiveItemDropdownIdx(null);
                                       }
@@ -2990,44 +3095,50 @@ export default function PurchaseInwardPage() {
                                         return (
                                           <div
                                             key={prod.id}
-                                            ref={(el) => {
-                                              if (isHighlighted && el) {
-                                                el.scrollIntoView({ block: 'nearest' });
+                                            id={`edit-prod-opt-${idx}-${pIdx}`}
+                                            onMouseMove={() => {
+                                              if (highlightedDropdownIdx !== pIdx) {
+                                                setHighlightedDropdownIdx(pIdx);
                                               }
                                             }}
-                                            onMouseEnter={() => setHighlightedDropdownIdx(pIdx)}
                                             onMouseDown={(e) => {
                                               e.preventDefault();
                                               selectEditProduct(idx, prod);
                                             }}
                                             className={`p-3 cursor-pointer flex justify-between items-center transition ${
-                                              isHighlighted ? 'bg-amber-50/90 border-l-4 border-amber-500' : 'hover:bg-slate-50'
+                                              isHighlighted ? 'bg-amber-600 text-white shadow-md' : 'hover:bg-slate-50 text-slate-900'
                                             }`}
                                           >
                                             <div className="flex-1 min-w-0 pr-4">
                                               <div className="flex items-center gap-2">
-                                                <p className="text-xs font-bold text-slate-900 truncate">
+                                                <p className={`text-xs font-bold truncate ${isHighlighted ? 'text-white' : 'text-slate-900'}`}>
                                                   {prod.displayName || prod.name}
                                                 </p>
                                                 {prod.brand && (
-                                                  <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${
+                                                    isHighlighted ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600'
+                                                  }`}>
                                                     {prod.brand}
                                                   </span>
                                                 )}
                                               </div>
-                                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-slate-500 font-mono">
-                                                {prod.partNumber && <span>Part: <strong className="text-slate-700">{prod.partNumber}</strong></span>}
+                                              <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] font-mono ${
+                                                isHighlighted ? 'text-amber-100' : 'text-slate-500'
+                                              }`}>
+                                                {prod.partNumber && <span>Part: <strong className={isHighlighted ? 'text-white' : 'text-slate-700'}>{prod.partNumber}</strong></span>}
                                                 {prod.sku && <span>SKU: {prod.sku}</span>}
-                                                <span>Stock: <strong className={Number(prod.currentStock || 0) > 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold'}>{prod.currentStock || 0} {prod.baseUnit}</strong></span>
+                                                <span>Stock: <strong className={isHighlighted ? 'text-white' : (Number(prod.currentStock || 0) > 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold')}>{prod.currentStock || 0} {prod.baseUnit}</strong></span>
                                                 {prod.mrp && <span>MRP: ₹{prod.mrp}</span>}
                                               </div>
                                             </div>
                                             <div className="text-right shrink-0">
-                                              <p className="text-xs font-black font-mono text-emerald-700">₹{Number(prod.sellingPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                              <p className={`text-xs font-black font-mono ${isHighlighted ? 'text-white' : 'text-emerald-700'}`}>
+                                                ₹{Number(prod.sellingPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                              </p>
                                               <span className={`inline-block mt-0.5 text-[9px] font-bold uppercase px-2 py-0.5 rounded transition ${
-                                                isHighlighted ? 'bg-amber-500 text-white shadow-xs' : 'bg-slate-100 text-slate-600'
+                                                isHighlighted ? 'bg-white text-amber-800 shadow-xs font-black' : 'bg-slate-100 text-slate-600'
                                               }`}>
-                                                {isHighlighted ? '↵ Enter' : 'Select'}
+                                                {isHighlighted ? '↵ Enter to Select' : 'Select'}
                                               </span>
                                             </div>
                                           </div>
@@ -3056,6 +3167,7 @@ export default function PurchaseInwardPage() {
                             </td>
                             <td className="py-2 px-2 align-middle text-center">
                               <input type="number" min="0.001" step="any" value={row.quantity === undefined || row.quantity === null ? 1 : row.quantity} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'quantity', e.target.value)}
+                                data-vfield={`edit-row-${idx}-qty`}
                                 className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 outline-none" />
                             </td>
                             <td className="py-2 px-2 align-middle">
