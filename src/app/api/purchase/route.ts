@@ -294,6 +294,11 @@ export async function POST(req: NextRequest) {
     sgstAmount = Math.round(sgstAmount * 100) / 100;
     igstAmount = Math.round(igstAmount * 100) / 100;
     totalAmount = Math.round(totalAmount * 100) / 100;
+    if (body.roundOff !== undefined && !isNaN(Number(body.roundOff))) {
+      totalAmount = Math.round((totalAmount + Number(body.roundOff)) * 100) / 100;
+    } else if (body.totalAmount !== undefined && !isNaN(Number(body.totalAmount))) {
+      totalAmount = Math.round(Number(body.totalAmount) * 100) / 100;
+    }
 
     // Execute atomic transaction
     const result = await prisma.$transaction(async (tx) => {

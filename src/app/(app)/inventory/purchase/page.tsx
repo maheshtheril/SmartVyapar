@@ -184,6 +184,8 @@ export default function PurchaseInwardPage() {
 
   // Edit Bill State
   const [editingBill, setEditingBill] = useState<any>(null);
+  const [editIsAutoRound, setEditIsAutoRound] = useState<boolean>(true);
+  const [editRoundOff, setEditRoundOff] = useState<number>(0);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -482,6 +484,34 @@ export default function PurchaseInwardPage() {
     if (!editingBill) return;
     setEditError(null);
 
+    // Calculate live totals for round off & ledger posting
+    let eTaxable = 0, eCgst = 0, eSgst = 0, eIgst = 0;
+    const eIsInter = editingBill.supplierGstin?.length >= 2 && tenant?.stateCode
+      ? editingBill.supplierGstin.substring(0, 2) !== tenant.stateCode : false;
+    (editingBill.items || []).forEach((it: any) => {
+      const cost = Number(it.purchasePrice || 0) * (1 - Number(it.discountPercent || 0) / 100);
+      const taxable = Math.round(cost * Number(it.quantity || 0) * 100) / 100;
+      const gst = it.gstRate === undefined || it.gstRate === null || String(it.gstRate) === '' ? 18 : Number(it.gstRate);
+      const tax = Math.round(taxable * gst / 100 * 100) / 100;
+      eTaxable += taxable;
+      if (eIsInter) {
+        eIgst += tax;
+      } else {
+        eCgst += Math.round((tax / 2) * 100) / 100;
+        eSgst += Math.round((tax / 2) * 100) / 100;
+      }
+    });
+    const rawTotal = Math.round((eTaxable + eCgst + eSgst + eIgst) * 100) / 100;
+    let finalTotal = rawTotal;
+    let finalRoundOff = 0;
+    if (editIsAutoRound) {
+      finalTotal = Math.round(rawTotal);
+      finalRoundOff = Math.round((finalTotal - rawTotal) * 100) / 100;
+    } else {
+      finalRoundOff = editRoundOff;
+      finalTotal = Math.round((rawTotal + editRoundOff) * 100) / 100;
+    }
+
     // Frontend validation
     if (!String(editingBill.supplierName || '').trim()) {
       setEditError('Supplier / Vendor Name is required');
@@ -530,6 +560,8 @@ export default function PurchaseInwardPage() {
           paymentTerms:  editingBill.paymentTerms,
           notes:         editingBill.notes,
           items:         editingBill.items,
+          roundOff:      finalRoundOff,
+          totalAmount:   finalTotal,
         }),
       });
       const data = await res.json();
@@ -1104,6 +1136,8 @@ export default function PurchaseInwardPage() {
         warehouseId: warehouseId || undefined,
         paymentTerms,
         notes: notes || undefined,
+        roundOff: computedRoundOff,
+        totalAmount: grandTotal,
         items: items.map((it) => ({
           productId: it.productId || undefined,
           productName: it.productName,
@@ -1340,7 +1374,7 @@ export default function PurchaseInwardPage() {
                               <FileText className="w-3 h-3 text-blue-600" /> View
                             </button>
                             <button
-                              onClick={() => { setEditingBill(JSON.parse(JSON.stringify(bill))); setEditError(null); }}
+                              onClick={() => { setEditingBill(JSON.parse(JSON.stringify(bill))); setEditError(null); setEditIsAutoRound(true); setEditRoundOff(0); }}
                               className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-md text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
                               title="Edit Bill"
                             >
@@ -2821,9 +2855,29 @@ export default function PurchaseInwardPage() {
           const gst = it.gstRate === undefined || it.gstRate === null || String(it.gstRate) === '' ? 18 : Number(it.gstRate);
           const tax = Math.round(taxable * gst / 100 * 100) / 100;
           eTaxable += taxable;
-          if (eIsInter) eIgst += tax; else { eCgst += tax / 2; eSgst += tax / 2; }
+          if (eIsInter) {
+            eIgst += tax;
+          } else {
+            eCgst += Math.round((tax / 2) * 100) / 100;
+            eSgst += Math.round((tax / 2) * 100) / 100;
+          }
         });
-        const eGrand = Math.round((eTaxable + eCgst + eSgst + eIgst) * 100) / 100;
+        eTaxable = Math.round(eTaxable * 100) / 100;
+        eCgst = Math.round(eCgst * 100) / 100;
+        eSgst = Math.round(eSgst * 100) / 100;
+        eIgst = Math.round(eIgst * 100) / 100;
+
+        const eRawGrand = Math.round((eTaxable + eCgst + eSgst + eIgst) * 100) / 100;
+        let eGrand = eRawGrand;
+        let eComputedRoundOff = 0;
+
+        if (editIsAutoRound) {
+          eGrand = Math.round(eRawGrand);
+          eComputedRoundOff = Math.round((eGrand - eRawGrand) * 100) / 100;
+        } else {
+          eComputedRoundOff = editRoundOff;
+          eGrand = Math.round((eRawGrand + editRoundOff) * 100) / 100;
+        }
 
         const updateEditItem = (idx: number, field: string, value: any) => {
           setEditingBill((b: any) => {
@@ -3329,22 +3383,49 @@ export default function PurchaseInwardPage() {
                   <>
                     <div className="space-y-0.5 border-l border-slate-200 pl-4">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">CGST</span>
-                      <span className="font-bold text-emerald-700">₹{eCgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="font-bold text-emerald-700">₹{eCgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="space-y-0.5 border-l border-slate-200 pl-4">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">SGST</span>
-                      <span className="font-bold text-emerald-700">₹{eSgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="font-bold text-emerald-700">₹{eSgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </>
                 ) : (
                   <div className="space-y-0.5 border-l border-slate-200 pl-4">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">IGST</span>
-                    <span className="font-bold text-emerald-700">₹{eIgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span className="font-bold text-emerald-700">₹{eIgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 )}
+                <div className="space-y-0.5 border-l border-slate-200 pl-4 flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Round Off</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditIsAutoRound(!editIsAutoRound)}
+                      className={`text-[9px] px-1.5 py-0.5 rounded font-bold transition cursor-pointer ${
+                        editIsAutoRound ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {editIsAutoRound ? 'AUTO' : 'MANUAL'}
+                    </button>
+                  </div>
+                  {editIsAutoRound ? (
+                    <span className="font-bold font-mono text-slate-700 text-xs">
+                      {eComputedRoundOff >= 0 ? `+₹${eComputedRoundOff.toFixed(2)}` : `-₹${Math.abs(eComputedRoundOff).toFixed(2)}`}
+                    </span>
+                  ) : (
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editRoundOff}
+                      onChange={(e) => setEditRoundOff(parseFloat(e.target.value) || 0)}
+                      className="w-20 px-1 py-0.5 text-xs font-mono font-bold border border-slate-300 rounded bg-white text-slate-800 text-right"
+                    />
+                  )}
+                </div>
                 <div className="space-y-0.5 border-l border-slate-200 pl-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Grand Total</span>
-                  <span className="text-xl font-black text-slate-900">₹{eGrand.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span className="text-xl font-black text-slate-900">₹{eGrand.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">

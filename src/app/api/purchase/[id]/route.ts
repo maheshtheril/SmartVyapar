@@ -27,7 +27,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const tenantId = session.tenantId;
 
     const body = await req.json();
-    const { supplierName, supplierGstin, billNumber, billDate, paymentTerms, notes, items } = body;
+    const { supplierName, supplierGstin, billNumber, billDate, paymentTerms, notes, items, roundOff: reqRoundOff, totalAmount: reqTotalAmount } = body;
 
     // Load existing bill with old totals
     const existing = await prisma.purchaseBill.findUnique({
@@ -147,6 +147,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     sgstAmount   = Math.round(sgstAmount   * 100) / 100;
     igstAmount   = Math.round(igstAmount   * 100) / 100;
     totalAmount  = Math.round(totalAmount  * 100) / 100;
+    if (reqRoundOff !== undefined && !isNaN(Number(reqRoundOff))) {
+      totalAmount = Math.round((totalAmount + Number(reqRoundOff)) * 100) / 100;
+    } else if (reqTotalAmount !== undefined && !isNaN(Number(reqTotalAmount))) {
+      totalAmount = Math.round(Number(reqTotalAmount) * 100) / 100;
+    }
 
     const newPayment = paymentTerms ?? oldPayment;
 
