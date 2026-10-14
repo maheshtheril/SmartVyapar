@@ -94,7 +94,21 @@ export default function RestaurantPosPage() {
       ]);
 
       if (tablesRes.success) {
-        setTables(tablesRes.tables || []);
+        const loaded: any[] = tablesRes.tables || [];
+        setTables(loaded);
+        // Auto-seed a Takeaway counter if the tenant hasn't set one up yet
+        if (!loaded.some((t: any) => t.section === 'Takeaway')) {
+          fetch('/api/restaurant/tables', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'Takeaway / Parcel', section: 'Takeaway', capacity: 99 }),
+          })
+            .then((r) => r.json())
+            .then((res) => {
+              if (res.success) setTables((prev) => [...prev, res.table]);
+            })
+            .catch(() => {});
+        }
       }
       if (prodsRes.success) {
         setMenuItems(prodsRes.products || []);
@@ -547,11 +561,15 @@ export default function RestaurantPosPage() {
           const isOccupied = table.status === 'OCCUPIED';
           const activeKotCount = table.kots?.length || 0;
 
+          const isTakeaway = table.section === 'Takeaway';
+
           return (
             <div
               key={table.id}
               className={`rounded-3xl border p-5 transition flex flex-col justify-between shadow-sm relative overflow-hidden ${
-                isOccupied
+                isTakeaway
+                  ? 'border-sky-300 bg-sky-50/40 hover:border-sky-400 hover:shadow-md'
+                  : isOccupied
                   ? 'border-amber-300 bg-amber-50/30 ring-1 ring-amber-200'
                   : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'
               }`}
@@ -561,21 +579,30 @@ export default function RestaurantPosPage() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2">
                     <span className="text-base font-black text-slate-900 tracking-tight">
-                      {table.name}
+                      {isTakeaway ? '🛵 ' : ''}{table.name}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                      {table.capacity}p
-                    </span>
+                    {!isTakeaway && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                        {table.capacity}p
+                      </span>
+                    )}
+                    {isTakeaway && (
+                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                        Counter
+                      </span>
+                    )}
                   </div>
 
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                       isOccupied
                         ? 'bg-amber-100 text-amber-800'
+                        : isTakeaway
+                        ? 'bg-sky-100 text-sky-700'
                         : 'bg-emerald-100 text-emerald-800'
                     }`}
                   >
-                    {table.status}
+                    {isTakeaway ? (isOccupied ? 'BUSY' : 'OPEN') : table.status}
                   </span>
                 </div>
 
@@ -613,7 +640,7 @@ export default function RestaurantPosPage() {
                   </div>
                 ) : (
                   <div className="mt-4 py-3 text-center rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
-                    Table Vacant • Ready for Guest
+                    {isTakeaway ? 'Ready for Next Parcel Order' : 'Table Vacant • Ready for Guest'}
                   </div>
                 )}
               </div>
