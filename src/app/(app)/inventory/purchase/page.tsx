@@ -466,6 +466,18 @@ export default function PurchaseInwardPage() {
       setEditError(`Supplier GSTIN error: ${gCheck.error}`);
       return;
     }
+    if (!editingBill.items || !Array.isArray(editingBill.items) || editingBill.items.length === 0) {
+      setEditError('At least one line item is required');
+      return;
+    }
+    if (editingBill.items.some((r: any) => !String(r.productName || '').trim())) {
+      setEditError('Every line item must have a product name');
+      return;
+    }
+    if (editingBill.items.some((r: any) => isNaN(Number(r.quantity)) || Number(r.quantity) <= 0)) {
+      setEditError('Line item quantity must be greater than 0');
+      return;
+    }
     if (editingBill.items?.some((r: any) => Number(r.purchasePrice) < 0)) {
       setEditError('Line item cost price cannot be negative');
       return;
@@ -2730,14 +2742,14 @@ export default function PurchaseInwardPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900">
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-300 text-xs text-blue-900">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                  <RefreshCw className="w-4 h-4 text-blue-600 shrink-0" />
                   <span>
-                    <strong>World-Standard ERP Audit Mode:</strong> Inwarded physical quantities &amp; lines are locked to protect inventory and batch tracking. Pricing, discounts, margins, and GST slabs can be corrected; double-entry ledger accounts will automatically reverse and re-post.
+                    <strong>Auto-Rebalancing Mode:</strong> Change products, add or remove rows, and adjust quantities, prices, discounts, or GST slabs freely. Physical stock balances and double-entry ledger accounts are automatically re-balanced upon saving.
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-amber-700 shrink-0 font-semibold">Physical returns via Debit Note</span>
+                <span className="text-[10px] font-mono text-blue-700 shrink-0 font-bold bg-blue-100/70 border border-blue-200 px-2 py-0.5 rounded">Auto Stock &amp; Ledger Rebalance</span>
               </div>
 
               {/* Bill Header Metadata Grid */}
@@ -2810,7 +2822,7 @@ export default function PurchaseInwardPage() {
                         <th className="py-2.5 px-2 w-20 text-center">HSN</th>
                         <th className="py-2.5 px-2 w-24">Batch #</th>
                         <th className="py-2.5 px-2 w-28">Expiry</th>
-                        <th className="py-2.5 px-2 w-20 text-center">Inward Qty</th>
+                        <th className="py-2.5 px-2 w-16 text-center">Qty</th>
                         <th className="py-2.5 px-2 w-18 text-center">Unit</th>
                         <th className="py-2.5 px-2 w-24 text-right">Cost (₹)</th>
                         <th className="py-2.5 px-2 w-16 text-right">Disc %</th>
@@ -2819,7 +2831,7 @@ export default function PurchaseInwardPage() {
                         <th className="py-2.5 px-2 w-18 text-center">GST %</th>
                         <th className="py-2.5 px-2 w-24 text-right">Taxable (₹)</th>
                         <th className="py-2.5 px-3 w-28 text-right font-black">Total (₹)</th>
-                        <th className="py-2.5 px-2 w-16 text-center">Status</th>
+                        <th className="py-2.5 px-2 w-10 text-center"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2913,10 +2925,8 @@ export default function PurchaseInwardPage() {
                                 className="w-full border border-slate-300 rounded px-1.5 py-1.5 text-xs" />
                             </td>
                             <td className="py-2 px-2 align-middle text-center">
-                              <div className="inline-flex items-center justify-center gap-1 bg-slate-100 border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-800" title="Inwarded quantity is locked in edit. To return physical stock, use Purchase Return / Debit Note.">
-                                <span>{row.quantity}</span>
-                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              </div>
+                              <input type="number" min="0.001" step="any" value={row.quantity === undefined || row.quantity === null ? 1 : row.quantity} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'quantity', e.target.value)}
+                                className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 outline-none" />
                             </td>
                             <td className="py-2 px-2 align-middle">
                               <select value={row.unit || 'PCS'} onChange={e => updateEditItem(idx, 'unit', e.target.value)}
@@ -2966,15 +2976,55 @@ export default function PurchaseInwardPage() {
                               ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </td>
                             <td className="py-2 px-2 text-center align-middle">
-                              <span className="inline-block text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded uppercase" title="Voucher line inwarded to stock & batches">
-                                Locked
-                              </span>
+                              <button type="button" onClick={() => setEditingBill((b: any) => ({ ...b, items: (b.items || []).filter((_: any, i: number) => i !== idx) }))}
+                                disabled={(editingBill.items || []).length <= 1}
+                                className="text-slate-400 hover:text-rose-600 transition disabled:opacity-20 p-1 cursor-pointer" title="Remove Line">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                </div>
+                <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingBill((b: any) => ({
+                        ...b,
+                        items: [
+                          ...(b.items || []),
+                          {
+                            productId: null,
+                            productName: '',
+                            suggestedDisplayName: '',
+                            partNumber: '',
+                            hsnCode: '',
+                            batchNumber: '',
+                            expiryDate: '',
+                            quantity: 1,
+                            packageSize: 1,
+                            unit: 'PCS',
+                            purchasePrice: 0,
+                            discountPercent: 0,
+                            marginPercent: 25,
+                            sellingPrice: 0,
+                            mrp: 0,
+                            gstRate: 18,
+                          }
+                        ]
+                      }));
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg transition shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Line Item</span>
+                  </button>
+                  <span className="text-[11px] text-slate-500 font-medium font-mono">
+                    {(editingBill.items || []).length} item{(editingBill.items || []).length === 1 ? '' : 's'} on this bill
+                  </span>
                 </div>
               </div>
             </div>

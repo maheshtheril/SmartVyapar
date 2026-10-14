@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { AuditAction } from "@prisma/client";
+import { StockLogType, AuditAction } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -80,17 +80,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       isInterState = resolvedGstin.substring(0, 2) !== tenant.stateCode;
     }
 
-    // Map existing items to lock inwarded physical quantities (Option A ERP standard)
-    const existingItemsMap = new Map(existing.items.map((it) => [it.id, it]));
-
     // Recalculate totals from updated items
     let totalTaxable = 0, cgstAmount = 0, sgstAmount = 0, igstAmount = 0, totalAmount = 0;
 
     const processedItems = (items || existing.items).map((item: any) => {
-      const existingItem = item.id ? existingItemsMap.get(item.id) : null;
-      // Option A: Inwarded physical quantities are locked; pricing/tax/batches can be edited
-      const qty        = existingItem ? Number(existingItem.quantity) : Number(item.quantity || 1);
-      const pkgSize    = existingItem ? Number(existingItem.packageSize) : Number(item.packageSize || 1);
+      const qty        = Math.max(0.001, Number(item.quantity || 1));
+      const pkgSize    = Math.max(1, Number(item.packageSize || 1));
+      const effectiveBaseQty = Math.round(qty * pkgSize * 1000) / 1000;
       const rate       = Number(item.purchasePrice || 0);
       const discPct    = Number(item.discountPercent || 0);
       const discRate   = rate * (1 - discPct / 100);
@@ -113,7 +109,37 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       igstAmount   += itemIgst;
       totalAmount  += lineTotal;
 
-      return { ...item, quantity: qty, packageSize: pkgSize, gstRate, baseCostPrice: baseCost, lineTotal };
+      let marginPct = item.marginPercent ? Number(item.marginPercent) : undefined;
+      let sellingPrice = item.sellingPrice ? Number(item.sellingPrice) : undefined;
+      if (sellingPrice && !marginPct && baseCost > 0) {
+        marginPct = Math.round(((sellingPrice - baseCost) / baseCost) * 1000) / 10;
+      } else if (marginPct && !sellingPrice) {
+        sellingPrice = Math.round(baseCost * (1 + marginPct / 100) * 100) / 100;
+      }
+
+      return {
+        id: item.id || undefined,
+        productId: item.productId || null,
+        productName: item.productName,
+        suggestedDisplayName: item.suggestedDisplayName || null,
+        partNumber: item.partNumber || null,
+        batchNumber: item.batchNumber?.trim() || null,
+        mfgDate: item.mfgDate ? new Date(item.mfgDate) : null,
+        expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+        hsnCode: item.hsnCode?.trim() || null,
+        unit: (item.unit || "PCS").toUpperCase(),
+        quantity: qty,
+        packageSize: pkgSize,
+        baseQuantity: effectiveBaseQty,
+        purchasePrice: rate,
+        discountPercent: discPct,
+        baseCostPrice: baseCost,
+        sellingPrice: sellingPrice,
+        marginPercent: marginPct,
+        mrp: item.mrp ? Number(item.mrp) : sellingPrice,
+        gstRate: gstRate,
+        lineTotal: lineTotal,
+      };
     });
 
     totalTaxable = Math.round(totalTaxable * 100) / 100;
@@ -138,7 +164,49 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     const updatedBill = await prisma.$transaction(async (tx) => {
 
-      // ── 1. Update bill header & totals ────────────────────────────────────
+      // ── 1. REVERSE OLD STOCK & BATCHES FROM PREVIOUS INWARD ─────────────
+      for (const oldItem of existing.items) {
+        if (!oldItem.productId) continue;
+
+        // Decrement product current stock
+        await tx.product.update({
+          where: { id: oldItem.productId },
+          data: { currentStock: { decrement: oldItem.baseQuantity } },
+        });
+
+        // Decrement batch stock if applicable
+        if (oldItem.batchNumber) {
+          const batch = await tx.batch.findFirst({
+            where: { tenantId, productId: oldItem.productId, batchNumber: oldItem.batchNumber },
+          });
+          if (batch) {
+            await tx.batch.update({
+              where: { id: batch.id },
+              data: { currentStock: { decrement: oldItem.baseQuantity } },
+            });
+          }
+        }
+
+        // Decrement warehouse stock if applicable
+        if (existing.warehouseId) {
+          const whStock = await tx.warehouseStock.findUnique({
+            where: { warehouseId_productId: { warehouseId: existing.warehouseId, productId: oldItem.productId } },
+          });
+          if (whStock) {
+            await tx.warehouseStock.update({
+              where: { id: whStock.id },
+              data: { quantity: { decrement: oldItem.baseQuantity } },
+            });
+          }
+        }
+      }
+
+      // Clear previous purchase stock logs for this bill
+      await tx.stockLog.deleteMany({
+        where: { tenantId, referenceId: existing.billNumber, type: StockLogType.PURCHASE_IN },
+      });
+
+      // ── 2. UPDATE BILL HEADER & TOTALS ────────────────────────────────────
       const bill = await tx.purchaseBill.update({
         where: { id: params.id },
         data: {
@@ -158,36 +226,190 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         },
       });
 
-      // ── 2. Update item pricing ─────────────────────────────────────────────
+      // ── 3. REMOVE ITEMS DELETED BY USER ──────────────────────────────────
+      const incomingItemIds = new Set(processedItems.map((it: any) => it.id).filter(Boolean));
+      await tx.purchaseBillItem.deleteMany({
+        where: {
+          purchaseBillId: existing.id,
+          id: { notIn: Array.from(incomingItemIds) as string[] },
+        },
+      });
+
+      // ── 4. PROCESS NEW & UPDATED ITEMS (APPLY NEW STOCK & BATCHES) ────────
       for (const item of processedItems) {
+        // Resolve or create product
+        let product: any = null;
+        if (item.productId) {
+          product = await tx.product.findUnique({ where: { id: item.productId } });
+        }
+        if (!product) {
+          product = await tx.product.findFirst({
+            where: { tenantId, name: { equals: item.productName, mode: "insensitive" } },
+          });
+        }
+        if (!product) {
+          product = await tx.product.create({
+            data: {
+              tenantId,
+              name: item.productName,
+              displayName: item.suggestedDisplayName || null,
+              partNumber: item.partNumber || undefined,
+              hsnCode: item.hsnCode || "9999",
+              baseUnit: item.unit,
+              purchasePrice: item.baseCostPrice,
+              sellingPrice: item.sellingPrice,
+              mrp: item.mrp,
+              gstRate: item.gstRate,
+              currentStock: item.baseQuantity,
+              minStockAlert: 5,
+            },
+          });
+        } else {
+          // Increment stock on the resolved product
+          await tx.product.update({
+            where: { id: product.id },
+            data: {
+              currentStock: { increment: item.baseQuantity },
+              ...(item.suggestedDisplayName ? { displayName: item.suggestedDisplayName } : {}),
+              ...(item.partNumber ? { partNumber: item.partNumber } : {}),
+              purchasePrice: item.baseCostPrice,
+              ...(item.sellingPrice ? { sellingPrice: item.sellingPrice } : {}),
+              ...(item.mrp ? { mrp: item.mrp } : {}),
+            },
+          });
+        }
+
+        // Upsert Batch if batchNumber is provided
+        if (item.batchNumber) {
+          const existingBatch = await tx.batch.findUnique({
+            where: {
+              tenantId_productId_batchNumber: {
+                tenantId,
+                productId: product.id,
+                batchNumber: item.batchNumber,
+              },
+            },
+          });
+
+          if (existingBatch) {
+            await tx.batch.update({
+              where: { id: existingBatch.id },
+              data: {
+                currentStock: { increment: item.baseQuantity },
+                costPrice: item.baseCostPrice,
+                sellingPrice: item.sellingPrice,
+                mrp: item.mrp,
+                mfgDate: item.mfgDate || existingBatch.mfgDate,
+                expiryDate: item.expiryDate || existingBatch.expiryDate,
+              },
+            });
+          } else {
+            await tx.batch.create({
+              data: {
+                tenantId,
+                productId: product.id,
+                batchNumber: item.batchNumber,
+                mfgDate: item.mfgDate,
+                expiryDate: item.expiryDate,
+                costPrice: item.baseCostPrice,
+                sellingPrice: item.sellingPrice,
+                mrp: item.mrp,
+                currentStock: item.baseQuantity,
+                isActive: true,
+              },
+            });
+          }
+        }
+
+        // Update WarehouseStock if warehouse is targeted
+        const targetWarehouseId = existing.warehouseId;
+        if (targetWarehouseId) {
+          const existingWhStock = await tx.warehouseStock.findUnique({
+            where: {
+              warehouseId_productId: {
+                warehouseId: targetWarehouseId,
+                productId: product.id,
+              },
+            },
+          });
+
+          if (existingWhStock) {
+            await tx.warehouseStock.update({
+              where: { id: existingWhStock.id },
+              data: { quantity: { increment: item.baseQuantity } },
+            });
+          } else {
+            await tx.warehouseStock.create({
+              data: {
+                warehouseId: targetWarehouseId,
+                productId: product.id,
+                quantity: item.baseQuantity,
+              },
+            });
+          }
+        }
+
+        // Record audit StockLog
+        await tx.stockLog.create({
+          data: {
+            tenantId,
+            productId: product.id,
+            changeQty: item.baseQuantity,
+            type: StockLogType.PURCHASE_IN,
+            referenceId: bill.billNumber,
+            note: `Updated inward via ${bill.grnNumber || 'GRN'} from ${bill.supplierName} (Batch: ${item.batchNumber || "Standard"})`,
+          },
+        });
+
+        // Update existing line or insert new line
         if (item.id) {
           await tx.purchaseBillItem.update({
             where: { id: item.id },
             data: {
-              productId:       item.productId || undefined,
-              purchasePrice:   Number(item.purchasePrice  || 0),
-              discountPercent: Number(item.discountPercent|| 0),
+              productId:       product.id,
+              productName:     item.productName,
+              batchNumber:     item.batchNumber,
+              mfgDate:         item.mfgDate,
+              expiryDate:      item.expiryDate,
+              hsnCode:         item.hsnCode,
+              unit:            item.unit,
+              quantity:        item.quantity,
+              packageSize:     item.packageSize,
+              baseQuantity:    item.baseQuantity,
+              purchasePrice:   item.purchasePrice,
+              discountPercent: item.discountPercent,
               baseCostPrice:   item.baseCostPrice,
-              sellingPrice:    item.sellingPrice  ? Number(item.sellingPrice)  : undefined,
-              mrp:             item.mrp           ? Number(item.mrp)           : undefined,
+              sellingPrice:    item.sellingPrice,
+              marginPercent:   item.marginPercent,
+              mrp:             item.mrp,
               gstRate:         item.gstRate,
               lineTotal:       item.lineTotal,
-              batchNumber:     item.batchNumber   ?? undefined,
-              expiryDate:      item.expiryDate    ? new Date(item.expiryDate)  : undefined,
             },
           });
-
-          // Sync product cost / selling price
-          if (item.productId) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: {
-                purchasePrice: item.baseCostPrice,
-                ...(item.sellingPrice ? { sellingPrice: Number(item.sellingPrice) } : {}),
-                ...(item.mrp         ? { mrp:          Number(item.mrp)           } : {}),
-              },
-            });
-          }
+        } else {
+          await tx.purchaseBillItem.create({
+            data: {
+              purchaseBillId:  bill.id,
+              productId:       product.id,
+              productName:     item.productName,
+              batchNumber:     item.batchNumber,
+              mfgDate:         item.mfgDate,
+              expiryDate:      item.expiryDate,
+              hsnCode:         item.hsnCode,
+              unit:            item.unit,
+              quantity:        item.quantity,
+              packageSize:     item.packageSize,
+              baseQuantity:    item.baseQuantity,
+              purchasePrice:   item.purchasePrice,
+              discountPercent: item.discountPercent,
+              baseCostPrice:   item.baseCostPrice,
+              sellingPrice:    item.sellingPrice,
+              marginPercent:   item.marginPercent,
+              mrp:             item.mrp,
+              gstRate:         item.gstRate,
+              lineTotal:       item.lineTotal,
+            },
+          });
         }
       }
 
