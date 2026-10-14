@@ -248,6 +248,25 @@ export default function RestaurantPosPage() {
     }
   };
 
+  // Reprint any KOT without re-fetching — data is already in table.kots
+  const handleReprintKot = (k: any, tableName: string) => {
+    setKotPrintData({
+      kotNumber: k.kotNumber,
+      tableName,
+      waiterName: k.waiterName || '',
+      guestCount: k.guestCount || 1,
+      createdAt: k.createdAt,
+      items: (k.items || [])
+        .filter((i: any) => !i.isVoided)
+        .map((i: any) => ({
+          productName: i.productName,
+          quantity: Number(i.quantity),
+          notes: i.notes || '',
+        })),
+    });
+    setShowKotModal(true);
+  };
+
   // Open the bill modal with every live item pre-selected
   const openSettle = (table: TableData) => {
     setActiveTable(table);
@@ -634,6 +653,14 @@ export default function RestaurantPosPage() {
                             Served
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => handleReprintKot(k, table.name)}
+                          className="rounded-md border border-slate-200 px-1.5 py-0.5 font-bold text-slate-500 hover:bg-slate-50"
+                          title="Reprint this KOT"
+                        >
+                          🖨
+                        </button>
                       </span>
                     </div>
                   ))}
@@ -826,16 +853,40 @@ export default function RestaurantPosPage() {
                               </button>
                             </div>
 
-                            {/* Cooking Note Input */}
-                            <input
-                              type="text"
-                              placeholder="Chef note (e.g. less spicy)..."
-                              value={item.notes}
-                              onChange={(e) =>
-                                handleUpdateItemNotes(item.productId, e.target.value)
-                              }
-                              className="w-36 rounded-lg border border-slate-200 px-2 py-1 text-[10px] focus:outline-none focus:border-indigo-500"
-                            />
+
+                            {/* Cooking Note — quick chips + free text */}
+                            <div className="flex-1 space-y-1.5">
+                              <div className="flex flex-wrap gap-1">
+                                {(['Extra Spicy','Less Spicy','No Onion','No Garlic','Extra Cheese','Half Portion','No Ice','Extra Sauce'] as const).map((mod) => (
+                                  <button
+                                    key={mod}
+                                    type="button"
+                                    onClick={() => {
+                                      const cur = item.notes || '';
+                                      const active = cur.split(', ').includes(mod);
+                                      const next = active
+                                        ? cur.split(', ').filter((x) => x !== mod).join(', ')
+                                        : cur ? `${cur}, ${mod}` : mod;
+                                      handleUpdateItemNotes(item.productId, next);
+                                    }}
+                                    className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold border transition ${
+                                      (item.notes || '').split(', ').includes(mod)
+                                        ? 'bg-amber-500 text-white border-amber-500'
+                                        : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300 hover:text-amber-600'
+                                    }`}
+                                  >
+                                    {mod}
+                                  </button>
+                                ))}
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Custom note..."
+                                value={item.notes}
+                                onChange={(e) => handleUpdateItemNotes(item.productId, e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-[10px] focus:outline-none focus:border-indigo-500"
+                              />
+                            </div>
                           </div>
                         </div>
                       ))}
