@@ -199,7 +199,7 @@ export default function PurchaseInwardPage() {
 
   // Active line-item product search dropdown state
   const [activeItemDropdownIdx, setActiveItemDropdownIdx] = useState<number | null>(null);
-  const [highlightedDropdownIdx, setHighlightedDropdownIdx] = useState<number>(0);
+  const [highlightedDropdownIdx, setHighlightedDropdownIdx] = useState<number>(-1);
   const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const updateDropdownCoords = (target: HTMLElement) => {
@@ -777,7 +777,7 @@ export default function PurchaseInwardPage() {
     });
 
     setActiveItemDropdownIdx(null);
-    setHighlightedDropdownIdx(0);
+    setHighlightedDropdownIdx(-1);
 
     setTimeout(() => {
       const qtyInput = document.querySelector(`[data-vfield="row-${idx}-qty"]`) as HTMLInputElement | null;
@@ -1901,7 +1901,7 @@ export default function PurchaseInwardPage() {
                                     value={row.productName}
                                     onFocus={(e) => {
                                       setActiveItemDropdownIdx(idx);
-                                      setHighlightedDropdownIdx(0);
+                                      setHighlightedDropdownIdx(-1);
                                       updateDropdownCoords(e.currentTarget);
                                     }}
                                     onBlur={() => setTimeout(() => setActiveItemDropdownIdx(null), 200)}
@@ -1919,9 +1919,12 @@ export default function PurchaseInwardPage() {
                                           setActiveItemDropdownIdx(idx);
                                           setHighlightedDropdownIdx(0);
                                           updateDropdownCoords(e.currentTarget);
+                                          setTimeout(() => {
+                                            document.getElementById(`new-prod-opt-${idx}-0`)?.scrollIntoView({ block: 'nearest' });
+                                          }, 10);
                                         } else if (filtered.length > 0) {
                                           setHighlightedDropdownIdx((prev) => {
-                                            const next = prev < filtered.length - 1 ? prev + 1 : 0;
+                                            const next = (prev < 0 || prev >= filtered.length - 1) ? 0 : prev + 1;
                                             setTimeout(() => {
                                               document.getElementById(`new-prod-opt-${idx}-${next}`)?.scrollIntoView({ block: 'nearest' });
                                             }, 10);
@@ -1933,11 +1936,11 @@ export default function PurchaseInwardPage() {
                                         const filtered = getFilteredProducts(row.productName);
                                         if (activeItemDropdownIdx !== idx) {
                                           setActiveItemDropdownIdx(idx);
-                                          setHighlightedDropdownIdx(0);
+                                          setHighlightedDropdownIdx(filtered.length > 0 ? filtered.length - 1 : 0);
                                           updateDropdownCoords(e.currentTarget);
                                         } else if (filtered.length > 0) {
                                           setHighlightedDropdownIdx((prev) => {
-                                            const next = prev > 0 ? prev - 1 : filtered.length - 1;
+                                            const next = prev <= 0 ? filtered.length - 1 : prev - 1;
                                             setTimeout(() => {
                                               document.getElementById(`new-prod-opt-${idx}-${next}`)?.scrollIntoView({ block: 'nearest' });
                                             }, 10);
@@ -1963,7 +1966,7 @@ export default function PurchaseInwardPage() {
                                     onChange={(e) => {
                                       updateItem(idx, 'productName', e.target.value);
                                       setActiveItemDropdownIdx(idx);
-                                      setHighlightedDropdownIdx(0);
+                                      setHighlightedDropdownIdx(-1);
                                       updateDropdownCoords(e.currentTarget);
                                     }}
                                     data-vfield={`row-${idx}-name`}
@@ -2874,7 +2877,7 @@ export default function PurchaseInwardPage() {
             return { ...b, items };
           });
           setActiveItemDropdownIdx(null);
-          setHighlightedDropdownIdx(0);
+          setHighlightedDropdownIdx(-1);
 
           setTimeout(() => {
             const qtyInput = document.querySelector(`[data-vfield="edit-row-${idx}-qty"]`) as HTMLInputElement | null;
@@ -3046,7 +3049,7 @@ export default function PurchaseInwardPage() {
                                   value={row.productName}
                                   onFocus={(e) => {
                                     setActiveItemDropdownIdx(idx);
-                                    setHighlightedDropdownIdx(0);
+                                    setHighlightedDropdownIdx(-1);
                                     updateDropdownCoords(e.currentTarget);
                                   }}
                                   onBlur={() => setTimeout(() => setActiveItemDropdownIdx(null), 200)}
@@ -3061,12 +3064,15 @@ export default function PurchaseInwardPage() {
                                       e.preventDefault();
                                       const filtered = getFilteredProducts(row.productName);
                                       if (activeItemDropdownIdx !== idx) {
-                                        setActiveItemDropdownIdx(idx);
-                                        setHighlightedDropdownIdx(0);
+                                          setActiveItemDropdownIdx(idx);
+                                          setHighlightedDropdownIdx(0);
                                         updateDropdownCoords(e.currentTarget);
+                                        setTimeout(() => {
+                                          document.getElementById(`edit-prod-opt-${idx}-0`)?.scrollIntoView({ block: 'nearest' });
+                                        }, 10);
                                       } else if (filtered.length > 0) {
                                         setHighlightedDropdownIdx((prev) => {
-                                          const next = prev < filtered.length - 1 ? prev + 1 : 0;
+                                          const next = (prev < 0 || prev >= filtered.length - 1) ? 0 : prev + 1;
                                           setTimeout(() => {
                                             document.getElementById(`edit-prod-opt-${idx}-${next}`)?.scrollIntoView({ block: 'nearest' });
                                           }, 10);
@@ -3078,11 +3084,11 @@ export default function PurchaseInwardPage() {
                                       const filtered = getFilteredProducts(row.productName);
                                       if (activeItemDropdownIdx !== idx) {
                                         setActiveItemDropdownIdx(idx);
-                                        setHighlightedDropdownIdx(0);
+                                        setHighlightedDropdownIdx(filtered.length > 0 ? filtered.length - 1 : 0);
                                         updateDropdownCoords(e.currentTarget);
                                       } else if (filtered.length > 0) {
                                         setHighlightedDropdownIdx((prev) => {
-                                          const next = prev > 0 ? prev - 1 : filtered.length - 1;
+                                          const next = prev <= 0 ? filtered.length - 1 : prev - 1;
                                           setTimeout(() => {
                                             document.getElementById(`edit-prod-opt-${idx}-${next}`)?.scrollIntoView({ block: 'nearest' });
                                           }, 10);
@@ -3108,7 +3114,7 @@ export default function PurchaseInwardPage() {
                                   onChange={(e) => {
                                     updateEditItem(idx, 'productName', e.target.value);
                                     setActiveItemDropdownIdx(idx);
-                                    setHighlightedDropdownIdx(0);
+                                    setHighlightedDropdownIdx(-1);
                                     updateDropdownCoords(e.currentTarget);
                                   }}
                                   placeholder="Search product (name, part #, brand)..."
