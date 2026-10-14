@@ -36,6 +36,34 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     });
     if (!existing) return NextResponse.json({ error: "Bill not found" }, { status: 404 });
 
+    // Block editing if bill was already soft-cancelled
+    if (existing.isCancelled) {
+      return NextResponse.json({ error: "Cannot edit a cancelled purchase bill" }, { status: 400 });
+    }
+
+    // Input validation
+    if (supplierName !== undefined && !String(supplierName).trim()) {
+      return NextResponse.json({ error: "Supplier name cannot be empty" }, { status: 400 });
+    }
+    if (billNumber !== undefined && !String(billNumber).trim()) {
+      return NextResponse.json({ error: "Bill number cannot be empty" }, { status: 400 });
+    }
+    if (items && Array.isArray(items)) {
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const row = `Row ${i + 1}`;
+        if (it.purchasePrice !== undefined && (isNaN(Number(it.purchasePrice)) || Number(it.purchasePrice) < 0)) {
+          return NextResponse.json({ error: `${row}: cost price cannot be negative` }, { status: 400 });
+        }
+        if (it.discountPercent !== undefined && (Number(it.discountPercent) < 0 || Number(it.discountPercent) > 100)) {
+          return NextResponse.json({ error: `${row}: discount must be between 0 and 100` }, { status: 400 });
+        }
+        if (it.gstRate !== undefined && it.gstRate !== null && String(it.gstRate) !== "" && (Number(it.gstRate) < 0 || Number(it.gstRate) > 100)) {
+          return NextResponse.json({ error: `${row}: GST rate must be between 0 and 100` }, { status: 400 });
+        }
+      }
+    }
+
     // Old totals — needed to reverse ledger
     const oldTaxable   = Number(existing.totalTaxable);
     const oldCgst      = Number(existing.cgstAmount);
@@ -52,18 +80,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       isInterState = resolvedGstin.substring(0, 2) !== tenant.stateCode;
     }
 
+    // Map existing items to lock inwarded physical quantities (Option A ERP standard)
+    const existingItemsMap = new Map(existing.items.map((it) => [it.id, it]));
+
     // Recalculate totals from updated items
     let totalTaxable = 0, cgstAmount = 0, sgstAmount = 0, igstAmount = 0, totalAmount = 0;
 
     const processedItems = (items || existing.items).map((item: any) => {
-      const qty        = Number(item.quantity || 1);
-      const pkgSize    = Number(item.packageSize || 1);
+      const existingItem = item.id ? existingItemsMap.get(item.id) : null;
+      // Option A: Inwarded physical quantities are locked; pricing/tax/batches can be edited
+      const qty        = existingItem ? Number(existingItem.quantity) : Number(item.quantity || 1);
+      const pkgSize    = existingItem ? Number(existingItem.packageSize) : Number(item.packageSize || 1);
       const rate       = Number(item.purchasePrice || 0);
       const discPct    = Number(item.discountPercent || 0);
       const discRate   = rate * (1 - discPct / 100);
       const baseCost   = Math.round((discRate / pkgSize) * 100) / 100;
       const taxable    = Math.round(discRate * qty * 100) / 100;
-      const gstRate    = Number(item.gstRate || 18);
+      const gstRate    = item.gstRate === undefined || item.gstRate === null || String(item.gstRate) === '' ? 18 : Number(item.gstRate);
 
       let itemCgst = 0, itemSgst = 0, itemIgst = 0;
       if (isInterState) {
@@ -80,7 +113,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       igstAmount   += itemIgst;
       totalAmount  += lineTotal;
 
-      return { ...item, baseCostPrice: baseCost, lineTotal };
+      return { ...item, quantity: qty, packageSize: pkgSize, gstRate, baseCostPrice: baseCost, lineTotal };
     });
 
     totalTaxable = Math.round(totalTaxable * 100) / 100;
@@ -90,6 +123,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     totalAmount  = Math.round(totalAmount  * 100) / 100;
 
     const newPayment = paymentTerms ?? oldPayment;
+
+    // Recalculate dueAmount and paymentStatus accurately
+    const oldPaid = Number(existing.paidAmount || 0);
+    let newDue = 0;
+    let newPaymentStatus = existing.paymentStatus;
+    if (newPayment === "CREDIT") {
+      newDue = Math.max(0, Math.round((totalAmount - oldPaid) * 100) / 100);
+      newPaymentStatus = newDue <= 0 ? "PAID" : (oldPaid > 0 ? "PARTIAL" : "UNPAID");
+    } else {
+      newDue = 0;
+      newPaymentStatus = "PAID";
+    }
 
     const updatedBill = await prisma.$transaction(async (tx) => {
 
@@ -108,6 +153,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           sgstAmount,
           igstAmount,
           totalAmount,
+          dueAmount:     newDue,
+          paymentStatus: newPaymentStatus,
         },
       });
 
@@ -117,16 +164,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           await tx.purchaseBillItem.update({
             where: { id: item.id },
             data: {
-              productId: item.productId || undefined,
-                purchasePrice:  Number(item.purchasePrice  || 0),
-              discountPercent:Number(item.discountPercent|| 0),
-              baseCostPrice:  item.baseCostPrice,
-              sellingPrice:   item.sellingPrice  ? Number(item.sellingPrice)  : undefined,
-              mrp:            item.mrp           ? Number(item.mrp)           : undefined,
-              gstRate:        Number(item.gstRate|| 18),
-              lineTotal:      item.lineTotal,
-              batchNumber:    item.batchNumber   ?? undefined,
-              expiryDate:     item.expiryDate    ? new Date(item.expiryDate)  : undefined,
+              productId:       item.productId || undefined,
+              purchasePrice:   Number(item.purchasePrice  || 0),
+              discountPercent: Number(item.discountPercent|| 0),
+              baseCostPrice:   item.baseCostPrice,
+              sellingPrice:    item.sellingPrice  ? Number(item.sellingPrice)  : undefined,
+              mrp:             item.mrp           ? Number(item.mrp)           : undefined,
+              gstRate:         item.gstRate,
+              lineTotal:       item.lineTotal,
+              batchNumber:     item.batchNumber   ?? undefined,
+              expiryDate:      item.expiryDate    ? new Date(item.expiryDate)  : undefined,
             },
           });
 

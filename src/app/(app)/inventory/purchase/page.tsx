@@ -450,8 +450,32 @@ export default function PurchaseInwardPage() {
 
   const saveEditedBill = async () => {
     if (!editingBill) return;
-    setEditSaving(true);
     setEditError(null);
+
+    // Frontend validation
+    if (!String(editingBill.supplierName || '').trim()) {
+      setEditError('Supplier / Vendor Name is required');
+      return;
+    }
+    if (!String(editingBill.billNumber || '').trim()) {
+      setEditError('Supplier Bill / Inv # is required');
+      return;
+    }
+    const gCheck = checkGstin(editingBill.supplierGstin);
+    if (gCheck.entered && !gCheck.valid) {
+      setEditError(`Supplier GSTIN error: ${gCheck.error}`);
+      return;
+    }
+    if (editingBill.items?.some((r: any) => Number(r.purchasePrice) < 0)) {
+      setEditError('Line item cost price cannot be negative');
+      return;
+    }
+    if (editingBill.items?.some((r: any) => Number(r.discountPercent || 0) < 0 || Number(r.discountPercent || 0) > 100)) {
+      setEditError('Line item discount percent must be between 0 and 100');
+      return;
+    }
+
+    setEditSaving(true);
     try {
       const res = await fetch(`/api/purchase/${editingBill.id}`, {
         method: 'PUT',
@@ -2626,7 +2650,7 @@ export default function PurchaseInwardPage() {
         (editingBill.items || []).forEach((it: any) => {
           const cost = Number(it.purchasePrice || 0) * (1 - Number(it.discountPercent || 0) / 100);
           const taxable = Math.round(cost * Number(it.quantity || 0) * 100) / 100;
-          const gst = Number(it.gstRate || 18);
+          const gst = it.gstRate === undefined || it.gstRate === null || String(it.gstRate) === '' ? 18 : Number(it.gstRate);
           const tax = Math.round(taxable * gst / 100 * 100) / 100;
           eTaxable += taxable;
           if (eIsInter) eIgst += tax; else { eCgst += tax / 2; eSgst += tax / 2; }
@@ -2638,14 +2662,15 @@ export default function PurchaseInwardPage() {
             const items = b.items.map((it: any, i: number) => {
               if (i !== idx) return it;
               const row = { ...it, [field]: value };
+              const gst = row.gstRate === undefined || row.gstRate === null || String(row.gstRate) === '' ? 18 : Number(row.gstRate);
               if (field === 'purchasePrice' || field === 'discountPercent' || field === 'marginPercent') {
                 const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
-                const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
+                const landedCost = tenant?.isComposition ? cost * (1 + gst / 100) : cost;
                   row.sellingPrice = Math.round(landedCost * (1 + Number(row.marginPercent || 0) / 100) * 100) / 100;
                 if (!row.mrp || Number(row.mrp) < row.sellingPrice) row.mrp = row.sellingPrice;
               } else if (field === 'sellingPrice') {
                 const cost = Number(row.purchasePrice || 0) * (1 - Number(row.discountPercent || 0) / 100);
-                const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
+                const landedCost = tenant?.isComposition ? cost * (1 + gst / 100) : cost;
                   if (landedCost > 0) row.marginPercent = Math.round(((Number(value) - landedCost) / landedCost) * 1000) / 10;
                 if (!row.mrp || Number(row.mrp) < Number(value)) row.mrp = value;
               }
@@ -2693,6 +2718,28 @@ export default function PurchaseInwardPage() {
             {/* Scrollable body */}
             <div className="flex-1 flex flex-col min-h-0 overflow-y-auto px-6 py-4 space-y-3.5">
 
+              {editError && (
+                <div className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-rose-50 border border-rose-300 text-xs text-rose-800 font-bold">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>{editError}</span>
+                  </div>
+                  <button onClick={() => setEditError(null)} className="text-rose-500 hover:text-rose-700">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    <strong>World-Standard ERP Audit Mode:</strong> Inwarded physical quantities &amp; lines are locked to protect inventory and batch tracking. Pricing, discounts, margins, and GST slabs can be corrected; double-entry ledger accounts will automatically reverse and re-post.
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-amber-700 shrink-0 font-semibold">Physical returns via Debit Note</span>
+              </div>
+
               {/* Bill Header Metadata Grid */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
@@ -2704,9 +2751,20 @@ export default function PurchaseInwardPage() {
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-slate-700 mb-1">Supplier GSTIN</label>
-                    <input className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-amber-500 font-mono outline-none"
+                    <input className={`w-full text-xs border rounded-lg px-3 py-2 font-mono outline-none focus:ring-2 ${
+                      checkGstin(editingBill.supplierGstin).entered && !checkGstin(editingBill.supplierGstin).valid
+                        ? 'border-rose-500 bg-rose-50 focus:ring-rose-300'
+                        : 'border-slate-300 bg-white focus:ring-amber-500'
+                    }`}
+                      placeholder="29AAACB2021A1Z8"
                       value={editingBill.supplierGstin || ''}
                       onChange={e => setEditingBill((b: any) => ({ ...b, supplierGstin: e.target.value.toUpperCase() }))} />
+                    {checkGstin(editingBill.supplierGstin).entered && !checkGstin(editingBill.supplierGstin).valid && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1">✕ {checkGstin(editingBill.supplierGstin).error}</p>
+                    )}
+                    {checkGstin(editingBill.supplierGstin).entered && checkGstin(editingBill.supplierGstin).valid && (
+                      <p className="text-[10px] text-emerald-700 font-semibold mt-1">✓ {checkGstin(editingBill.supplierGstin).stateName}</p>
+                    )}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-slate-700 mb-1">Supplier Bill / Inv # <span className="text-rose-500">*</span></label>
@@ -2752,7 +2810,7 @@ export default function PurchaseInwardPage() {
                         <th className="py-2.5 px-2 w-20 text-center">HSN</th>
                         <th className="py-2.5 px-2 w-24">Batch #</th>
                         <th className="py-2.5 px-2 w-28">Expiry</th>
-                        <th className="py-2.5 px-2 w-16 text-center">Qty</th>
+                        <th className="py-2.5 px-2 w-20 text-center">Inward Qty</th>
                         <th className="py-2.5 px-2 w-18 text-center">Unit</th>
                         <th className="py-2.5 px-2 w-24 text-right">Cost (₹)</th>
                         <th className="py-2.5 px-2 w-16 text-right">Disc %</th>
@@ -2761,7 +2819,7 @@ export default function PurchaseInwardPage() {
                         <th className="py-2.5 px-2 w-18 text-center">GST %</th>
                         <th className="py-2.5 px-2 w-24 text-right">Taxable (₹)</th>
                         <th className="py-2.5 px-3 w-28 text-right font-black">Total (₹)</th>
-                        <th className="py-2.5 px-2 w-10 text-center"></th>
+                        <th className="py-2.5 px-2 w-16 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2771,7 +2829,7 @@ export default function PurchaseInwardPage() {
                           const landedCost = tenant?.isComposition ? cost * (1 + Number(row.gstRate || 0) / 100) : cost;
                           const unitProfit = Math.round((sp - landedCost) * 100) / 100;
                         const taxable = Math.round(cost * Number(row.quantity || 0) * 100) / 100;
-                        const gst = Number(row.gstRate || 18);
+                        const gst = row.gstRate === undefined || row.gstRate === null || String(row.gstRate) === '' ? 18 : Number(row.gstRate);
                         const lineTotal = Math.round(taxable * (1 + gst / 100) * 100) / 100;
                         return (
                           <tr key={idx} className="hover:bg-amber-50/30 transition group">
@@ -2854,9 +2912,11 @@ export default function PurchaseInwardPage() {
                               <input type="date" value={row.expiryDate?.substring(0, 10) || ''} onChange={e => updateEditItem(idx, 'expiryDate', e.target.value)}
                                 className="w-full border border-slate-300 rounded px-1.5 py-1.5 text-xs" />
                             </td>
-                            <td className="py-2 px-2 align-middle">
-                              <input type="number" min="0.1" step="any" value={row.quantity} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'quantity', e.target.value)}
-                                className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold" />
+                            <td className="py-2 px-2 align-middle text-center">
+                              <div className="inline-flex items-center justify-center gap-1 bg-slate-100 border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-800" title="Inwarded quantity is locked in edit. To return physical stock, use Purchase Return / Debit Note.">
+                                <span>{row.quantity}</span>
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              </div>
                             </td>
                             <td className="py-2 px-2 align-middle">
                               <select value={row.unit || 'PCS'} onChange={e => updateEditItem(idx, 'unit', e.target.value)}
@@ -2894,7 +2954,7 @@ export default function PurchaseInwardPage() {
                               </div>
                             </td>
                             <td className="py-2 px-2 align-middle">
-                              <select value={row.gstRate || 18} onChange={e => updateEditItem(idx, 'gstRate', e.target.value)}
+                              <select value={row.gstRate === undefined || row.gstRate === null || String(row.gstRate) === '' ? 18 : Number(row.gstRate)} onChange={e => updateEditItem(idx, 'gstRate', e.target.value)}
                                 className="w-full border border-slate-300 rounded px-1 py-1.5 text-xs font-mono font-bold bg-white text-center">
                                 {[0,5,12,18,28].map(r => <option key={r} value={r}>{r}%</option>)}
                               </select>
@@ -2906,11 +2966,9 @@ export default function PurchaseInwardPage() {
                               ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </td>
                             <td className="py-2 px-2 text-center align-middle">
-                              <button type="button" onClick={() => setEditingBill((b: any) => ({ ...b, items: b.items.filter((_: any, i: number) => i !== idx) }))}
-                                disabled={(editingBill.items || []).length <= 1}
-                                className="text-slate-400 hover:text-rose-600 transition disabled:opacity-20 p-1 cursor-pointer" title="Remove Line">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <span className="inline-block text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded uppercase" title="Voucher line inwarded to stock & batches">
+                                Locked
+                              </span>
                             </td>
                           </tr>
                         );
