@@ -291,6 +291,12 @@ export async function GET(req: NextRequest) {
             href: "/restaurant", 
             icon: "ChefHat" 
           },
+          {
+            id: "reservations",
+            name: "Reservations & Waitlist",
+            href: "/restaurant/reservations",
+            icon: "Calendar",
+          },
           ...(userRole === "OWNER" || userRole === "MANAGER"
             ? [{
                 id: "fnb-report",
