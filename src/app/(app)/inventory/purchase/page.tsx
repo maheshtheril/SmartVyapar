@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   PackagePlus,
   Truck,
@@ -196,9 +197,37 @@ export default function PurchaseInwardPage() {
   const [paymentTerms, setPaymentTerms] = useState('CREDIT');
   const [notes, setNotes] = useState('');
 
-  // Active line-item product search dropdown row index
+  // Active line-item product search dropdown state
   const [activeItemDropdownIdx, setActiveItemDropdownIdx] = useState<number | null>(null);
   const [highlightedDropdownIdx, setHighlightedDropdownIdx] = useState<number>(0);
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const updateDropdownCoords = (target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
+    const dropdownWidth = 560;
+    let left = rect.left;
+    if (typeof window !== 'undefined') {
+      if (left + dropdownWidth > window.innerWidth - 16) {
+        left = Math.max(16, window.innerWidth - dropdownWidth - 16);
+      }
+    }
+    setDropdownCoords({
+      top: rect.bottom + 4,
+      left,
+      width: typeof window !== 'undefined' ? Math.min(dropdownWidth, window.innerWidth - 32) : dropdownWidth,
+    });
+  };
+
+  // Close floating dropdown on scroll (standard ERP behavior)
+  useEffect(() => {
+    const handleScroll = () => {
+      if (activeItemDropdownIdx !== null) {
+        setActiveItemDropdownIdx(null);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [activeItemDropdownIdx]);
 
   // Line items
   const [items, setItems] = useState<PurchaseItemRow[]>([
@@ -1870,9 +1899,10 @@ export default function PurchaseInwardPage() {
                                     required
                                     placeholder="Search product (name, part #, brand)..."
                                     value={row.productName}
-                                    onFocus={() => {
+                                    onFocus={(e) => {
                                       setActiveItemDropdownIdx(idx);
                                       setHighlightedDropdownIdx(0);
+                                      updateDropdownCoords(e.currentTarget);
                                     }}
                                     onBlur={() => setTimeout(() => setActiveItemDropdownIdx(null), 200)}
                                     onKeyDown={(e) => {
@@ -1888,6 +1918,7 @@ export default function PurchaseInwardPage() {
                                         if (activeItemDropdownIdx !== idx) {
                                           setActiveItemDropdownIdx(idx);
                                           setHighlightedDropdownIdx(0);
+                                          updateDropdownCoords(e.currentTarget);
                                         } else if (filtered.length > 0) {
                                           setHighlightedDropdownIdx((prev) => {
                                             const next = prev < filtered.length - 1 ? prev + 1 : 0;
@@ -1903,6 +1934,7 @@ export default function PurchaseInwardPage() {
                                         if (activeItemDropdownIdx !== idx) {
                                           setActiveItemDropdownIdx(idx);
                                           setHighlightedDropdownIdx(0);
+                                          updateDropdownCoords(e.currentTarget);
                                         } else if (filtered.length > 0) {
                                           setHighlightedDropdownIdx((prev) => {
                                             const next = prev > 0 ? prev - 1 : filtered.length - 1;
@@ -1932,22 +1964,30 @@ export default function PurchaseInwardPage() {
                                       updateItem(idx, 'productName', e.target.value);
                                       setActiveItemDropdownIdx(idx);
                                       setHighlightedDropdownIdx(0);
+                                      updateDropdownCoords(e.currentTarget);
                                     }}
                                     data-vfield={`row-${idx}-name`}
                                     className={`w-full border rounded px-2.5 py-1.5 text-[11px] font-mono focus:ring-2 focus:ring-blue-500 ${rowHas(idx, 'name') ? 'border-rose-500 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-300 bg-slate-50'}`}
                                   />
                                 </div>
-                                {/* Searchable Dropdown for Catalog Items */}
-                                {activeItemDropdownIdx === idx && (
+                                {/* Floating Searchable Dropdown rendered at root body (no table overflow clipping) */}
+                                {typeof document !== 'undefined' && activeItemDropdownIdx === idx && dropdownCoords && createPortal(
                                   <div
-                                    className="absolute z-50 left-0 top-full mt-1.5 w-[560px] max-w-[85vw] bg-white border border-slate-300 rounded-xl shadow-2xl max-h-72 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/10"
+                                    style={{
+                                      position: 'fixed',
+                                      top: dropdownCoords.top,
+                                      left: dropdownCoords.left,
+                                      width: dropdownCoords.width,
+                                      zIndex: 99999,
+                                    }}
+                                    className="bg-white border border-slate-300 rounded-xl shadow-2xl max-h-72 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/10"
                                     onMouseDown={(e) => e.preventDefault()}
                                   >
                                     {getFilteredProducts(row.productName).length > 0 ? (
                                       <>
-                                        <div className="px-3.5 py-2 bg-slate-100 text-[10px] font-bold uppercase text-slate-600 tracking-wider flex justify-between items-center sticky top-0 z-10 border-b border-slate-200">
+                                        <div className="px-3.5 py-2 bg-slate-50 text-[10px] font-bold uppercase text-slate-500 tracking-wider flex justify-between items-center sticky top-0 z-10 border-b border-slate-200">
                                           <span>Matching Products ({getFilteredProducts(row.productName).length} of {products.length})</span>
-                                          <span className="text-[10px] text-slate-500 font-normal">Use <kbd className="bg-white border border-slate-300 rounded px-1 text-[9px] font-mono">↑</kbd> <kbd className="bg-white border border-slate-300 rounded px-1 text-[9px] font-mono">↓</kbd> to navigate, <kbd className="bg-white border border-slate-300 rounded px-1 text-[9px] font-mono">↵ Enter</kbd> to select</span>
+                                          <span className="text-[10px] text-slate-400 font-normal">Use <kbd className="bg-white border border-slate-200 rounded px-1 text-[9px] font-mono">↑</kbd> <kbd className="bg-white border border-slate-200 rounded px-1 text-[9px] font-mono">↓</kbd> to navigate, <kbd className="bg-white border border-slate-200 rounded px-1 text-[9px] font-mono">↵ Enter</kbd> to select</span>
                                         </div>
                                         {getFilteredProducts(row.productName).map((prod, pIdx) => {
                                           const isHighlighted = highlightedDropdownIdx === pIdx;
@@ -1964,41 +2004,33 @@ export default function PurchaseInwardPage() {
                                                 e.preventDefault();
                                                 selectProduct(idx, prod);
                                               }}
-                                              className={`p-3 cursor-pointer flex justify-between items-center transition ${
-                                                isHighlighted ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-50 text-slate-900'
+                                              className={`px-3.5 py-2.5 cursor-pointer flex justify-between items-center transition-colors ${
+                                                isHighlighted ? 'bg-blue-50/90 border-l-4 border-blue-600' : 'hover:bg-slate-50'
                                               }`}
                                             >
                                               <div className="flex-1 min-w-0 pr-4">
                                                 <div className="flex items-center gap-2">
-                                                  <p className={`text-xs font-bold truncate ${isHighlighted ? 'text-white' : 'text-slate-900'}`}>
+                                                  <p className="text-xs font-semibold text-slate-900 truncate">
                                                     {prod.displayName || prod.name}
                                                   </p>
                                                   {prod.brand && (
-                                                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${
-                                                      isHighlighted ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-600'
-                                                    }`}>
+                                                    <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
                                                       {prod.brand}
                                                     </span>
                                                   )}
                                                 </div>
-                                                <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] font-mono ${
-                                                  isHighlighted ? 'text-blue-100' : 'text-slate-500'
-                                                }`}>
-                                                  {prod.partNumber && <span>Part: <strong className={isHighlighted ? 'text-white' : 'text-slate-700'}>{prod.partNumber}</strong></span>}
+                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-[11px] text-slate-500 font-mono">
+                                                  {prod.partNumber && <span>Part: <strong className="text-slate-700">{prod.partNumber}</strong></span>}
                                                   {prod.sku && <span>SKU: {prod.sku}</span>}
-                                                  <span>Stock: <strong className={isHighlighted ? 'text-white' : (Number(prod.currentStock || 0) > 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold')}>{prod.currentStock || 0} {prod.baseUnit}</strong></span>
+                                                  <span>Stock: <strong className={Number(prod.currentStock || 0) > 0 ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-semibold'}>{prod.currentStock || 0} {prod.baseUnit}</strong></span>
                                                   {prod.mrp && <span>MRP: ₹{prod.mrp}</span>}
                                                 </div>
                                               </div>
                                               <div className="text-right shrink-0">
-                                                <p className={`text-xs font-black font-mono ${isHighlighted ? 'text-white' : 'text-emerald-700'}`}>
+                                                <p className="text-xs font-bold font-mono text-slate-900">
                                                   ₹{Number(prod.sellingPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                                 </p>
-                                                <span className={`inline-block mt-0.5 text-[9px] font-bold uppercase px-2 py-0.5 rounded transition ${
-                                                  isHighlighted ? 'bg-white text-blue-700 shadow-xs font-black' : 'bg-slate-100 text-slate-600'
-                                                }`}>
-                                                  {isHighlighted ? '↵ Enter to Select' : 'Select'}
-                                                </span>
+                                                <p className="text-[10px] text-slate-400 font-sans">Selling Price</p>
                                               </div>
                                             </div>
                                           );
@@ -2023,7 +2055,8 @@ export default function PurchaseInwardPage() {
                                         Create new item &quot;{row.productName.trim()}&quot;
                                       </div>
                                     )}
-                                  </div>
+                                  </div>,
+                                  document.body
                                 )}
                               </td>
 
@@ -3011,9 +3044,10 @@ export default function PurchaseInwardPage() {
                                 <input
                                   type="text"
                                   value={row.productName}
-                                  onFocus={() => {
+                                  onFocus={(e) => {
                                     setActiveItemDropdownIdx(idx);
                                     setHighlightedDropdownIdx(0);
+                                    updateDropdownCoords(e.currentTarget);
                                   }}
                                   onBlur={() => setTimeout(() => setActiveItemDropdownIdx(null), 200)}
                                   onKeyDown={(e) => {
@@ -3029,6 +3063,7 @@ export default function PurchaseInwardPage() {
                                       if (activeItemDropdownIdx !== idx) {
                                         setActiveItemDropdownIdx(idx);
                                         setHighlightedDropdownIdx(0);
+                                        updateDropdownCoords(e.currentTarget);
                                       } else if (filtered.length > 0) {
                                         setHighlightedDropdownIdx((prev) => {
                                           const next = prev < filtered.length - 1 ? prev + 1 : 0;
@@ -3044,6 +3079,7 @@ export default function PurchaseInwardPage() {
                                       if (activeItemDropdownIdx !== idx) {
                                         setActiveItemDropdownIdx(idx);
                                         setHighlightedDropdownIdx(0);
+                                        updateDropdownCoords(e.currentTarget);
                                       } else if (filtered.length > 0) {
                                         setHighlightedDropdownIdx((prev) => {
                                           const next = prev > 0 ? prev - 1 : filtered.length - 1;
@@ -3073,86 +3109,87 @@ export default function PurchaseInwardPage() {
                                     updateEditItem(idx, 'productName', e.target.value);
                                     setActiveItemDropdownIdx(idx);
                                     setHighlightedDropdownIdx(0);
+                                    updateDropdownCoords(e.currentTarget);
                                   }}
                                   placeholder="Search product (name, part #, brand)..."
                                   className="w-full uppercase font-bold text-slate-900 border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-slate-50 focus:bg-white placeholder:text-slate-400 placeholder:normal-case placeholder:font-normal focus:ring-2 focus:ring-amber-500"
                                 />
                               </div>
-                              {/* Searchable Dropdown for Catalog Items */}
-                              {activeItemDropdownIdx === idx && (
-                                <div
-                                  className="absolute z-50 left-0 top-full mt-1.5 w-[560px] max-w-[85vw] bg-white border border-slate-300 rounded-xl shadow-2xl max-h-72 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/10"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                >
-                                  {getFilteredProducts(row.productName).length > 0 ? (
-                                    <>
-                                      <div className="px-3.5 py-2 bg-slate-100 text-[10px] font-bold uppercase text-slate-600 tracking-wider flex justify-between items-center sticky top-0 z-10 border-b border-slate-200">
-                                        <span>Matching Products ({getFilteredProducts(row.productName).length} of {products.length})</span>
-                                        <span className="text-[10px] text-slate-500 font-normal">Use <kbd className="bg-white border border-slate-300 rounded px-1 text-[9px] font-mono">↑</kbd> <kbd className="bg-white border border-slate-300 rounded px-1 text-[9px] font-mono">↓</kbd> to navigate, <kbd className="bg-white border border-slate-300 rounded px-1 text-[9px] font-mono">↵ Enter</kbd> to select</span>
-                                      </div>
-                                      {getFilteredProducts(row.productName).map((prod, pIdx) => {
-                                        const isHighlighted = highlightedDropdownIdx === pIdx;
-                                        return (
-                                          <div
-                                            key={prod.id}
-                                            id={`edit-prod-opt-${idx}-${pIdx}`}
-                                            onMouseMove={() => {
-                                              if (highlightedDropdownIdx !== pIdx) {
-                                                setHighlightedDropdownIdx(pIdx);
-                                              }
-                                            }}
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              selectEditProduct(idx, prod);
-                                            }}
-                                            className={`p-3 cursor-pointer flex justify-between items-center transition ${
-                                              isHighlighted ? 'bg-amber-600 text-white shadow-md' : 'hover:bg-slate-50 text-slate-900'
-                                            }`}
-                                          >
-                                            <div className="flex-1 min-w-0 pr-4">
-                                              <div className="flex items-center gap-2">
-                                                <p className={`text-xs font-bold truncate ${isHighlighted ? 'text-white' : 'text-slate-900'}`}>
-                                                  {prod.displayName || prod.name}
+                              {/* Floating Searchable Dropdown for Edit Catalog Items */}
+                                {typeof document !== 'undefined' && activeItemDropdownIdx === idx && dropdownCoords && createPortal(
+                                  <div
+                                    style={{
+                                      position: 'fixed',
+                                      top: dropdownCoords.top,
+                                      left: dropdownCoords.left,
+                                      width: dropdownCoords.width,
+                                      zIndex: 99999,
+                                    }}
+                                    className="bg-white border border-slate-300 rounded-xl shadow-2xl max-h-72 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/10"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                  >
+                                    {getFilteredProducts(row.productName).length > 0 ? (
+                                      <>
+                                        <div className="px-3.5 py-2 bg-slate-50 text-[10px] font-bold uppercase text-slate-500 tracking-wider flex justify-between items-center sticky top-0 z-10 border-b border-slate-200">
+                                          <span>Matching Products ({getFilteredProducts(row.productName).length} of {products.length})</span>
+                                          <span className="text-[10px] text-slate-400 font-normal">Use <kbd className="bg-white border border-slate-200 rounded px-1 text-[9px] font-mono">↑</kbd> <kbd className="bg-white border border-slate-200 rounded px-1 text-[9px] font-mono">↓</kbd> to navigate, <kbd className="bg-white border border-slate-200 rounded px-1 text-[9px] font-mono">↵ Enter</kbd> to select</span>
+                                        </div>
+                                        {getFilteredProducts(row.productName).map((prod, pIdx) => {
+                                          const isHighlighted = highlightedDropdownIdx === pIdx;
+                                          return (
+                                            <div
+                                              key={prod.id}
+                                              id={`edit-prod-opt-${idx}-${pIdx}`}
+                                              onMouseMove={() => {
+                                                if (highlightedDropdownIdx !== pIdx) {
+                                                  setHighlightedDropdownIdx(pIdx);
+                                                }
+                                              }}
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                selectEditProduct(idx, prod);
+                                              }}
+                                              className={`px-3.5 py-2.5 cursor-pointer flex justify-between items-center transition-colors ${
+                                                isHighlighted ? 'bg-amber-50/90 border-l-4 border-amber-500' : 'hover:bg-slate-50'
+                                              }`}
+                                            >
+                                              <div className="flex-1 min-w-0 pr-4">
+                                                <div className="flex items-center gap-2">
+                                                  <p className="text-xs font-semibold text-slate-900 truncate">
+                                                    {prod.displayName || prod.name}
+                                                  </p>
+                                                  {prod.brand && (
+                                                    <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                                                      {prod.brand}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-[11px] text-slate-500 font-mono">
+                                                  {prod.partNumber && <span>Part: <strong className="text-slate-700">{prod.partNumber}</strong></span>}
+                                                  {prod.sku && <span>SKU: {prod.sku}</span>}
+                                                  <span>Stock: <strong className={Number(prod.currentStock || 0) > 0 ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-semibold'}>{prod.currentStock || 0} {prod.baseUnit}</strong></span>
+                                                  {prod.mrp && <span>MRP: ₹{prod.mrp}</span>}
+                                                </div>
+                                              </div>
+                                              <div className="text-right shrink-0">
+                                                <p className="text-xs font-bold font-mono text-slate-900">
+                                                  ₹{Number(prod.sellingPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                                 </p>
-                                                {prod.brand && (
-                                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${
-                                                    isHighlighted ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600'
-                                                  }`}>
-                                                    {prod.brand}
-                                                  </span>
-                                                )}
-                                              </div>
-                                              <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] font-mono ${
-                                                isHighlighted ? 'text-amber-100' : 'text-slate-500'
-                                              }`}>
-                                                {prod.partNumber && <span>Part: <strong className={isHighlighted ? 'text-white' : 'text-slate-700'}>{prod.partNumber}</strong></span>}
-                                                {prod.sku && <span>SKU: {prod.sku}</span>}
-                                                <span>Stock: <strong className={isHighlighted ? 'text-white' : (Number(prod.currentStock || 0) > 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold')}>{prod.currentStock || 0} {prod.baseUnit}</strong></span>
-                                                {prod.mrp && <span>MRP: ₹{prod.mrp}</span>}
+                                                <p className="text-[10px] text-slate-400 font-sans">Selling Price</p>
                                               </div>
                                             </div>
-                                            <div className="text-right shrink-0">
-                                              <p className={`text-xs font-black font-mono ${isHighlighted ? 'text-white' : 'text-emerald-700'}`}>
-                                                ₹{Number(prod.sellingPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                              </p>
-                                              <span className={`inline-block mt-0.5 text-[9px] font-bold uppercase px-2 py-0.5 rounded transition ${
-                                                isHighlighted ? 'bg-white text-amber-800 shadow-xs font-black' : 'bg-slate-100 text-slate-600'
-                                              }`}>
-                                                {isHighlighted ? '↵ Enter to Select' : 'Select'}
-                                              </span>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </>
-                                  ) : (
-                                    <div className="p-4 text-center text-xs text-slate-500">
-                                      No matching products found.
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </td><td className="py-2 px-3 align-middle relative"><div className="relative"><input type="text" value={row.suggestedDisplayName || row.product?.displayName || row.product?.name || ''} onChange={(e) => updateEditItem(idx, 'suggestedDisplayName', e.target.value)} className="w-full uppercase font-bold text-indigo-700 border border-indigo-200 rounded px-2 py-1.5 text-xs bg-indigo-50 focus:bg-white" /></div></td><td className="py-2 px-2 align-middle"><input type="text" value={row.partNumber || row.product?.partNumber || ''} onChange={(e) => updateEditItem(idx, 'partNumber', e.target.value)} className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold uppercase" /></td>
+                                          );
+                                        })}
+                                      </>
+                                    ) : (
+                                      <div className="p-4 text-center text-xs text-slate-500">
+                                        No matching products found.
+                                      </div>
+                                    )}
+                                  </div>,
+                                  document.body
+                                )}
+</td><td className="py-2 px-3 align-middle relative"><div className="relative"><input type="text" value={row.suggestedDisplayName || row.product?.displayName || row.product?.name || ''} onChange={(e) => updateEditItem(idx, 'suggestedDisplayName', e.target.value)} className="w-full uppercase font-bold text-indigo-700 border border-indigo-200 rounded px-2 py-1.5 text-xs bg-indigo-50 focus:bg-white" /></div></td><td className="py-2 px-2 align-middle"><input type="text" value={row.partNumber || row.product?.partNumber || ''} onChange={(e) => updateEditItem(idx, 'partNumber', e.target.value)} className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold uppercase" /></td>
                             <td className="py-2 px-2 align-middle">
                               <input type="text" value={row.hsnCode || ''} onChange={e => updateEditItem(idx, 'hsnCode', e.target.value)}
                                 className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono" />
