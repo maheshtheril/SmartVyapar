@@ -291,6 +291,16 @@ export async function GET(req: NextRequest) {
             href: "/restaurant", 
             icon: "ChefHat" 
           },
+          ...(userRole === "OWNER" || userRole === "MANAGER"
+            ? [{
+                id: "fnb-report",
+                name: "Daily F&B Sales Report",
+                href: "/restaurant/report",
+                icon: "Calculator",
+                badge: "Daily",
+                badgeColor: "emerald" as const,
+              }]
+            : []),
         ],
       });
     }
@@ -436,6 +446,9 @@ export async function GET(req: NextRequest) {
           financialYearStartMonth: tenant.financialYearStartMonth,
           autoRoundOff: tenant.autoRoundOff,
         subscriptionTier: tenant.subscriptionTier,
+        restaurantPlan: tenant.restaurantPlan || "NONE",
+        planExpiresAt: tenant.planExpiresAt,
+        planBillingCycle: tenant.planBillingCycle,
         currency: tenant.currency,
       },
       user: {
@@ -480,6 +493,7 @@ export async function PATCH(req: NextRequest) {
       pincode,
       upiId,
       gstin,
+      restaurantPlan,
       isComposition,
       allowNegativeStock,
       taxInclusiveMode,
@@ -496,6 +510,7 @@ export async function PATCH(req: NextRequest) {
         ...(logoUrl !== undefined ? { logoUrl: logoUrl ? logoUrl.trim() : null } : {}),
         ...(businessType !== undefined ? { businessType } : {}),
         ...(businessType === "DISTRIBUTION" ? { enableTerritory: true } : {}),
+        ...(restaurantPlan !== undefined ? { restaurantPlan } : {}),
         ...(phone !== undefined ? { phone: phone.trim() } : {}),
         ...(email !== undefined ? { email: email ? email.trim() : null } : {}),
         ...(address !== undefined ? { address: address ? address.trim() : null } : {}),

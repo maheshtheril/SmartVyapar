@@ -111,6 +111,7 @@ export default function RegisterPage() {
         upiId: upiId.trim(),
         address: address.trim() || undefined,
         isComposition,
+        businessType,
       };
 
       const res = await fetch("/api/auth/register", {
