@@ -706,18 +706,16 @@ export default function PurchaseInwardPage() {
     );
   }, [registeredSuppliers, supplierName]);
 
-  // Filter catalog products for live item combobox
+  // Filter catalog products for live item combobox across all searchable fields
   const getFilteredProducts = (query: string) => {
-    if (!query || !query.trim()) return products.slice(0, 10);
-    const q = query.toLowerCase();
+    if (!query || !query.trim()) return products.slice(0, 30);
+    const tokens = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
     return products
-      .filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.sku && p.sku.toLowerCase().includes(q)) ||
-          (p.barcode && p.barcode.toLowerCase().includes(q))
-      )
-      .slice(0, 10);
+      .filter((p) => {
+        const text = `${p.name || ''} ${p.displayName || ''} ${p.partNumber || ''} ${p.oemNumber || ''} ${p.sku || ''} ${p.barcode || ''} ${p.brand || ''} ${p.category || ''} ${p.hsnCode || ''}`.toLowerCase();
+        return tokens.every((token) => text.includes(token));
+      })
+      .slice(0, 50);
   };
 
   // Handle line item field change with bidirectional margin calculation
@@ -1857,7 +1855,7 @@ export default function PurchaseInwardPage() {
                                               e.preventDefault();
                                               // Auto-fill everything when an existing product is clicked
                                               updateItem(idx, 'productId', prod.id);
-                                              updateItem(idx, 'productName', row.productName); // Keep the supplier's raw name for the mapping!
+                                              updateItem(idx, 'productName', prod.name);
                                               updateItem(idx, 'suggestedDisplayName', prod.displayName || prod.name); // Fill clean name
                                               if (prod.partNumber) updateItem(idx, 'partNumber', prod.partNumber);
                                               if (prod.hsnCode) updateItem(idx, 'hsnCode', prod.hsnCode);
@@ -2857,16 +2855,17 @@ export default function PurchaseInwardPage() {
           updateEditItem(idx, 'productName', e.target.value);
           setActiveItemDropdownIdx(idx);
         }} 
-        className="w-full uppercase font-bold text-slate-900 border border-slate-300 rounded px-2 py-1.5 text-xs bg-slate-50 focus:bg-white" 
+        placeholder="Search product (name, part #, brand)..."
+        className="w-full uppercase font-bold text-slate-900 border border-slate-300 rounded px-2 py-1.5 text-xs bg-slate-50 focus:bg-white placeholder:text-slate-400 placeholder:normal-case placeholder:font-normal" 
       />
     </div>
     {/* Searchable Dropdown for Catalog Items */}
     {activeItemDropdownIdx === idx && (
-      <div className="absolute z-50 left-3 right-3 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-2xl max-h-60 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/5">
+      <div className="absolute z-50 left-3 right-3 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-2xl max-h-64 overflow-y-auto divide-y divide-slate-100 ring-1 ring-black/5" onMouseDown={(e) => e.preventDefault()}>
         {getFilteredProducts(row.productName).length > 0 ? (
           <>
-            <div className="px-3 py-1.5 bg-slate-100 text-[10px] font-bold uppercase text-slate-600 tracking-wider flex justify-between items-center">
-              <span>Matching Catalog Products ({products.length} in store)</span>
+            <div className="px-3 py-1.5 bg-slate-100 text-[10px] font-bold uppercase text-slate-600 tracking-wider flex justify-between items-center sticky top-0 z-10 border-b border-slate-200">
+              <span>Matching Products ({getFilteredProducts(row.productName).length} of {products.length})</span>
               <span className="text-[9px] text-slate-400 font-normal">Click to auto-fill</span>
             </div>
             {getFilteredProducts(row.productName).map((prod) => (
@@ -2876,7 +2875,7 @@ export default function PurchaseInwardPage() {
                   e.preventDefault();
                   // Auto-fill everything when an existing product is clicked
                   updateEditItem(idx, 'productId', prod.id);
-                  updateEditItem(idx, 'productName', row.productName); // Keep the supplier's raw name for the mapping!
+                  updateEditItem(idx, 'productName', prod.name);
                   updateEditItem(idx, 'suggestedDisplayName', prod.displayName || prod.name); // Fill clean name
                   if (prod.partNumber) updateEditItem(idx, 'partNumber', prod.partNumber);
                   if (prod.hsnCode) updateEditItem(idx, 'hsnCode', prod.hsnCode);
@@ -2891,8 +2890,10 @@ export default function PurchaseInwardPage() {
                 className="p-3 hover:bg-indigo-50 cursor-pointer flex justify-between items-center group transition"
               >
                 <div>
-                  <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-700">{prod.name}</p>
+                  <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-700">{prod.displayName || prod.name}</p>
                   <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                    {prod.partNumber ? `Part: ${prod.partNumber} | ` : ''}
+                    {prod.brand ? `Brand: ${prod.brand} | ` : ''}
                     SKU: {prod.sku || 'N/A'} | Stock: {prod.currentStock} {prod.baseUnit} | MRP: ₹{prod.mrp}
                   </p>
                 </div>
