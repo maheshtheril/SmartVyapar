@@ -126,9 +126,9 @@ export const COLOR_PALETTES = [
 export const BUILT_IN_PRESETS: PrintTemplatePreset[] = [
   {
     id: "classic_gst_a4",
-    name: "Standard GST Tax Invoice (A4)",
+    name: "Standard GST Tax Invoice (A4 - Classic Boxed)",
     docType: "sale_bill",
-    description: "Statutory Indian GST tax invoice with full CGST/SGST breakdown, HSN codes, and bank details.",
+    description: "Production-proven statutory Indian GST boxed grid invoice with CGST/SGST/IGST breakdown, HSN/SAC codes, Amount in Words, and declaration.",
     paperSize: "a4",
     brand: {
       primaryColor: "#1e3a8a",

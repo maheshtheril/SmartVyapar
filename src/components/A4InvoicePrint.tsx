@@ -1,14 +1,49 @@
+'use client';
+
 import React from 'react';
 import { Phone, MapPin } from 'lucide-react';
 import { ThermalReceiptData, BusinessProfile, ThermalReceiptItem } from './ThermalReceiptModal';
+import { TemplateBrand, TemplateSections } from '@/lib/print/template-presets';
+import QrCodeCanvas from './QrCodeCanvas';
 
-interface A4InvoicePrintProps {
+export interface A4InvoicePrintProps {
   data: ThermalReceiptData;
   business: BusinessProfile;
+  brand?: Partial<TemplateBrand>;
+  sections?: Partial<TemplateSections>;
 }
 
-export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) {
-  const isIgst = data.customerState && business.stateCode && data.customerState !== business.stateCode;
+export default function A4InvoicePrint({
+  data,
+  business,
+  brand,
+  sections,
+}: A4InvoicePrintProps) {
+  const isIgst = Boolean(
+    data.customerState &&
+    business.stateCode &&
+    data.customerState !== business.stateCode
+  );
+
+  // Default fallbacks preserving the exact layout currently used by production customers
+  const primaryColor = brand?.primaryColor || '#1e3a8a';
+  const showLogo = sections?.showLogo !== false;
+  const showBusinessName = sections?.showBusinessName !== false;
+  const showAddress = sections?.showAddress !== false;
+  const showPhone = sections?.showPhone !== false;
+  const showGstin = sections?.showGstin !== false;
+  const showStateCode = sections?.showStateCode !== false;
+  const showHsn = sections?.showHsnColumn !== false;
+  const showTerms = sections?.showTerms !== false;
+  const showSignatures = sections?.showSignatures !== false;
+  const showUpiQr = Boolean(sections?.showUpiQr && (data.upiUri || business.upiId));
+
+  const fontFamilyStyle =
+    brand?.fontFamily === 'serif'
+      ? 'Georgia, Times, serif'
+      : brand?.fontFamily === 'mono'
+      ? 'Courier New, monospace'
+      : 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
   // Helper to calculate taxes per item (assuming total is inclusive)
   const calculateItemTaxes = (item: ThermalReceiptItem) => {
@@ -16,7 +51,7 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
     const rate = isComposition ? 0 : (item.gstRate || 0);
     const taxAmount = (item.total * rate) / (100 + rate);
     const taxable = item.total - taxAmount;
-    
+
     return {
       taxable,
       cgst: isComposition ? 0 : (isIgst ? 0 : taxAmount / 2),
@@ -25,37 +60,69 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
     };
   };
 
+  const upiQrValue =
+    data.upiUri ||
+    (business.upiId
+      ? `upi://pay?pa=${business.upiId}&pn=${encodeURIComponent(business.name)}&am=${data.totalAmount.toFixed(
+          2
+        )}&cu=INR&tn=Bill-${data.invoiceNumber}`
+      : '');
+
   return (
-    <div className="bg-white w-[210mm] mx-auto text-black font-sans min-h-[297mm] flex flex-col border border-slate-300 text-[13px] leading-tight print:w-full print:h-[100vh] print:max-w-none print:min-h-0 print:border-none print:p-6 print:m-0 overflow-hidden print:page-break-after-avoid print:page-break-inside-avoid print:break-inside-avoid box-border">
+    <div
+      style={{ fontFamily: fontFamilyStyle }}
+      className="bg-white w-[210mm] mx-auto text-black min-h-[297mm] flex flex-col border border-slate-300 text-[13px] leading-tight print:w-full print:h-[100vh] print:max-w-none print:min-h-0 print:border-none print:p-6 print:m-0 overflow-hidden print:page-break-after-avoid print:page-break-inside-avoid print:break-inside-avoid box-border"
+    >
       <div className="border border-black flex flex-col flex-1 m-4 print:m-0 print:h-full box-border">
-        
         {/* Top Header */}
         <div className="border-b border-black p-4 flex items-center justify-between min-h-[120px] bg-slate-50">
           {/* Left: Logo */}
           <div className="w-1/4 flex items-center justify-start pl-4">
-            {business.logoUrl ? (
+            {showLogo && business.logoUrl ? (
               <div className="w-40 h-32 flex items-center justify-start">
-                <img src={business.logoUrl} alt="Logo" className="max-w-[160px] max-h-[120px] object-contain" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={business.logoUrl}
+                  alt="Logo"
+                  style={{ maxHeight: brand?.logoSize ? `${brand.logoSize}px` : '120px' }}
+                  className="max-w-[160px] object-contain"
+                />
               </div>
             ) : null}
           </div>
-          
+
           {/* Center: Business Name & Contact */}
           <div className="w-2/4 flex flex-col items-center justify-center text-center px-2">
-            <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">{data.docTitle || (business.isComposition ? 'BILL OF SUPPLY' : 'TAX INVOICE')}</div>
-            <h1 className="text-2xl font-black uppercase tracking-[0.05em] mb-1.5 leading-tight" style={{ color: "#1e3a8a" }}>{business.name}</h1>
-            <p className="font-bold text-[13px] text-slate-700 tracking-wide leading-snug flex items-center justify-center text-center">
-              <MapPin className="w-3.5 h-3.5 text-slate-400 mr-1 flex-shrink-0" strokeWidth={2.5} /> {business.address}
-            </p>
-            <p className="font-bold text-[12px] text-slate-700 mt-0.5 flex items-center justify-center">
-              <Phone className="w-3.5 h-3.5 text-slate-400 mr-1" strokeWidth={2.5} /> {business.phone}
-            </p>
+            <div className="font-bold text-[11px] uppercase tracking-widest mb-1 text-slate-600 bg-slate-200/80 border border-slate-300 px-3 py-0.5 rounded-sm">
+              {data.docTitle || (business.isComposition ? 'BILL OF SUPPLY' : 'TAX INVOICE')}
+            </div>
+            {showBusinessName && (
+              <h1
+                className="text-2xl font-black uppercase tracking-[0.05em] mb-1.5 leading-tight"
+                style={{ color: primaryColor }}
+              >
+                {business.name}
+              </h1>
+            )}
+            {showAddress && business.address && (
+              <p className="font-bold text-[13px] text-slate-700 tracking-wide leading-snug flex items-center justify-center text-center">
+                <MapPin className="w-3.5 h-3.5 text-slate-400 mr-1 flex-shrink-0" strokeWidth={2.5} />{' '}
+                {business.address}
+              </p>
+            )}
+            {showPhone && business.phone && (
+              <p className="font-bold text-[12px] text-slate-700 mt-0.5 flex items-center justify-center">
+                <Phone className="w-3.5 h-3.5 text-slate-400 mr-1" strokeWidth={2.5} /> {business.phone}
+              </p>
+            )}
           </div>
-          
+
           {/* Right: Tax Info */}
           <div className="w-1/4 flex flex-col items-end justify-end text-right text-[12px]">
-            {business.gstin && <div className="font-bold">GSTIN: {business.gstin}</div>}
-            {business.stateCode && <div className="font-bold mt-1">State Code: {business.stateCode}</div>}
+            {showGstin && business.gstin && <div className="font-bold">GSTIN: {business.gstin}</div>}
+            {showStateCode && business.stateCode && (
+              <div className="font-bold mt-1">State Code: {business.stateCode}</div>
+            )}
           </div>
         </div>
 
@@ -63,40 +130,58 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
         <div className="flex border-b border-black">
           {/* Billed To */}
           <div className="w-1/2 border-r border-black p-4">
-            <div className="font-bold text-[11px] text-slate-500 uppercase tracking-wider mb-1.5">Billed To :</div>
-            <div className="font-bold text-[15px] text-slate-900">{data.customerName || 'Cash Customer'}</div>
+            <div className="font-bold text-[11px] text-slate-500 uppercase tracking-wider mb-1.5">
+              Billed To :
+            </div>
+            <div className="font-bold text-[15px] text-slate-900">
+              {data.customerName || 'Cash Customer'}
+            </div>
             {data.customerState && (
               <div className="mt-1.5 text-[12px] text-slate-700 flex items-center">
-                <MapPin className="w-3.5 h-3.5 text-slate-400 mr-1.5" strokeWidth={2.5} /> State Code: {data.customerState}
+                <MapPin className="w-3.5 h-3.5 text-slate-400 mr-1.5" strokeWidth={2.5} /> State Code:{' '}
+                {data.customerState}
               </div>
             )}
             {data.customerPhone && (
               <div className="mt-0.5 text-[12px] text-slate-700 flex items-center">
-                <Phone className="w-3.5 h-3.5 text-slate-400 mr-1.5" strokeWidth={2.5} /> {data.customerPhone}
+                <Phone className="w-3.5 h-3.5 text-slate-400 mr-1.5" strokeWidth={2.5} />{' '}
+                {data.customerPhone}
               </div>
             )}
           </div>
-          
+
           {/* Invoice Details Table */}
           <div className="w-1/2 flex flex-col text-[13px]">
             <div className="flex border-b border-black">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Invoice No</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">
+                Invoice No
+              </div>
               <div className="w-1/2 p-1.5 font-bold">{data.invoiceNumber}</div>
             </div>
             <div className="flex border-b border-black">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Date</div>
-              <div className="w-1/2 p-1.5 font-semibold">{new Date(data.invoiceDate).toLocaleDateString('en-IN')}</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">
+                Date
+              </div>
+              <div className="w-1/2 p-1.5 font-semibold">
+                {new Date(data.invoiceDate).toLocaleDateString('en-IN')}
+              </div>
             </div>
             <div className="flex border-b border-black">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Terms of Payments</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">
+                Terms of Payments
+              </div>
               <div className="w-1/2 p-1.5 font-semibold">{data.paymentMode}</div>
             </div>
             <div className="flex border-b border-black">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Sales Person</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">
+                Sales Person
+              </div>
               <div className="w-1/2 p-1.5 font-semibold">{data.cashierName || '-'}</div>
             </div>
             <div className="flex flex-1">
-              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">Destination</div>
+              <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">
+                Destination
+              </div>
               <div className="w-1/2 p-1.5 font-semibold">-</div>
             </div>
           </div>
@@ -107,16 +192,28 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
           {/* Table Header */}
           <div className="flex border-b border-black font-bold text-center bg-slate-100/80 items-stretch text-[13px] text-slate-800">
             <div className="w-10 border-r border-black p-2 flex items-center justify-center">SNo</div>
-            <div className="flex-1 border-r border-black p-2 flex items-center justify-center">Commodity / Item</div>
-            <div className="w-20 border-r border-black p-2 flex items-center justify-center">HSN/SAC</div>
-            {!business.isComposition && <div className="w-16 border-r border-black p-2 flex items-center justify-center">Tax(%)</div>}
+            <div className="flex-1 border-r border-black p-2 flex items-center justify-center">
+              Commodity / Item
+            </div>
+            {showHsn && (
+              <div className="w-20 border-r border-black p-2 flex items-center justify-center">
+                HSN/SAC
+              </div>
+            )}
+            {!business.isComposition && (
+              <div className="w-16 border-r border-black p-2 flex items-center justify-center">Tax(%)</div>
+            )}
             <div className="w-20 border-r border-black p-2 flex items-center justify-center">Rate</div>
             <div className="w-16 border-r border-black p-2 flex items-center justify-center">Qty</div>
             {!business.isComposition && (
               <>
                 <div className="w-24 border-r border-black p-2 flex items-center justify-center">Gross</div>
-                <div className="w-20 border-r border-black p-2 flex items-center justify-center">{isIgst ? 'IGST' : 'CGST'}</div>
-                <div className="w-20 border-r border-black p-2 flex items-center justify-center">{isIgst ? '-' : 'SGST'}</div>
+                <div className="w-20 border-r border-black p-2 flex items-center justify-center">
+                  {isIgst ? 'IGST' : 'CGST'}
+                </div>
+                <div className="w-20 border-r border-black p-2 flex items-center justify-center">
+                  {isIgst ? '-' : 'SGST'}
+                </div>
               </>
             )}
             <div className="w-28 p-2 flex items-center justify-center">Total</div>
@@ -130,15 +227,27 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
                 <div key={idx} className="flex border-b border-black min-h-[28px] items-stretch">
                   <div className="w-10 border-r border-black p-1.5 text-center">{idx + 1}</div>
                   <div className="flex-1 border-r border-black p-1.5 font-semibold">{item.name}</div>
-                  <div className="w-20 border-r border-black p-1.5 text-center text-[12px]">{item.hsn || '-'}</div>
-                  {!business.isComposition && <div className="w-16 border-r border-black p-1.5 text-center">{item.gstRate || 0}</div>}
+                  {showHsn && (
+                    <div className="w-20 border-r border-black p-1.5 text-center text-[12px]">
+                      {item.hsn || '-'}
+                    </div>
+                  )}
+                  {!business.isComposition && (
+                    <div className="w-16 border-r border-black p-1.5 text-center">{item.gstRate || 0}</div>
+                  )}
                   <div className="w-20 border-r border-black p-1.5 text-right">{item.price.toFixed(2)}</div>
                   <div className="w-16 border-r border-black p-1.5 text-center">{item.quantity}</div>
                   {!business.isComposition && (
                     <>
-                      <div className="w-24 border-r border-black p-1.5 text-right">{taxes.taxable.toFixed(2)}</div>
-                      <div className="w-20 border-r border-black p-1.5 text-right">{isIgst ? taxes.igst.toFixed(2) : taxes.cgst.toFixed(2)}</div>
-                      <div className="w-20 border-r border-black p-1.5 text-right">{isIgst ? '-' : taxes.sgst.toFixed(2)}</div>
+                      <div className="w-24 border-r border-black p-1.5 text-right">
+                        {taxes.taxable.toFixed(2)}
+                      </div>
+                      <div className="w-20 border-r border-black p-1.5 text-right">
+                        {isIgst ? taxes.igst.toFixed(2) : taxes.cgst.toFixed(2)}
+                      </div>
+                      <div className="w-20 border-r border-black p-1.5 text-right">
+                        {isIgst ? '-' : taxes.sgst.toFixed(2)}
+                      </div>
                     </>
                   )}
                   <div className="w-28 p-1.5 text-right font-bold">{item.total.toFixed(2)}</div>
@@ -149,7 +258,7 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
             <div className="flex-1 flex min-h-[120px]">
               <div className="w-10 border-r border-black"></div>
               <div className="flex-1 border-r border-black"></div>
-              <div className="w-20 border-r border-black"></div>
+              {showHsn && <div className="w-20 border-r border-black"></div>}
               {!business.isComposition && <div className="w-16 border-r border-black"></div>}
               <div className="w-20 border-r border-black"></div>
               <div className="w-16 border-r border-black"></div>
@@ -163,16 +272,24 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
               <div className="w-28"></div>
             </div>
           </div>
-          
+
           {/* Table Footer / Subtotals */}
           <div className="flex border-t border-b border-black font-bold text-[13px]">
             <div className="flex-1 border-r border-black p-2 text-right pr-4">Total</div>
-            <div className="w-16 border-r border-black p-2 text-center">{data.items.reduce((acc, i) => acc + i.quantity, 0)}</div>
+            <div className="w-16 border-r border-black p-2 text-center">
+              {data.items.reduce((acc, i) => acc + i.quantity, 0)}
+            </div>
             {!business.isComposition && (
               <>
-                <div className="w-24 border-r border-black p-2 text-right">{(data.taxableAmount || data.subTotal).toFixed(2)}</div>
-                <div className="w-20 border-r border-black p-2 text-right">{isIgst ? (data.igstAmount || 0).toFixed(2) : (data.cgstAmount || 0).toFixed(2)}</div>
-                <div className="w-20 border-r border-black p-2 text-right">{isIgst ? '-' : (data.sgstAmount || 0).toFixed(2)}</div>
+                <div className="w-24 border-r border-black p-2 text-right">
+                  {(data.taxableAmount || data.subTotal).toFixed(2)}
+                </div>
+                <div className="w-20 border-r border-black p-2 text-right">
+                  {isIgst ? (data.igstAmount || 0).toFixed(2) : (data.cgstAmount || 0).toFixed(2)}
+                </div>
+                <div className="w-20 border-r border-black p-2 text-right">
+                  {isIgst ? '-' : (data.sgstAmount || 0).toFixed(2)}
+                </div>
               </>
             )}
             <div className="w-28 p-2 text-right">{data.totalAmount.toFixed(2)}</div>
@@ -180,21 +297,34 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
         </div>
 
         {/* Summary Footer */}
-        <div className="flex h-36">
-          {/* Amount in words */}
+        <div className="flex min-h-[144px]">
+          {/* Amount in words & Notes / UPI QR */}
           <div className="w-3/5 border-r border-black p-3 flex flex-col justify-between text-[13px]">
             <div>
               <div className="underline font-semibold italic mb-1">Amount in Words</div>
-              <div className="font-bold text-[14px]">Rupees {numberToWords(Math.round(data.totalAmount))} Only</div>
-            </div>
-            {data.notes && (
-              <div className="mt-2 text-[12px]">
-                <div className="font-semibold underline mb-1">Terms & Conditions / Notes:</div>
-                <div>{data.notes}</div>
+              <div className="font-bold text-[14px]">
+                Rupees {numberToWords(Math.round(data.totalAmount))} Only
               </div>
-            )}
+            </div>
+
+            <div className="flex items-end justify-between gap-2 mt-2">
+              <div className="flex-1">
+                {showTerms && data.notes && (
+                  <div className="text-[12px]">
+                    <div className="font-semibold underline mb-0.5">Terms & Conditions / Notes:</div>
+                    <div className="text-slate-700">{data.notes}</div>
+                  </div>
+                )}
+              </div>
+              {showUpiQr && upiQrValue ? (
+                <div className="flex flex-col items-center bg-white p-1 rounded border border-slate-300">
+                  <QrCodeCanvas value={upiQrValue} size={64} />
+                  <span className="text-[9px] font-bold text-slate-600 mt-0.5">Scan to Pay UPI</span>
+                </div>
+              ) : null}
+            </div>
           </div>
-          
+
           {/* Tax Totals */}
           <div className="w-2/5 flex flex-col text-[13px] font-semibold">
             {!business.isComposition && (
@@ -215,7 +345,13 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
                 )}
                 <div className="flex border-b border-black flex-1 items-center">
                   <div className="w-1/2 p-1.5 pl-3">TOTAL TAX</div>
-                  <div className="w-1/2 p-1.5 text-right pr-3">{((data.cgstAmount || 0) + (data.sgstAmount || 0) + (data.igstAmount || 0)).toFixed(2)}</div>
+                  <div className="w-1/2 p-1.5 text-right pr-3">
+                    {(
+                      (data.cgstAmount || 0) +
+                      (data.sgstAmount || 0) +
+                      (data.igstAmount || 0)
+                    ).toFixed(2)}
+                  </div>
                 </div>
               </>
             )}
@@ -229,7 +365,7 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
             </div>
           </div>
         </div>
-        
+
         {/* Total Balance block at the bottom */}
         <div className="flex border-t border-black bg-slate-50 font-bold p-2 text-[15px]">
           <div className="w-3/5 pl-2">Total Balance</div>
@@ -237,17 +373,18 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
         </div>
 
         {/* Declaration and Signatory */}
-        <div className="flex h-24 border-t border-black">
-          <div className="w-1/2 border-r border-black p-3 text-[12px]">
-            <div className="font-bold underline mb-1">DECLARATION</div>
-            <div>Certified that all the particulars given above are true and correct.</div>
+        {showSignatures && (
+          <div className="flex h-24 border-t border-black">
+            <div className="w-1/2 border-r border-black p-3 text-[12px]">
+              <div className="font-bold underline mb-1">DECLARATION</div>
+              <div>Certified that all the particulars given above are true and correct.</div>
+            </div>
+            <div className="w-1/2 p-3 flex flex-col justify-between items-end text-center text-[12px]">
+              <div className="font-bold text-[13px]">For {business.name}</div>
+              <div className="font-bold mt-8">Authorised Signatory</div>
+            </div>
           </div>
-          <div className="w-1/2 p-3 flex flex-col justify-between items-end text-center text-[12px]">
-            <div className="font-bold text-[13px]">For {business.name}</div>
-            <div className="font-bold mt-8">Authorised Signatory</div>
-          </div>
-        </div>
-        
+        )}
       </div>
 
       {/* App Footer Brand */}
@@ -259,23 +396,41 @@ export default function A4InvoicePrint({ data, business }: A4InvoicePrintProps) 
 }
 
 function numberToWords(num: number) {
-  const a = ['','One ','Two ','Three ','Four ', 'Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
-  const b = ['', '', 'Twenty','Thirty','Forty','Fifty', 'Sixty','Seventy','Eighty','Ninety'];
+  const a = [
+    '',
+    'One ',
+    'Two ',
+    'Three ',
+    'Four ',
+    'Five ',
+    'Six ',
+    'Seven ',
+    'Eight ',
+    'Nine ',
+    'Ten ',
+    'Eleven ',
+    'Twelve ',
+    'Thirteen ',
+    'Fourteen ',
+    'Fifteen ',
+    'Sixteen ',
+    'Seventeen ',
+    'Eighteen ',
+    'Nineteen ',
+  ];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
   let numStr = num.toString();
   if (numStr.length > 9) return 'overflow';
   let n = ('000000000' + numStr).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
   if (!n) return '';
   let str = '';
-  str += (n[1] !== '00') ? (a[Number(n[1])] || b[Number(n[1][0])] + ' ' + a[Number(n[1][1])]) + 'Crore ' : '';
-  str += (n[2] !== '00') ? (a[Number(n[2])] || b[Number(n[2][0])] + ' ' + a[Number(n[2][1])]) + 'Lakh ' : '';
-  str += (n[3] !== '00') ? (a[Number(n[3])] || b[Number(n[3][0])] + ' ' + a[Number(n[3][1])]) + 'Thousand ' : '';
-  str += (n[4] !== '0') ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + 'Hundred ' : '';
-  str += (n[5] !== '00') ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
+  str += n[1] !== '00' ? (a[Number(n[1])] || b[Number(n[1][0])] + ' ' + a[Number(n[1][1])]) + 'Crore ' : '';
+  str += n[2] !== '00' ? (a[Number(n[2])] || b[Number(n[2][0])] + ' ' + a[Number(n[2][1])]) + 'Lakh ' : '';
+  str += n[3] !== '00' ? (a[Number(n[3])] || b[Number(n[3][0])] + ' ' + a[Number(n[3][1])]) + 'Thousand ' : '';
+  str += n[4] !== '0' ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + 'Hundred ' : '';
+  str +=
+    n[5] !== '00'
+      ? (str != '' ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])])
+      : '';
   return str.trim();
 }
-
-
-
-
-
-
