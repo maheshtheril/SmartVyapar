@@ -184,6 +184,7 @@ export default function Sidebar() {
         '/restaurant': 'restaurant',
         '/customers': 'parties',
         '/accounting': 'accounting',
+        '/garage': 'garage',
       };
       let targetGroup: string | null = null;
       for (const [prefix, groupId] of Object.entries(groupMap)) {

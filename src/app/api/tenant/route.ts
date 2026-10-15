@@ -198,12 +198,14 @@ export async function GET(req: NextRequest) {
             href: "/inventory/batches", 
             icon: "Boxes" 
           },
-          { 
-            id: "recipes", 
-            name: "Recipes & BOM Depletion", 
-            href: "/inventory/recipes", 
-            icon: "ChefHat" 
-          },
+          ...(tenant.businessType === "RESTAURANT"
+            ? [{ 
+                id: "recipes", 
+                name: "Recipes & BOM Depletion", 
+                href: "/inventory/recipes", 
+                icon: "ChefHat" 
+              }]
+            : []),
           { 
             id: "transfers", 
             name: "Warehouses & Transfers", 
@@ -236,12 +238,14 @@ export async function GET(req: NextRequest) {
               badge: "New",
               badgeColor: "emerald"
             },
-            {
-              id: "territories-master", 
-              name: "Territories Master (FMCG)", 
-              href: "/territories", 
-              icon: "Map" 
-            },
+            ...(tenant.enableTerritory || tenant.businessType === "DISTRIBUTION"
+              ? [{
+                  id: "territories-master", 
+                  name: "Territories Master (FMCG)", 
+                  href: "/territories", 
+                  icon: "Map" 
+                }]
+              : []),
           { 
             id: "customer-aging", 
             name: "Customer Aging & Dunning", 
@@ -254,19 +258,22 @@ export async function GET(req: NextRequest) {
       },
     ];
 
-    menuTree.push({
-      id: "garage",
-      name: "Garage & Service",
-      icon: "Wrench",
-      children: [
-        {
-          id: "job-cards",
-          name: "Active Job Cards",
-          href: "/garage",
-          icon: "ClipboardCheck"
-        }
-      ]
-    });
+    // Industry-Specific Module: Only show Garage & Service for AUTOMOBILE businesses
+    if (tenant.businessType === "AUTOMOBILE") {
+      menuTree.push({
+        id: "garage",
+        name: "Garage & Service",
+        icon: "Wrench",
+        children: [
+          {
+            id: "job-cards",
+            name: "Active Job Cards",
+            href: "/garage",
+            icon: "ClipboardCheck"
+          }
+        ]
+      });
+    }
 
     // Industry-Specific Module: Only show Food & Restaurant for RESTAURANT businesses
     if (tenant.businessType === "RESTAURANT") {
