@@ -86,7 +86,7 @@ const PALETTE_ITEMS: PaletteItem[] = [
   },
   {
     id: 'act-upgrade-pro',
-    title: 'Upgrade to SmartVyapar Pro (Razorpay)',
+    title: 'Upgrade to Ziona POS Pro (Razorpay)',
     subtitle: 'Unlock unlimited invoices, multi-warehouse, and e-invoicing',
     category: 'ACTIONS',
     href: '/settings?tab=billing',
@@ -641,7 +641,7 @@ export default function CommandPalette() {
           </div>
 
           <span className="text-[10px] font-semibold text-slate-400">
-            SmartVyapar Omnisearch
+            Ziona POS Omnisearch
           </span>
         </div>
       </div>

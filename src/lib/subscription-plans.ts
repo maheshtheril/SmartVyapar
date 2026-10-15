@@ -43,7 +43,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, PlanConfig> = {
   },
   PRO: {
     id: "PRO",
-    name: "SmartVyapar Pro",
+    name: "Ziona POS Pro",
     tagline: "For growing businesses needing automation & compliance",
     monthlyPrice: 499,
     annualPrice: 4999,
@@ -122,6 +122,7 @@ export async function getTenantSubscriptionDetails(tenantId: string) {
     select: {
       id: true,
       businessName: true,
+      businessType: true,
       subscriptionTier: true,
       subscriptionStatus: true,
       planBillingCycle: true,
@@ -138,7 +139,7 @@ export async function getTenantSubscriptionDetails(tenantId: string) {
   }
 
   const tier = tenant.subscriptionTier as SubscriptionTier;
-  const plan = SUBSCRIPTION_PLANS[tier] || SUBSCRIPTION_PLANS.FREE;
+  const basePlan = SUBSCRIPTION_PLANS[tier] || SUBSCRIPTION_PLANS.FREE;
 
   const [monthlyInvoices, userCount] = await Promise.all([
     getTenantMonthlyInvoiceCount(tenantId),
@@ -150,22 +151,47 @@ export async function getTenantSubscriptionDetails(tenantId: string) {
 
   const effectiveTier = isExpired ? "FREE" : tier;
 
+  // Customise plan name & features for Restaurant industry if applicable
+  let resolvedPlan = { ...SUBSCRIPTION_PLANS[effectiveTier] };
+  if (tenant.businessType === "RESTAURANT") {
+    if (effectiveTier === "PRO") {
+      resolvedPlan = {
+        ...resolvedPlan,
+        name: "Ziona POS Restaurant Pro",
+        tagline: "Complete Dine-In Floor Plan, Kitchen Order Tickets (KOT) & Recipe BOM",
+      };
+    } else if (effectiveTier === "FREE") {
+      resolvedPlan = {
+        ...resolvedPlan,
+        name: "Restaurant Starter Free",
+        tagline: "Ideal for small cafes, tea stalls & quick takeaway counters",
+      };
+    } else if (effectiveTier === "ENTERPRISE") {
+      resolvedPlan = {
+        ...resolvedPlan,
+        name: "Restaurant Multi-Outlet Chain",
+        tagline: "Central menu management, KDS tablet mode & multi-outlet P&L",
+      };
+    }
+  }
+
   return {
     tier: effectiveTier,
     rawTier: tier,
+    businessType: tenant.businessType,
     isExpired,
     status: tenant.subscriptionStatus,
     billingCycle: tenant.planBillingCycle,
     expiresAt: tenant.planExpiresAt,
-    planDetails: SUBSCRIPTION_PLANS[effectiveTier],
+    planDetails: resolvedPlan,
     usage: {
       monthlyInvoices,
-      invoiceLimit: plan.invoiceLimitPerMonth,
+      invoiceLimit: basePlan.invoiceLimitPerMonth,
       isInvoiceLimitReached:
-        plan.invoiceLimitPerMonth !== null && monthlyInvoices >= plan.invoiceLimitPerMonth,
+        basePlan.invoiceLimitPerMonth !== null && monthlyInvoices >= basePlan.invoiceLimitPerMonth,
       userCount,
-      userLimit: plan.userLimit,
-      isUserLimitReached: plan.userLimit !== null && userCount >= plan.userLimit,
+      userLimit: basePlan.userLimit,
+      isUserLimitReached: basePlan.userLimit !== null && userCount >= basePlan.userLimit,
     },
     payments: tenant.subscriptionPayments,
   };

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     // Deliberately capture a diagnostic test exception
     const testError = new Error(
-      `SmartVyapar Sentry Diagnostic Test Event by ${session.name || "User"} (${session.role})`
+      `Ziona POS Sentry Diagnostic Test Event by ${session.name || "User"} (${session.role})`
     );
 
     const eventId = Sentry.captureException(testError, {

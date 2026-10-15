@@ -131,7 +131,7 @@ describe("SMS & WhatsApp Cloud API Gateway", () => {
     it("should gracefully simulate WhatsApp dispatch when API keys are not provided", async () => {
       const result = await sendWhatsAppMessage({
         recipientPhone: "9876543210",
-        message: "Hello from SmartVyapar automated test",
+        message: "Hello from Ziona POS automated test",
       });
 
       assert.strictEqual(result.success, true);

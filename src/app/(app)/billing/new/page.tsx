@@ -123,7 +123,7 @@ function playSoundboxChime(amountText: string) {
     // Voice announcement simulation via Web Speech API
     if ('speechSynthesis' in window) {
       setTimeout(() => {
-        const text = `Received payment of rupees ${Math.round(Number(amountText) || 0)} on SmartVyapar.`;
+        const text = `Received payment of rupees ${Math.round(Number(amountText) || 0)} on Ziona POS.`;
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.05;
         utterance.pitch = 1.0;
@@ -343,7 +343,7 @@ export default function NewInvoicePage() {
 
     // Load parked carts from localStorage
     try {
-      const savedHeld = localStorage.getItem("smartvyapar_held_bills");
+      const savedHeld = localStorage.getItem("zionapos_held_bills") || localStorage.getItem("smartvyapar_held_bills");
       if (savedHeld) {
         const parsed = JSON.parse(savedHeld);
         if (Array.isArray(parsed)) {
@@ -361,7 +361,7 @@ export default function NewInvoicePage() {
   const saveHeldBillsToStorage = (updated: HeldBill[]) => {
     setHeldBills(updated);
     try {
-      localStorage.setItem("smartvyapar_held_bills", JSON.stringify(updated));
+      localStorage.setItem("zionapos_held_bills", JSON.stringify(updated));
     } catch (e) {
       console.warn("Could not save held bills", e);
     }

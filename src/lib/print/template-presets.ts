@@ -1,5 +1,5 @@
 /**
- * SmartVyapar World-Class Print Configuration Presets & Schema
+ * Ziona POS World-Class Print Configuration Presets & Schema
  * Tailored for Indian GST compliance, Retail POS, Automobile Workshops, and Restaurants
  */
 

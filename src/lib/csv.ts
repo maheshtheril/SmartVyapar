@@ -1,5 +1,5 @@
 /**
- * RFC 4180 Compliant CSV Parser & Serializer for SmartVyapar
+ * RFC 4180 Compliant CSV Parser & Serializer for Ziona POS
  * Zero external dependencies, edge/browser compatible, handles quotes & commas
  */
 

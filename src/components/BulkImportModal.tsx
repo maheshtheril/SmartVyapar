@@ -202,7 +202,7 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }: BulkImpo
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'SmartVyapar_Inventory_Import_Template.csv');
+    link.setAttribute('download', 'ZionaPOS_Inventory_Import_Template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

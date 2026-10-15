@@ -1,5 +1,5 @@
 /**
- * SmartVyapar Statutory GSTR-3B Preparation Engine
+ * Ziona POS Statutory GSTR-3B Preparation Engine
  * Complies with Section 39 of CGST Act & Rule 88A (Order of utilization of Input Tax Credit)
  */
 

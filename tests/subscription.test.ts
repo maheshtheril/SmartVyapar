@@ -13,8 +13,9 @@ describe("SaaS Subscription & Razorpay Engine", () => {
     assert.strictEqual(freePlan.userLimit, 1, "Free plan capped at 1 user seat");
   });
 
-  it("should have correct pricing, paise conversion, and unlimited quotas for SmartVyapar Pro", () => {
+  it("should have correct pricing, paise conversion, and unlimited quotas for Ziona POS Pro", () => {
     const proPlan = SUBSCRIPTION_PLANS.PRO;
+    assert.strictEqual(proPlan.name, "Ziona POS Pro");
     assert.strictEqual(proPlan.monthlyPrice, 499);
     assert.strictEqual(proPlan.monthlyPaise, 49900);
     assert.strictEqual(proPlan.annualPrice, 4999);

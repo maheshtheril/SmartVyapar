@@ -1033,7 +1033,7 @@ function PrintStudioContent() {
           {/* Paper Bill Container */}
           <div className="w-full flex justify-center bg-slate-200/80 rounded-3xl p-4 md:p-8 border border-slate-300 overflow-x-auto shadow-inner">
             {paperSize === 'a4' ? (
-              <div id="smartvyapar-bill-preview" className="scale-[0.52] sm:scale-[0.70] md:scale-[0.85] origin-top shadow-2xl print:scale-100 print:shadow-none bg-white">
+              <div id="ziona-bill-preview" className="scale-[0.52] sm:scale-[0.70] md:scale-[0.85] origin-top shadow-2xl print:scale-100 print:shadow-none bg-white">
                 <A4InvoicePrint
                   data={{
                     invoiceNumber: 'INV-2026-0042',
@@ -1118,7 +1118,7 @@ function PrintStudioContent() {
               </div>
             ) : (
               <div
-                id="smartvyapar-bill-preview"
+                id="ziona-bill-preview"
               style={{
                 width: previewWidth,
                 fontFamily:
@@ -1422,17 +1422,17 @@ function PrintStudioContent() {
 
       </div>
 
-      {/* Print Specific CSS to target ONLY #smartvyapar-bill-preview when window.print() is clicked */}
+      {/* Print Specific CSS to target ONLY #ziona-bill-preview when window.print() is clicked */}
       <style jsx global>{`
         @media print {
           body * {
             visibility: hidden !important;
           }
-          #smartvyapar-bill-preview,
-          #smartvyapar-bill-preview * {
+          #ziona-bill-preview,
+          #ziona-bill-preview * {
             visibility: visible !important;
           }
-          #smartvyapar-bill-preview {
+          #ziona-bill-preview {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;

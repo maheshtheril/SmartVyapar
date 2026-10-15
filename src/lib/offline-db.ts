@@ -1,5 +1,5 @@
 /**
- * SmartVyapar Native IndexedDB Offline Store
+ * Ziona POS Native IndexedDB Offline Store
  * Zero-dependency client-side database for offline POS resilience.
  */
 
@@ -15,7 +15,7 @@ export interface OfflineInvoiceRecord {
   syncError?: string;
 }
 
-const DB_NAME = "SmartVyapar_OfflineDB";
+const DB_NAME = "ZionaPOS_OfflineDB";
 const DB_VERSION = 1;
 
 const STORES = {

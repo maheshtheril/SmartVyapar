@@ -516,7 +516,7 @@ export default function EInvoiceModal({
 
         {/* Footer */}
         <div className="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
-          <span>SmartVyapar Statutory Compliance Engine</span>
+          <span>Ziona POS Statutory Compliance Engine</span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-medium rounded-lg transition"

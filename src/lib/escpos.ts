@@ -289,7 +289,7 @@ export function buildEscposReceipt(data: EscposReceiptData): Uint8Array {
   // 8. Footer
   chunks.push(COMMANDS.ALIGN_CENTER);
   chunks.push(encodeText(`\n${data.footerMessage || "Thank you for shopping with us!"}\n`));
-  chunks.push(encodeText("SmartVyapar POS • World Standard\n"));
+  chunks.push(encodeText("Ziona POS • World Standard\n"));
 
   // 9. Feed and Paper Cut
   chunks.push(COMMANDS.FEED_3_LINES);
@@ -622,7 +622,7 @@ export async function kickCashDrawer(): Promise<{ success: boolean; error?: stri
 /**
  * Prints a test slip verifying alignment and cutter
  */
-export async function printHardwareTestSlip(businessName: string = "SMARTVYAPAR STORE"): Promise<{ success: boolean; error?: string }> {
+export async function printHardwareTestSlip(businessName: string = "ZIONA POS STORE"): Promise<{ success: boolean; error?: string }> {
   const chunks = [
     COMMANDS.INIT,
     COMMANDS.ALIGN_CENTER,
