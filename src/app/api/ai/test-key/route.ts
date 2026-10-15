@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const startTime = Date.now();
-    const result = await model.generateContent("Ping test for SmartVyapar ERP. Respond with 'OK'.");
+    const result = await model.generateContent("Ping test for Ziona POS ERP. Respond with 'OK'.");
     const latencyMs = Date.now() - startTime;
     const reply = result.response.text();
 

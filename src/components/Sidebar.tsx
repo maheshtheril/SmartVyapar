@@ -590,7 +590,7 @@ export default function Sidebar() {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">PRO Feature</p>
-                  <h2 className="text-base font-extrabold text-slate-900 leading-snug">Unlock SmartVyapar PRO</h2>
+                  <h2 className="text-base font-extrabold text-slate-900 leading-snug">Unlock Ziona POS PRO</h2>
                 </div>
               </div>
               <button

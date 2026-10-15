@@ -61,7 +61,7 @@ describe("Database Backup & Disaster Recovery Engine", () => {
   });
 
   it("should compute accurate SHA-256 checksums and verify integrity", () => {
-    const buffer = Buffer.from("SmartVyapar statutory immutable ledger test data");
+    const buffer = Buffer.from("Ziona POS statutory immutable ledger test data");
     const hash = calculateSha256(buffer);
     assert.strictEqual(typeof hash, "string");
     assert.strictEqual(hash.length, 64, "SHA-256 hash must be 64 hex characters");

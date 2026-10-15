@@ -7,12 +7,12 @@ describe("Password Reset & Account Recovery Suite", () => {
   it("should format a responsive HTML email with correct reset link and recipient name", () => {
     const html = buildPasswordResetEmailHtml({
       userName: "Mahesh Store",
-      resetUrl: "https://smartvyapar.vercel.app/reset-password?token=abcdef1234567890abcdef1234567890",
+      resetUrl: "https://zionapos.store/reset-password?token=abcdef1234567890abcdef1234567890",
       expiresInMinutes: RESET_TOKEN_EXPIRY_MINUTES,
     });
 
     assert.ok(html.includes("Mahesh Store"), "Email must contain recipient name");
-    assert.ok(html.includes("https://smartvyapar.vercel.app/reset-password?token=abcdef1234567890abcdef1234567890"), "Email must contain reset URL");
+    assert.ok(html.includes("https://zionapos.store/reset-password?token=abcdef1234567890abcdef1234567890"), "Email must contain reset URL");
     assert.ok(html.includes("15 minutes"), "Email must mention 15-minute expiration");
     assert.ok(html.includes("Reset Password"), "Email must have CTA button text");
   });

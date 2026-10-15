@@ -26,6 +26,7 @@ import {
   Sparkles,
   Zap,
   Check,
+  Crown,
   Receipt,
   MessageSquare,
   Send,
@@ -140,7 +141,7 @@ function SettingsContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('smartvyapar_gemini_api_key');
+      const saved = localStorage.getItem('zionapos_gemini_api_key') || localStorage.getItem('smartvyapar_gemini_api_key');
       if (saved) setGeminiKeyInput(saved);
     }
   }, []);
@@ -176,10 +177,11 @@ function SettingsContent() {
   const handleSaveGeminiKey = () => {
     if (typeof window !== 'undefined') {
       if (geminiKeyInput.trim()) {
-        localStorage.setItem('smartvyapar_gemini_api_key', geminiKeyInput.trim());
+        localStorage.setItem('zionapos_gemini_api_key', geminiKeyInput.trim());
         setKeySavedBanner(true);
         setTimeout(() => setKeySavedBanner(false), 4000);
       } else {
+        localStorage.removeItem('zionapos_gemini_api_key');
         localStorage.removeItem('smartvyapar_gemini_api_key');
         setKeySavedBanner(true);
         setTimeout(() => setKeySavedBanner(false), 4000);
@@ -258,7 +260,7 @@ function SettingsContent() {
     }
   };
 
-  const handleUpgrade = async (cycle: 'MONTHLY' | 'ANNUAL') => {
+  const handleUpgrade = async (cycle: 'MONTHLY' | 'ANNUAL', targetTier: 'PRO' | 'ENTERPRISE' = 'PRO') => {
     if (currentUserRole !== 'OWNER') {
       setSubMsg({
         type: 'error',
@@ -274,7 +276,7 @@ function SettingsContent() {
       const res = await fetch('/api/subscription/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cycle, tier: 'PRO' }),
+        body: JSON.stringify({ cycle, tier: targetTier }),
       });
 
       const data = await res.json();
@@ -294,7 +296,7 @@ function SettingsContent() {
             paymentId: `pay_sim_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             signature: `sim_sig_${order.id}`,
             cycle,
-            tier: 'PRO',
+            tier: targetTier,
           }),
         });
 
@@ -318,7 +320,7 @@ function SettingsContent() {
         amount: order.amount,
         currency: order.currency,
         name: 'Ziona POS',
-        description: `Upgrade to Ziona POS Pro (${cycle})`,
+        description: `Upgrade to ${targetTier === 'ENTERPRISE' ? 'Ziona POS Enterprise' : (profile.businessType === 'RESTAURANT' ? 'Ziona POS Restaurant Pro' : 'Ziona POS Pro')} (${cycle})`,
         order_id: order.id,
         handler: async function (response: any) {
           try {
@@ -330,7 +332,7 @@ function SettingsContent() {
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
                 cycle,
-                tier: 'PRO',
+                tier: targetTier,
               }),
             });
 
@@ -1273,7 +1275,10 @@ function SettingsContent() {
                 </span>
                 <div className="flex items-center space-x-2 mt-1">
                   <h2 className="text-xl font-extrabold text-slate-900">
-                    {subData?.planDetails?.name || (profile.subscriptionTier === 'PRO' ? 'Ziona POS Pro' : 'Starter Free')}
+                    {subData?.planDetails?.name ||
+                      (profile.subscriptionTier === 'PRO'
+                        ? (profile.businessType === 'RESTAURANT' ? 'Ziona POS Restaurant Pro' : 'Ziona POS Pro')
+                        : (profile.businessType === 'RESTAURANT' ? 'Restaurant Starter Free' : 'Starter Free'))}
                   </h2>
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${
@@ -1286,7 +1291,10 @@ function SettingsContent() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  {subData?.planDetails?.tagline || 'Essential tools for business and GST invoicing'}
+                  {subData?.planDetails?.tagline ||
+                    (profile.businessType === 'RESTAURANT'
+                      ? 'Complete Dine-In Floor Plan, Kitchen Order Tickets (KOT) & Recipe BOM'
+                      : 'Essential tools for business and GST invoicing')}
                 </p>
               </div>
 
@@ -1418,172 +1426,430 @@ function SettingsContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Plan 1: Free Starter */}
-              <div
-                className={`rounded-2xl border p-6 flex flex-col justify-between transition ${
-                  profile.subscriptionTier === 'FREE'
-                    ? 'border-slate-300 bg-white shadow-sm'
-                    : 'border-slate-200 bg-slate-50/50'
-                }`}
-              >
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-base font-bold text-slate-900">Starter Free</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Essential tools for independent retailers</p>
+            {profile.businessType === 'RESTAURANT' ? (
+              /* Restaurant Special Plans Grid */
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* 1. Restaurant Starter Free */}
+                <div
+                  className={`rounded-2xl border p-6 flex flex-col justify-between transition ${
+                    profile.subscriptionTier === 'FREE'
+                      ? 'border-slate-300 bg-white shadow-sm'
+                      : 'border-slate-200 bg-slate-50/50'
+                  }`}
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-2xl mb-1">🍵</div>
+                      <h4 className="text-base font-bold text-slate-900">Restaurant Starter Free</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Cafes, tea stalls, takeaway counters & cloud kitchens
+                      </p>
+                    </div>
+
+                    <div className="flex items-baseline space-x-1">
+                      <span className="text-3xl font-extrabold text-slate-900">₹0</span>
+                      <span className="text-xs text-slate-500">/ forever</span>
+                    </div>
+
+                    <hr className="border-slate-100" />
+
+                    <ul className="space-y-2.5 text-xs text-slate-600">
+                      <li className="flex items-center space-x-2">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Up to 100 GST Invoices per month</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Dining Tables & KOT (up to 10 tables)</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Basic Ingredient Backflushing & Alerts</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Cash Drawer Shift & Thermal Z-Report</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Dynamic UPI QR on Bill Receipts</span>
+                      </li>
+                      <li className="flex items-center space-x-2 text-slate-400 line-through">
+                        <span className="h-4 w-4 text-center shrink-0">✕</span>
+                        <span>Multi-Section Floor Routing (AC/Rooftop/Bar)</span>
+                      </li>
+                      <li className="flex items-center space-x-2 text-slate-400 line-through">
+                        <span className="h-4 w-4 text-center shrink-0">✕</span>
+                        <span>Advanced Recipe BOM & Food Costing</span>
+                      </li>
+                      <li className="flex items-center space-x-2 text-slate-400 line-through">
+                        <span className="h-4 w-4 text-center shrink-0">✕</span>
+                        <span>AI Purchase Bill Scanner (Gemini OCR)</span>
+                      </li>
+                    </ul>
                   </div>
 
-                  <div className="flex items-baseline space-x-1">
-                    <span className="text-3xl font-extrabold text-slate-900">₹0</span>
-                    <span className="text-xs text-slate-500">/ forever</span>
-                  </div>
-
-                  <hr className="border-slate-100" />
-
-                  <ul className="space-y-2.5 text-xs text-slate-600">
-                    <li className="flex items-center space-x-2">
-                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>Up to 100 GST Invoices per month</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>POS Thermal & A4 Invoice Printing</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>Customer Khata (Credit Ledger)</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>Single User (Owner Only)</span>
-                    </li>
-                    <li className="flex items-center space-x-2 text-slate-400 line-through">
-                      <span className="h-4 w-4 text-center shrink-0">✕</span>
-                      <span>AI Purchase Bill Scanner</span>
-                    </li>
-                    <li className="flex items-center space-x-2 text-slate-400 line-through">
-                      <span className="h-4 w-4 text-center shrink-0">✕</span>
-                      <span>Government NIC E-Way Bill JSON</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="pt-6">
-                  {profile.subscriptionTier === 'FREE' ? (
-                    <button
-                      disabled
-                      className="w-full py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-500 bg-slate-100 cursor-default"
-                    >
-                      Current Plan
-                    </button>
-                  ) : (
-                    <button
-                      disabled
-                      className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 bg-slate-50"
-                    >
-                      Free Tier
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Plan 2: Ziona POS Pro */}
-              <div className="rounded-2xl border-2 border-indigo-600 bg-white p-6 shadow-md relative flex flex-col justify-between">
-                <div className="absolute -top-3 right-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full shadow-sm flex items-center space-x-1">
-                  <Sparkles className="h-3 w-3" />
-                  <span>Most Popular</span>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-base font-bold text-slate-900 flex items-center space-x-1.5">
-                      <span>Ziona POS Pro</span>
-                      <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
-                    </h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Full GST compliance, AI automation & team scale
-                    </p>
-                  </div>
-
-                  <div className="flex items-baseline space-x-1">
-                    <span className="text-3xl font-extrabold text-indigo-600">
-                      {billingCycle === 'ANNUAL' ? '₹4,999' : '₹499'}
-                    </span>
-                    <span className="text-xs text-slate-500 font-medium">
-                      {billingCycle === 'ANNUAL' ? '/ year (₹416/mo)' : '/ month'}
-                    </span>
-                  </div>
-
-                  <hr className="border-slate-100" />
-
-                  <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
-                      <span><strong>Unlimited</strong> GST Invoices & Bills</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
-                      <span><strong>Unlimited</strong> Multi-User Team & Roles</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
-                      <span>AI Purchase Bill Scanner (Gemini OCR)</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
-                      <span>NIC E-Way Bill JSON Bulk Generator</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
-                      <span>Excel / CSV Bulk Inventory Import Engine</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
-                      <span>Print Studio: 7 Palettes, Logos & Fonts</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
-                      <span>MCA Electronic Audit Trail Logs</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="pt-6 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => handleUpgrade(billingCycle)}
-                    disabled={upgrading || currentUserRole !== 'OWNER'}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-md hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50 flex items-center justify-center space-x-2"
-                  >
-                    {upgrading ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Connecting to Gateway...</span>
-                      </>
+                  <div className="pt-6">
+                    {profile.subscriptionTier === 'FREE' ? (
+                      <button
+                        disabled
+                        className="w-full py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-500 bg-slate-100 cursor-default"
+                      >
+                        Current Plan
+                      </button>
                     ) : (
-                      <>
-                        <CreditCard className="h-4 w-4" />
-                        <span>
-                          {profile.subscriptionTier === 'PRO'
-                            ? `Extend Pro (${billingCycle === 'ANNUAL' ? '₹4,999/yr' : '₹499/mo'})`
-                            : `Upgrade to Pro (${billingCycle === 'ANNUAL' ? '₹4,999/yr' : '₹499/mo'})`}
-                        </span>
-                      </>
+                      <button
+                        disabled
+                        className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 bg-slate-50"
+                      >
+                        Free Tier
+                      </button>
                     )}
-                  </button>
+                  </div>
+                </div>
 
-                  {currentUserRole !== 'OWNER' && (
-                    <p className="text-[11px] text-amber-700 font-semibold text-center">
-                      🔒 Only the Business Owner can initiate billing & subscription upgrades.
+                {/* 2. Ziona POS Restaurant Pro */}
+                <div className="rounded-2xl border-2 border-indigo-600 bg-white p-6 shadow-md relative flex flex-col justify-between">
+                  <div className="absolute -top-3 right-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full shadow-sm flex items-center space-x-1">
+                    <Sparkles className="h-3 w-3" />
+                    <span>Restaurant Special • Recommended</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-2xl mb-1">🍽️</div>
+                      <h4 className="text-base font-bold text-slate-900 flex items-center space-x-1.5">
+                        <span>Ziona POS Restaurant Pro</span>
+                        <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Dine-in restaurants, cafés, dhabas & bars
+                      </p>
+                    </div>
+
+                    <div className="flex items-baseline space-x-1">
+                      <span className="text-3xl font-extrabold text-indigo-600">
+                        {billingCycle === 'ANNUAL' ? '₹4,999' : '₹499'}
+                      </span>
+                      <span className="text-xs text-slate-500 font-medium">
+                        {billingCycle === 'ANNUAL' ? '/ year (₹416/mo)' : '/ month'}
+                      </span>
+                    </div>
+
+                    <hr className="border-slate-100" />
+
+                    <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span><strong>Interactive Visual Floor Plan</strong> (Main Hall, AC, Rooftop, Bar)</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span><strong>Thermal Kitchen Order Tickets (KOT)</strong> + Bar Routing</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span><strong>Recipe BOM & Auto-Backflushing</strong> with Food Costing</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span><strong>Live Table Occupancy HUD</strong> & Waitlist Flow</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span><strong>Unlimited</strong> GST Invoices & KOT Slips</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span><strong>Unlimited Staff</strong> (Captains, Chefs, Cashiers)</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span>AI Purchase Bill Scanner (Gemini Vision OCR)</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span>Statutory GSTR-1 & Electronic Audit Trail</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="pt-6 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => handleUpgrade(billingCycle, 'PRO')}
+                      disabled={upgrading || currentUserRole !== 'OWNER'}
+                      className="w-full py-2.5 rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-md hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50 flex items-center justify-center space-x-2"
+                    >
+                      {upgrading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Connecting to Gateway...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4" />
+                          <span>
+                            {profile.subscriptionTier === 'PRO'
+                              ? `Extend Restaurant Pro (${billingCycle === 'ANNUAL' ? '₹4,999/yr' : '₹499/mo'})`
+                              : `Upgrade to Restaurant Pro (${billingCycle === 'ANNUAL' ? '₹4,999/yr' : '₹499/mo'})`}
+                          </span>
+                        </>
+                      )}
+                    </button>
+
+                    {currentUserRole !== 'OWNER' && (
+                      <p className="text-[11px] text-amber-700 font-semibold text-center">
+                        🔒 Only the Business Owner can initiate billing & subscription upgrades.
+                      </p>
+                    )}
+
+                    <p className="text-[10px] text-slate-400 text-center">
+                      🔒 Secured by Razorpay. Zero setup test simulation enabled in evaluation mode.
                     </p>
-                  )}
+                  </div>
+                </div>
 
-                  <p className="text-[10px] text-slate-400 text-center">
-                    🔒 Secured by Razorpay. Zero setup test simulation enabled in evaluation mode.
-                  </p>
+                {/* 3. Restaurant Multi-Outlet Chain */}
+                <div className="rounded-2xl border border-amber-300 bg-white p-6 shadow-sm relative flex flex-col justify-between">
+                  <div className="absolute -top-3 right-6 bg-amber-500 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full shadow-sm flex items-center space-x-1">
+                    <Crown className="h-3 w-3" />
+                    <span>Enterprise</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-2xl mb-1">🏨</div>
+                      <h4 className="text-base font-bold text-slate-900">Restaurant Multi-Outlet Chain</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Franchises, hotel F&B groups & multi-outlet chains
+                      </p>
+                    </div>
+
+                    <div className="flex items-baseline space-x-1">
+                      <span className="text-3xl font-extrabold text-amber-600">
+                        {billingCycle === 'ANNUAL' ? '₹19,999' : '₹1,999'}
+                      </span>
+                      <span className="text-xs text-slate-500 font-medium">
+                        {billingCycle === 'ANNUAL' ? '/ year (save 17%)' : '/ month'}
+                      </span>
+                    </div>
+
+                    <hr className="border-slate-100" />
+
+                    <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span>Everything in Restaurant Pro</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span><strong>Central Menu Management</strong> (Push to all outlets)</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span><strong>Kitchen Display System (KDS)</strong> — Tablet Mode</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span>Per-Outlet Independent P&L & Food Costing</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span>Franchise Multi-Store Inventory Transfer</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span>Dedicated Priority Account Manager</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="pt-6 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => handleUpgrade(billingCycle, 'ENTERPRISE')}
+                      disabled={upgrading || currentUserRole !== 'OWNER'}
+                      className="w-full py-2.5 rounded-xl border border-amber-500 bg-amber-50 text-xs font-bold text-amber-800 hover:bg-amber-100 active:scale-[0.98] transition flex items-center justify-center space-x-2"
+                    >
+                      <Crown className="h-4 w-4 text-amber-600" />
+                      <span>Upgrade to Multi-Outlet Suite</span>
+                    </button>
+                    <p className="text-[10px] text-slate-400 text-center">
+                      Multi-branch sync & dedicated DB cluster
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* Non-Restaurant Standard Plan Grid */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Plan 1: Free Starter */}
+                <div
+                  className={`rounded-2xl border p-6 flex flex-col justify-between transition ${
+                    profile.subscriptionTier === 'FREE'
+                      ? 'border-slate-300 bg-white shadow-sm'
+                      : 'border-slate-200 bg-slate-50/50'
+                  }`}
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-base font-bold text-slate-900">Starter Free</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">Essential tools for independent retailers</p>
+                    </div>
+
+                    <div className="flex items-baseline space-x-1">
+                      <span className="text-3xl font-extrabold text-slate-900">₹0</span>
+                      <span className="text-xs text-slate-500">/ forever</span>
+                    </div>
+
+                    <hr className="border-slate-100" />
+
+                    <ul className="space-y-2.5 text-xs text-slate-600">
+                      <li className="flex items-center space-x-2">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Up to 100 GST Invoices per month</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>POS Thermal & A4 Invoice Printing</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Customer Khata (Credit Ledger)</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Single User (Owner Only)</span>
+                      </li>
+                      <li className="flex items-center space-x-2 text-slate-400 line-through">
+                        <span className="h-4 w-4 text-center shrink-0">✕</span>
+                        <span>AI Purchase Bill Scanner</span>
+                      </li>
+                      <li className="flex items-center space-x-2 text-slate-400 line-through">
+                        <span className="h-4 w-4 text-center shrink-0">✕</span>
+                        <span>Government NIC E-Way Bill JSON</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="pt-6">
+                    {profile.subscriptionTier === 'FREE' ? (
+                      <button
+                        disabled
+                        className="w-full py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-500 bg-slate-100 cursor-default"
+                      >
+                        Current Plan
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 bg-slate-50"
+                      >
+                        Free Tier
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Plan 2: Ziona POS Pro */}
+                <div className="rounded-2xl border-2 border-indigo-600 bg-white p-6 shadow-md relative flex flex-col justify-between">
+                  <div className="absolute -top-3 right-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full shadow-sm flex items-center space-x-1">
+                    <Sparkles className="h-3 w-3" />
+                    <span>Most Popular</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-base font-bold text-slate-900 flex items-center space-x-1.5">
+                        <span>Ziona POS Pro</span>
+                        <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Full GST compliance, AI automation & team scale
+                      </p>
+                    </div>
+
+                    <div className="flex items-baseline space-x-1">
+                      <span className="text-3xl font-extrabold text-indigo-600">
+                        {billingCycle === 'ANNUAL' ? '₹4,999' : '₹499'}
+                      </span>
+                      <span className="text-xs text-slate-500 font-medium">
+                        {billingCycle === 'ANNUAL' ? '/ year (₹416/mo)' : '/ month'}
+                      </span>
+                    </div>
+
+                    <hr className="border-slate-100" />
+
+                    <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span><strong>Unlimited</strong> GST Invoices & Bills</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span><strong>Unlimited</strong> Multi-User Team & Roles</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span>AI Purchase Bill Scanner (Gemini OCR)</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span>NIC E-Way Bill JSON Bulk Generator</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span>Excel / CSV Bulk Inventory Import Engine</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span>Print Studio: 7 Palettes, Logos & Fonts</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span>MCA Electronic Audit Trail Logs</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="pt-6 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => handleUpgrade(billingCycle, 'PRO')}
+                      disabled={upgrading || currentUserRole !== 'OWNER'}
+                      className="w-full py-2.5 rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-md hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50 flex items-center justify-center space-x-2"
+                    >
+                      {upgrading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Connecting to Gateway...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4" />
+                          <span>
+                            {profile.subscriptionTier === 'PRO'
+                              ? `Extend Pro (${billingCycle === 'ANNUAL' ? '₹4,999/yr' : '₹499/mo'})`
+                              : `Upgrade to Pro (${billingCycle === 'ANNUAL' ? '₹4,999/yr' : '₹499/mo'})`}
+                          </span>
+                        </>
+                      )}
+                    </button>
+
+                    {currentUserRole !== 'OWNER' && (
+                      <p className="text-[11px] text-amber-700 font-semibold text-center">
+                        🔒 Only the Business Owner can initiate billing & subscription upgrades.
+                      </p>
+                    )}
+
+                    <p className="text-[10px] text-slate-400 text-center">
+                      🔒 Secured by Razorpay. Zero setup test simulation enabled in evaluation mode.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Billing & Payment Transactions History */}
@@ -1865,7 +2131,7 @@ function SettingsContent() {
                 <div>
                   <span className="text-slate-500 block text-[11px]">Verification Token (verify_token):</span>
                   <code className="font-mono text-emerald-700 bg-white px-2.5 py-1 rounded border border-slate-200 block text-[11px]">
-                    smartvyapar_webhook_secret_2026
+                    zionapos_webhook_secret_2026
                   </code>
                 </div>
               </div>
@@ -1931,11 +2197,11 @@ function SettingsContent() {
                 <div className="bg-[#075e54] text-white px-4 py-2.5 flex items-center justify-between shrink-0">
                   <div className="flex items-center space-x-2.5">
                     <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs">
-                      SV
+                      ZP
                     </div>
                     <div>
                       <div className="font-bold text-xs leading-tight">
-                        {profile.businessName || 'SmartVyapar Assistant'}
+                        {profile.businessName || 'Ziona Assistant'}
                       </div>
                       <div className="text-[10px] text-emerald-200">
                         Online • Automated Support
@@ -1948,7 +2214,7 @@ function SettingsContent() {
                       setBotConversation([
                         {
                           sender: 'BOT',
-                          text: "🙏 *Namaste! Welcome to SmartVyapar WhatsApp Assistant.*\n\nSend *BILL* for your latest invoice, *BALANCE* for your Khata balance, or *PAY* for an instant UPI link.",
+                          text: "🙏 *Namaste! Welcome to Ziona POS WhatsApp Assistant.*\n\nSend *BILL* for your latest invoice, *BALANCE* for your Khata balance, or *PAY* for an instant UPI link.",
                           intent: 'GREETING',
                           time: 'Just now',
                         },
@@ -1994,7 +2260,7 @@ function SettingsContent() {
                     <div className="flex justify-start">
                       <div className="bg-white rounded-xl px-3 py-2 text-slate-400 italic text-xs shadow-xs rounded-tl-none flex items-center space-x-1.5">
                         <RefreshCw className="h-3 w-3 animate-spin text-emerald-600" />
-                        <span>SmartVyapar Assistant is typing...</span>
+                        <span>Ziona Assistant is typing...</span>
                       </div>
                     </div>
                   )}

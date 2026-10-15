@@ -992,7 +992,7 @@ export default function AccountingVouchersPage() {
                   {TYPE_CONFIG[selectedVoucherForSlip.voucherType].title}
                 </h3>
                 <p className="text-[11px] text-slate-500 font-bold mt-0.5">
-                  SmartVyapar Accounting System
+                  Ziona POS Accounting System
                 </p>
               </div>
 

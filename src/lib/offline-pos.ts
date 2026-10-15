@@ -1,5 +1,5 @@
 /**
- * SmartVyapar Offline-First POS Engine
+ * Ziona POS Offline-First POS Engine
  * Powered by browser-native IndexedDB for zero-latency local billing & automatic cloud sync
  */
 
@@ -30,7 +30,7 @@ export interface OfflineBill {
   syncError?: string;
 }
 
-const DB_NAME = "SmartVyapar_OfflineDB";
+const DB_NAME = "ZionaPOS_OfflineDB";
 const DB_VERSION = 1;
 const STORE_PRODUCTS = "products_cache";
 const STORE_BILLS = "offline_bills";
@@ -127,9 +127,13 @@ export async function queueOfflineBill(billData: Omit<OfflineBill, "offlineId" |
   if (!db) {
     // If running in environment without IndexedDB (e.g. test runner), store in localStorage fallback
     if (typeof window !== "undefined" && window.localStorage) {
-      const existing = JSON.parse(window.localStorage.getItem("smartvyapar_offline_bills") || "[]");
+      const existing = JSON.parse(
+        window.localStorage.getItem("zionapos_offline_bills") ||
+        window.localStorage.getItem("smartvyapar_offline_bills") ||
+        "[]"
+      );
       existing.push(offlineBill);
-      window.localStorage.setItem("smartvyapar_offline_bills", JSON.stringify(existing));
+      window.localStorage.setItem("zionapos_offline_bills", JSON.stringify(existing));
     }
     return offlineBill;
   }
@@ -150,7 +154,11 @@ export async function getPendingOfflineBills(): Promise<OfflineBill[]> {
   const db = await openOfflineDatabase();
   if (!db) {
     if (typeof window !== "undefined" && window.localStorage) {
-      const local = JSON.parse(window.localStorage.getItem("smartvyapar_offline_bills") || "[]");
+      const local = JSON.parse(
+        window.localStorage.getItem("zionapos_offline_bills") ||
+        window.localStorage.getItem("smartvyapar_offline_bills") ||
+        "[]"
+      );
       return local.filter((b: OfflineBill) => !b.synced);
     }
     return [];

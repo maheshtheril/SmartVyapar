@@ -405,7 +405,7 @@ export async function dispatchCustomerNotification(options: {
     );
   } else if (type === "TEST") {
     formattedMessage =
-      `✅ *SmartVyapar Cloud Gateway Test*\n\n` +
+      `✅ *Ziona POS Cloud Gateway Test*\n\n` +
       `Hello from ${tenant.businessName}!\n` +
       `Your automated communications gateway is successfully configured and active.\n\n` +
       `🕒 Timestamp: ${new Date().toLocaleString("en-IN")}\n` +

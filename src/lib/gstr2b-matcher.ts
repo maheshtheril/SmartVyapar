@@ -1,5 +1,5 @@
 /**
- * SmartVyapar GSTR-2B vs. Purchase Register ITC Reconciliation Engine
+ * Ziona POS GSTR-2B vs. Purchase Register ITC Reconciliation Engine
  * Complies with GST Section 16(2)(aa) & Rule 36(4) of CGST Rules.
  * Cross-matches GST Portal GSTR-2B JSON against Books Purchase Bills.
  */
@@ -390,7 +390,7 @@ export function reconcileGstr2bWithBooks(
         invoiceDate: g2b.invoiceDate,
         status: "MISSING_IN_BOOKS",
         statusLabel: "Missing in Books (Unclaimed ITC)",
-        statusDesc: "Reported by supplier on GST portal, but no purchase bill or GRN found in SmartVyapar.",
+        statusDesc: "Reported by supplier on GST portal, but no purchase bill or GRN found in Ziona POS.",
         gstr2bTaxable: g2b.taxableValue,
         gstr2bTax: g2b.totalTax,
         gstr2bTotal: g2b.totalAmount,

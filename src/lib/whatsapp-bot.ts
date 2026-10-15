@@ -91,7 +91,7 @@ export async function processCustomerCommand(
     }
   }
 
-  const businessName = customer?.tenant?.businessName || "SmartVyapar Merchant";
+  const businessName = customer?.tenant?.businessName || "Ziona POS Merchant";
   const upiId = customer?.tenant?.upiId || "merchant@upi";
   const customerName = customer?.name || "Valued Customer";
   const outstandingBalance = Number(customer?.outstandingBalance || 0);
@@ -108,7 +108,7 @@ export async function processCustomerCommand(
       `💰 *BALANCE* - Check your outstanding Khata balance\n` +
       `💳 *PAY* - Get instant NPCI UPI payment link\n` +
       `📋 *HELP* - View this command menu again\n\n` +
-      `_Powered by SmartVyapar 24x7 Automated Assistant_`;
+      `_Powered by Ziona POS 24x7 Automated Assistant_`;
   } else if (/^(BALANCE|DUE|DUES|KHATA|HISAB|OUTSTANDING)$/i.test(command)) {
     intent = "BALANCE";
     if (!customer) {

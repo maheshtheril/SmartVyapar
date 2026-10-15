@@ -104,7 +104,7 @@ function playSoundboxChime(amountText: string) {
     // Voice simulation via SpeechSynthesis if available
     if ('speechSynthesis' in window) {
       setTimeout(() => {
-        const text = `Received payment of rupees ${Math.round(Number(amountText) || 0)} on SmartVyapar.`;
+        const text = `Received payment of rupees ${Math.round(Number(amountText) || 0)} on Ziona POS.`;
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.05;
         utterance.pitch = 1.0;
@@ -207,7 +207,7 @@ export default function PosPaymentModal({
   const returnNotes = getIndianDenominations(changeDue);
 
   // Generate real NPCI UPI URI
-  const upiUri = `upi://pay?pa=${encodeURIComponent(upiId || 'zionabusiness@icici')}&pn=${encodeURIComponent(businessName || 'SmartVyapar')}&am=${effectiveGrandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Bill payment ${customerName || 'Customer'}`)}`;
+  const upiUri = `upi://pay?pa=${encodeURIComponent(upiId || 'zionabusiness@icici')}&pn=${encodeURIComponent(businessName || 'Ziona POS')}&am=${effectiveGrandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Bill payment ${customerName || 'Customer'}`)}`;
 
   // NumPad buttons handler
   const handleNumpadPress = (char: string) => {

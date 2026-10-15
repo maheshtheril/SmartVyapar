@@ -1,5 +1,5 @@
 /**
- * SmartVyapar Transactional Email Dispatcher
+ * Ziona POS Transactional Email Dispatcher
  * Supports:
  * 1. Resend REST API (when RESEND_API_KEY is configured)
  * 2. Standard SMTP (when SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS configured)
@@ -64,7 +64,7 @@ export async function sendEmail({
 
   // 2. Fallback / Dev Simulator (Prevents users/evaluators from being locked out)
   console.log("=================================================");
-  console.log("📧 [SmartVyapar Email Dispatch Simulator]");
+  console.log("📧 [Ziona POS Email Dispatch Simulator]");
   console.log(`To: ${to}`);
   console.log(`Subject: ${subject}`);
   console.log(`Message Body:\n${text}`);

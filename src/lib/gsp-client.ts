@@ -1,6 +1,6 @@
 /**
  * Direct GSP / NIC API Gateway Client
- * Integrates SmartVyapar with authorized GST Suvidha Providers (Masters India, ClearTax, NIC G2B)
+ * Integrates Ziona POS with authorized GST Suvidha Providers (Masters India, ClearTax, NIC G2B)
  * Supports live statutory filing and zero-downtime sandbox simulation.
  */
 

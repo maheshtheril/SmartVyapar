@@ -145,7 +145,7 @@ export default function PurchaseInwardPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedKey = localStorage.getItem('smartvyapar_gemini_api_key');
+      const savedKey = localStorage.getItem('zionapos_gemini_api_key') || localStorage.getItem('smartvyapar_gemini_api_key');
       if (savedKey) setCustomApiKeyInput(savedKey);
     }
   }, []);
@@ -154,11 +154,12 @@ export default function PurchaseInwardPage() {
     if (typeof window !== 'undefined') {
       const trimmed = customApiKeyInput.trim();
       if (trimmed && (trimmed.startsWith('AIzaSy') || trimmed.startsWith('AQ.'))) {
-        localStorage.setItem('smartvyapar_gemini_api_key', trimmed);
+        localStorage.setItem('zionapos_gemini_api_key', trimmed);
         setKeySavedBanner(true);
         setTimeout(() => setKeySavedBanner(false), 4000);
         setScanError(null);
       } else {
+        localStorage.removeItem('zionapos_gemini_api_key');
         localStorage.removeItem('smartvyapar_gemini_api_key');
         setCustomApiKeyInput('');
         setScanError(null);
@@ -646,7 +647,9 @@ export default function PurchaseInwardPage() {
     setScanSuccessInfo(null);
 
     try {
-      const customApiKey = typeof window !== 'undefined' ? localStorage.getItem('smartvyapar_gemini_api_key') : null;
+      const customApiKey = typeof window !== 'undefined'
+        ? (localStorage.getItem('zionapos_gemini_api_key') || localStorage.getItem('smartvyapar_gemini_api_key'))
+        : null;
         const headers: Record<string, string> = {};
         if (customApiKey && (customApiKey.startsWith('AIzaSy') || customApiKey.startsWith('AQ.'))) {
           headers['x-gemini-api-key'] = customApiKey;
