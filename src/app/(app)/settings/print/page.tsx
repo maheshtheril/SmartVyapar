@@ -45,6 +45,7 @@ import {
 } from '@/lib/print/template-presets';
 import QrCodeCanvas from '@/components/QrCodeCanvas';
 import BarcodeSvg from '@/components/BarcodeSvg';
+import A4InvoicePrint from '@/components/A4InvoicePrint';
 import {
   getHardwarePrinterConfig,
   saveHardwarePrinterConfig,
@@ -1031,8 +1032,93 @@ function PrintStudioContent() {
 
           {/* Paper Bill Container */}
           <div className="w-full flex justify-center bg-slate-200/80 rounded-3xl p-4 md:p-8 border border-slate-300 overflow-x-auto shadow-inner">
-            <div
-              id="smartvyapar-bill-preview"
+            {paperSize === 'a4' ? (
+              <div id="smartvyapar-bill-preview" className="scale-[0.52] sm:scale-[0.70] md:scale-[0.85] origin-top shadow-2xl print:scale-100 print:shadow-none bg-white">
+                <A4InvoicePrint
+                  data={{
+                    invoiceNumber: 'INV-2026-0042',
+                    invoiceDate: new Date().toISOString(),
+                    customerName: 'Dr. Rahul Sharma',
+                    customerPhone: '+91 94471 23456',
+                    customerState: business.stateCode || '32',
+                    cashierName: 'Santhosh (Manager)',
+                    docTitle:
+                      activeDocType === 'credit_note'
+                        ? 'CREDIT NOTE'
+                        : activeDocType === 'auto_workshop'
+                        ? 'JOB CARD & TAX INVOICE'
+                        : 'TAX INVOICE',
+                    items: [
+                      {
+                        name:
+                          activeDocType === 'auto_workshop'
+                            ? 'Engine Oil Synthetic 5W30'
+                            : 'Philips 20W LED Bulb Cool Day Light',
+                        hsn: activeDocType === 'auto_workshop' ? '2710' : '8539',
+                        quantity: 2,
+                        unit: activeDocType === 'auto_workshop' ? 'Ltr' : 'Pcs',
+                        price: 650,
+                        gstRate: 18,
+                        total: 1300,
+                      },
+                      {
+                        name:
+                          activeDocType === 'auto_workshop'
+                            ? 'Oil Filter Element Cartridge'
+                            : 'Havells 16A Modular Socket White',
+                        hsn: activeDocType === 'auto_workshop' ? '8421' : '8536',
+                        quantity: 1,
+                        unit: 'Pcs',
+                        price: 450,
+                        gstRate: 18,
+                        total: 450,
+                      },
+                      {
+                        name:
+                          activeDocType === 'auto_workshop'
+                            ? 'Front Disc Brake Pad Set'
+                            : 'Finolex 1.5 sq mm Copper Cable (90m Roll)',
+                        hsn: activeDocType === 'auto_workshop' ? '8708' : '8544',
+                        quantity: 1,
+                        unit: activeDocType === 'auto_workshop' ? 'Set' : 'Roll',
+                        price: 1850,
+                        gstRate: 18,
+                        total: 1850,
+                      },
+                    ],
+                    subTotal: 3600,
+                    taxableAmount: 3050.85,
+                    cgstAmount: 274.58,
+                    sgstAmount: 274.58,
+                    igstAmount: 0,
+                    totalAmount: 3600,
+                    paidAmount: 3600,
+                    dueAmount: 0,
+                    paymentMode: 'UPI / GPay',
+                    upiUri: business.upiId
+                      ? `upi://pay?pa=${business.upiId}&pn=${encodeURIComponent(
+                          business.businessName
+                        )}&am=3600&cu=INR`
+                      : undefined,
+                    notes: 'Goods once sold will be replaced within 7 days. Subject to local jurisdiction.',
+                  }}
+                  business={{
+                    name: business.businessName,
+                    logoUrl: business.logoUrl,
+                    gstin: business.gstin,
+                    stateCode: business.stateCode,
+                    phone: business.phone,
+                    address: business.address,
+                    upiId: business.upiId,
+                    isComposition: false,
+                  }}
+                  brand={brand}
+                  sections={sections}
+                />
+              </div>
+            ) : (
+              <div
+                id="smartvyapar-bill-preview"
               style={{
                 width: previewWidth,
                 fontFamily:
@@ -1330,6 +1416,7 @@ function PrintStudioContent() {
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
 

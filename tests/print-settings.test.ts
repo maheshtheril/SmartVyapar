@@ -22,6 +22,17 @@ test("Print Configuration Studio & Templates Presets", async (t) => {
     assert.equal(DOC_TYPE_METADATA.kot.label, "Restaurant KOT Ticket");
   });
 
+  await t.test("Classic A4 statutory boxed preset is configured with production-proven customer defaults", () => {
+    const a4Preset = BUILT_IN_PRESETS.find((p) => p.id === "classic_gst_a4");
+    assert.ok(a4Preset, "classic_gst_a4 preset must exist");
+    assert.equal(a4Preset.paperSize, "a4");
+    assert.equal(a4Preset.docType, "sale_bill");
+    assert.equal(a4Preset.brand.primaryColor, "#1e3a8a");
+    assert.equal(a4Preset.sections.showHsnColumn, true);
+    assert.equal(a4Preset.sections.showTaxBreakup, true);
+    assert.equal(a4Preset.sections.showSignatures, true);
+  });
+
   await t.test("STAFF role cannot modify or delete print templates (ForbiddenError)", async () => {
     const staffReq = new NextRequest("http://localhost:3005/api/print-settings", {
       method: "POST",

@@ -107,6 +107,7 @@ export default function ThermalReceiptModal({
   const [hwConfig, setHwConfig] = useState(() => getHardwarePrinterConfig());
   const [cloudStatus, setCloudStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [cloudFeedback, setCloudFeedback] = useState<string>('');
+  const [a4Template, setA4Template] = useState<{ brand?: any; sections?: any } | null>(null);
 
   const isHardwareSupported = isWebSerialSupported() || isWebUsbSupported();
 
@@ -121,6 +122,21 @@ export default function ThermalReceiptModal({
         setAutoPrintTriggered(true);
         handleDirectEscposPrint();
       }
+
+      // Load active A4 template configuration from Print Studio
+      fetch('/api/print-settings')
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.templates?.sale_bill) {
+            const defA4 =
+              d.templates.sale_bill.find((t: any) => t.paperSize === 'a4' && t.isDefault) ||
+              d.templates.sale_bill.find((t: any) => t.paperSize === 'a4');
+            if (defA4) {
+              setA4Template({ brand: defA4.brand, sections: defA4.sections });
+            }
+          }
+        })
+        .catch(() => {});
     } else {
       setAutoPrintTriggered(false);
     }
@@ -503,7 +519,12 @@ export default function ThermalReceiptModal({
           <div className="md:col-span-7 order-1 md:order-2 flex justify-center items-start overflow-auto max-h-[85vh] print:block print:max-h-none print:overflow-visible">
             {isA4 ? (
               <div id="a4-receipt-preview" className="scale-[0.5] sm:scale-75 md:scale-90 origin-top shadow-2xl print:scale-100 print:shadow-none">
-                <A4InvoicePrint data={data} business={business} />
+                <A4InvoicePrint
+                  data={data}
+                  business={business}
+                  brand={a4Template?.brand}
+                  sections={a4Template?.sections}
+                />
               </div>
             ) : (
             /* Outer Roll Container */
