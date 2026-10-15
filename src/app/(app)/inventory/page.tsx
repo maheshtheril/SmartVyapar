@@ -65,12 +65,36 @@ export default function InventoryPage() {
   const [stockHistoryData, setStockHistoryData] = useState<any>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+function getDefaultHsn(type?: string): string {
+  switch (type) {
+    case "RESTAURANT": return "2106"; // Food preparation / Prepared Dish
+    case "AUTOMOBILE": return "8708"; // Motor vehicle parts & accessories
+    case "PHARMACEUTICAL": return "3004"; // Medicaments
+    case "SERVICES": return "9983"; // IT & Professional Services
+    case "DISTRIBUTION":
+    case "RETAIL":
+    default: return "2106"; // Common FMCG / Packaged goods
+  }
+}
+
+function getDefaultGstRate(type?: string): string {
+  switch (type) {
+    case "RESTAURANT": return "5"; // 5% GST standard for restaurant food & dining
+    case "PHARMACEUTICAL": return "12"; // 12% on standard medicines
+    case "AUTOMOBILE": return "18"; // 18% standard auto parts
+    case "SERVICES": return "18"; // 18% standard SAC services
+    case "DISTRIBUTION":
+    case "RETAIL":
+    default: return "18";
+  }
+}
+
   // Form State - World Standard ERP Product Master
   const [name, setName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState<"RETAIL_ITEM"|"RAW_MATERIAL"|"FINISHED_GOOD">("RETAIL_ITEM");
-  const [hsnCode, setHsnCode] = useState("9983");
+  const [hsnCode, setHsnCode] = useState("2106");
   const [sku, setSku] = useState("");
   const [barcode, setBarcode] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
@@ -97,8 +121,11 @@ export default function InventoryPage() {
   const [isMaximized, setIsMaximized] = useState(true);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
-  // Derived from tenant — controls restaurant-specific UI without a separate fetch
-  const isRestaurant = tenant?.businessType === "RESTAURANT";
+  // Derived from tenant — controls industry-specific UI
+  const businessType = tenant?.businessType || "RETAIL";
+  const isRestaurant = businessType === "RESTAURANT";
+  const isAutomobile = businessType === "AUTOMOBILE";
+  const isPharma = businessType === "PHARMACEUTICAL";
 
   // Handle local image file upload & conversion to Data URL
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,7 +157,16 @@ export default function InventoryPage() {
     try {
       const [res, tenantRes] = await Promise.all([fetch("/api/products"), fetch("/api/tenant")]);
       const tenantData = await tenantRes.json();
-      if (tenantData.success) setTenant(tenantData.tenant);
+      if (tenantData.success) {
+        setTenant(tenantData.tenant);
+        const bType = tenantData.tenant?.businessType;
+        setHsnCode(getDefaultHsn(bType));
+        setGstRate(getDefaultGstRate(bType));
+        if (bType === "RESTAURANT") {
+          setProductType("FINISHED_GOOD");
+          setBaseUnit("PORTION");
+        }
+      }
       const data = await res.json();
       if (data.success) {
         setProducts(data.products || []);
@@ -145,6 +181,37 @@ export default function InventoryPage() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  const resetProductForm = () => {
+    setEditingProductId(null);
+    setName("");
+    setDisplayName("");
+    setCategory("");
+    setPartNumber("");
+    setOemNumber("");
+    setFoodCategory("");
+    setCompatibleMakes("");
+    setCompatibleModels("");
+    setProductType(isRestaurant ? "FINISHED_GOOD" : "RETAIL_ITEM");
+    setHsnCode(getDefaultHsn(businessType));
+    setGstRate(getDefaultGstRate(businessType));
+    setBaseUnit(isRestaurant ? "PORTION" : "PCS");
+    setSku("");
+    setBarcode("");
+    setPurchasePrice("");
+    setSellingPrice("");
+    setMrp("");
+    setHasAltUnit(false);
+    setAltUnit("");
+    setConversionFactor("10");
+    setInitialStock("0");
+    setMinStockAlert("5");
+    setHasBatchTracking(false);
+    setImageUrl("");
+    setImagePreview(null);
+    setFormError(null);
+    setActiveTab("GENERAL");
+  };
 
   // Auto-generate EAN-13 Barcode (Prefix 890 for India)
   const generateEanBarcode = () => {
@@ -296,33 +363,8 @@ export default function InventoryPage() {
       }
 
       setShowModal(false);
-      // Reset form
-      setName("");
-    setDisplayName("");
-      setCategory("");
-    setPartNumber("");
-    setOemNumber("");
-    setFoodCategory("");
-    setCompatibleMakes("");
-    setCompatibleModels("");
-      setImageUrl("");
-      setImagePreview(null);
-      setProductType("RETAIL_ITEM");
-      setSku("");
-      setBarcode("");
-      setHsnCode("9983");
-      setPurchasePrice("");
-      setSellingPrice("");
-      setMrp("");
-      setGstRate("18");
-      setBaseUnit("PCS");
-      setHasAltUnit(false);
-      setAltUnit("");
-      setConversionFactor("10");
-      setInitialStock("0");
-      setMinStockAlert("5");
-      setHasBatchTracking(false);
-      setFormError(null); setActiveTab("GENERAL"); loadProducts();
+      resetProductForm();
+      loadProducts();
     } catch (err: any) {
       setFormError(err.message || "Failed to create product");
     } finally {
@@ -445,33 +487,9 @@ export default function InventoryPage() {
           </button>
           <button
             onClick={() => {
-    setEditingProductId(null);
-    setName("");
-    setDisplayName("");
-    setCategory("");
-    setPartNumber("");
-    setOemNumber("");
-    setFoodCategory("");
-    setCompatibleMakes("");
-    setCompatibleModels("");
-    setProductType("RETAIL_ITEM");
-    setHsnCode("9983");
-    setSku("");
-    setBarcode("");
-    setPurchasePrice("");
-    setSellingPrice("");
-    setMrp("");
-    setGstRate("18");
-    setBaseUnit("PCS");
-    setHasAltUnit(false);
-    setAltUnit("");
-    setConversionFactor("10");
-    setInitialStock("0");
-    setMinStockAlert("5");
-    setHasBatchTracking(false);
-    setImageUrl("");
-    setImagePreview(null); setActiveTab("GENERAL"); setShowModal(true);
-  }}
+              resetProductForm();
+              setShowModal(true);
+            }}
             className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 flex items-center space-x-1.5 transition"
           >
             <Plus className="h-4 w-4" />
@@ -566,33 +584,9 @@ export default function InventoryPage() {
             <p className="text-xs text-slate-400 mb-4">Add your first product to start tracking inventory</p>
             <button
               onClick={() => {
-    setEditingProductId(null);
-    setName("");
-    setDisplayName("");
-    setCategory("");
-    setPartNumber("");
-    setOemNumber("");
-    setFoodCategory("");
-    setCompatibleMakes("");
-    setCompatibleModels("");
-    setProductType("RETAIL_ITEM");
-    setHsnCode("9983");
-    setSku("");
-    setBarcode("");
-    setPurchasePrice("");
-    setSellingPrice("");
-    setMrp("");
-    setGstRate("18");
-    setBaseUnit("PCS");
-    setHasAltUnit(false);
-    setAltUnit("");
-    setConversionFactor("10");
-    setInitialStock("0");
-    setMinStockAlert("5");
-    setHasBatchTracking(false);
-    setImageUrl("");
-    setImagePreview(null); setActiveTab("GENERAL"); setShowModal(true);
-  }}
+                resetProductForm();
+                setShowModal(true);
+              }}
               className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-600 hover:text-indigo-800"
             >
               <span>+ Add a product</span>
@@ -868,14 +862,21 @@ export default function InventoryPage() {
                   {/* Product Classification — compact inline pills */}
                   <div>
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                      Product Type *
+                      {isRestaurant ? "Menu Item Type *" : "Product Type *"}
                     </label>
                     <div className="flex items-center gap-2">
-                      {[
-                        { type: "RETAIL_ITEM", title: "Retail Goods", icon: "🛒" },
-                        { type: "RAW_MATERIAL", title: "Raw Material", icon: "🧱" },
-                        { type: "FINISHED_GOOD", title: "Finished Recipe", icon: "🍽️" },
-                      ].map((item) => (
+                      {(isRestaurant
+                        ? [
+                            { type: "FINISHED_GOOD", title: "Menu Dish (Recipe BOM)", icon: "🍽️" },
+                            { type: "RAW_MATERIAL", title: "Kitchen Ingredient", icon: "🥩" },
+                            { type: "RETAIL_ITEM", title: "Packaged / Direct Item", icon: "🥤" },
+                          ]
+                        : [
+                            { type: "RETAIL_ITEM", title: "Retail Goods", icon: "🛒" },
+                            { type: "RAW_MATERIAL", title: "Raw Material", icon: "🧱" },
+                            { type: "FINISHED_GOOD", title: "Finished Good", icon: "📦" },
+                          ]
+                      ).map((item) => (
                         <button
                           key={item.type}
                           type="button"
@@ -939,16 +940,52 @@ export default function InventoryPage() {
                   {/* Product Name + Category — same row */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Product / Item Name *</label><input type="text" required placeholder="e.g. Amul Gold Milk 500ml" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 font-medium focus:border-indigo-600 focus:bg-white focus:outline-none" /></div><div><label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">POS Display Name</label><input type="text" placeholder="Clean name for receipts" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full rounded-xl border border-indigo-300 bg-indigo-50/50 px-3 py-2 text-xs text-indigo-900 font-bold focus:border-indigo-600 focus:outline-none" />
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        {isRestaurant ? "Dish / Item Name *" : "Product / Item Name *"}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder={
+                          isRestaurant
+                            ? "e.g. Malabar Chicken Biryani, Filter Coffee"
+                            : isAutomobile
+                            ? "e.g. Ceramic Front Brake Pad Set, 5W-40 Synthetic Oil"
+                            : isPharma
+                            ? "e.g. Paracetamol 650mg, Amoxicillin 625mg Tablets"
+                            : "e.g. Basmati Rice 5kg, Farm Fresh Cow Milk 1L"
+                        }
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 font-medium focus:border-indigo-600 focus:bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">POS Display Name</label>
+                      <input
+                        type="text"
+                        placeholder={isRestaurant ? "Short name on KOT / Bill (e.g. Chic Biryani)" : "Clean name for receipts"}
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        className="w-full rounded-xl border border-indigo-300 bg-indigo-50/50 px-3 py-2 text-xs text-indigo-900 font-bold focus:border-indigo-600 focus:outline-none"
+                      />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                        Category / Brand
+                        {isRestaurant ? "Menu Category / Course" : "Category / Brand"}
                       </label>
                       <input
                         type="text"
                         list="category-suggestions"
-                        placeholder="e.g. Electricals, Groceries"
+                        placeholder={
+                          isRestaurant
+                            ? "e.g. Starters, Main Course, Hot Beverages, Breads"
+                            : isAutomobile
+                            ? "e.g. Brake Systems, Engine Oils, Filters"
+                            : isPharma
+                            ? "e.g. Antibiotics, Analgesics, Syrups"
+                            : "e.g. Groceries, Dairy, Beverages, Snacks"
+                        }
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
@@ -961,57 +998,62 @@ export default function InventoryPage() {
                       </div>
                     </div>
 
-                    {/* AUTOMOTIVE FIELDS */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 pb-2 bg-indigo-50/50 -mx-4 px-4 border-y border-indigo-100">
-                      <div>
-                        <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
-                          Part / OEM Number
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Part No."
-                            value={partNumber}
-                            onChange={(e) => setPartNumber(e.target.value)}
-                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
-                          />
-                          <input
-                            type="text"
-                            placeholder="OEM No."
-                            value={oemNumber}
-                            onChange={(e) => setOemNumber(e.target.value)}
-                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
-                          />
+                    {/* AUTOMOTIVE FIELDS — ONLY shown for AUTOMOBILE businesses */}
+                    {isAutomobile && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 pb-2 bg-indigo-50/50 -mx-4 px-4 border-y border-indigo-100">
+                        <div>
+                          <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
+                            Part / OEM Number
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Part No."
+                              value={partNumber}
+                              onChange={(e) => setPartNumber(e.target.value)}
+                              className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                            />
+                            <input
+                              type="text"
+                              placeholder="OEM No."
+                              value={oemNumber}
+                              onChange={(e) => setOemNumber(e.target.value)}
+                              className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
+                            Vehicle Compatibility (For Search)
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Makes (e.g. Maruti, Hyundai)"
+                              value={compatibleMakes}
+                              onChange={(e) => setCompatibleMakes(e.target.value)}
+                              className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Models (e.g. Swift, i20)"
+                              value={compatibleModels}
+                              onChange={(e) => setCompatibleModels(e.target.value)}
+                              className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                            />
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
-                          Vehicle Compatibility (For Search)
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Makes (e.g. Maruti, Hyundai)"
-                            value={compatibleMakes}
-                            onChange={(e) => setCompatibleMakes(e.target.value)}
-                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Models (e.g. Swift, i20)"
-                            value={compatibleModels}
-                            onChange={(e) => setCompatibleModels(e.target.value)}
-                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
-                          />
-                        </div>
-                      </div>                </div>
+                    )}
 
                   {/* SKU, Barcode, HSN */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                     {/* SKU */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-bold text-slate-700">SKU Code</label>
+                        <label className="text-xs font-bold text-slate-700">
+                          {isRestaurant ? "Item Code / SKU" : "SKU Code"}
+                        </label>
                         <button
                           type="button"
                           onClick={generateSkuCode}
@@ -1023,7 +1065,7 @@ export default function InventoryPage() {
                       </div>
                       <input
                         type="text"
-                        placeholder="e.g. POL-25-01"
+                        placeholder={isRestaurant ? "e.g. DISH-BIRYANI-01" : isAutomobile ? "e.g. PART-BRK-01" : "e.g. POL-25-01"}
                         value={sku}
                         onChange={(e) => setSku(e.target.value.toUpperCase())}
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-indigo-600 focus:outline-none uppercase"
@@ -1208,7 +1250,7 @@ export default function InventoryPage() {
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
                       >
                         <option value="0">0% - Nil Rated / Exempt Goods</option>
-                        <option value="5">5% - Essential Goods (Food/Medicines)</option>
+                        <option value="5">{isRestaurant ? "5% - Restaurant Dining & Food (Standard)" : "5% - Essential Goods (Food/Medicines)"}</option>
                         <option value="12">12% - Standard Concessional</option>
                         <option value="18">18% - Standard GST Rate</option>
                         <option value="28">28% - Luxury & Automobile Parts</option>
@@ -1255,6 +1297,12 @@ export default function InventoryPage() {
                       onChange={(e) => setBaseUnit(e.target.value)}
                       className="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
                     >
+                      {isRestaurant && <option value="PORTION">PORTION - Portion / Serving</option>}
+                      {isRestaurant && <option value="PLATE">PLATE - Plate</option>}
+                      {isRestaurant && <option value="CUP">CUP - Cup</option>}
+                      {isPharma && <option value="TAB">TAB - Tablets</option>}
+                      {isPharma && <option value="STRIP">STRIP - Strips</option>}
+                      {isPharma && <option value="CAP">CAP - Capsules</option>}
                       <option value="PCS">PCS - Pieces / Units</option>
                       <option value="KG">KG - Kilograms</option>
                       <option value="GMS">GMS - Grams</option>

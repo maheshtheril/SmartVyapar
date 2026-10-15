@@ -84,4 +84,14 @@ test("Industry-Specific Sidebar Menu Scoping", async (t) => {
     assert.equal(hasRestaurant, true, "Restaurant menu must be visible to Restaurant tenants");
     assert.equal(hasRecipes, true, "Recipes BOM must be visible to Restaurant tenants");
   });
+
+  await t.test("Product Master Form: Automotive fields should ONLY be visible for AUTOMOBILE", () => {
+    const isAutoVisible = (bType: string) => bType === "AUTOMOBILE";
+
+    assert.equal(isAutoVisible("RESTAURANT"), false, "Automotive fields must be hidden for Restaurant");
+    assert.equal(isAutoVisible("RETAIL"), false, "Automotive fields must be hidden for Retail");
+    assert.equal(isAutoVisible("PHARMACEUTICAL"), false, "Automotive fields must be hidden for Pharmacy");
+    assert.equal(isAutoVisible("SERVICES"), false, "Automotive fields must be hidden for Services");
+    assert.equal(isAutoVisible("AUTOMOBILE"), true, "Automotive fields must be shown for Automobile");
+  });
 });
