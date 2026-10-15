@@ -67,9 +67,22 @@ export async function GET(req: NextRequest) {
       0
     );
 
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        businessName: true,
+        gstin: true,
+        address: true,
+        phone: true,
+        stateCode: true,
+        logoUrl: true,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       creditNotes,
+      tenant,
       metrics: {
         totalCredited,
         totalTaxReversed,
@@ -244,6 +257,20 @@ export async function POST(req: NextRequest) {
           },
         });
       }
+
+      // 4B. Invoice Balance & Payment Status Adjustment
+      const currentDue = Number(invoice.dueAmount || 0);
+      const currentPaid = Number(invoice.paidAmount || 0);
+      const newDue = Math.max(0, currentDue - totalAmount);
+      const newPaymentStatus = newDue === 0 ? "PAID" : currentPaid > 0 ? "PARTIAL" : "UNPAID";
+
+      await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          dueAmount: newDue,
+          paymentStatus: newPaymentStatus,
+        },
+      });
 
       // 5. Create Credit Note record
       const createdNote = await tx.creditNote.create({

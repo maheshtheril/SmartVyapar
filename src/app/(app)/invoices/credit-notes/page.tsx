@@ -20,9 +20,12 @@ import {
   X,
 } from 'lucide-react';
 import CreditNoteModal from '@/components/CreditNoteModal';
+import CreditNoteVoucherModal from '@/components/CreditNoteVoucherModal';
 
 export default function CreditNotesRegisterPage() {
   const [creditNotes, setCreditNotes] = useState<any[]>([]);
+  const [tenant, setTenant] = useState<any>(null);
+  const [selectedCreditNoteForView, setSelectedCreditNoteForView] = useState<any | null>(null);
   const [metrics, setMetrics] = useState<any>({ totalCredited: 0, totalTaxReversed: 0, count: 0 });
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -74,6 +77,7 @@ export default function CreditNotesRegisterPage() {
         throw new Error(data.error || 'Failed to fetch credit notes');
       }
       setCreditNotes(data.creditNotes || []);
+      if (data.tenant) setTenant(data.tenant);
       setMetrics(data.metrics || { totalCredited: 0, totalTaxReversed: 0, count: 0 });
     } catch (err: any) {
       setError(err.message || 'Error loading credit notes');
@@ -212,19 +216,20 @@ export default function CreditNotesRegisterPage() {
                 <th className="p-3.5 text-right">Taxable</th>
                 <th className="p-3.5 text-right">Tax Reversed</th>
                 <th className="p-3.5 text-right font-black">Total Credit</th>
+                <th className="p-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
                     <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-indigo-600" />
                     Loading credit notes...
                   </td>
                 </tr>
               ) : creditNotes.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
                     No credit notes found. Click &quot;Issue Credit Note&quot; to create one.
                   </td>
                 </tr>
@@ -260,6 +265,17 @@ export default function CreditNotesRegisterPage() {
                     </td>
                     <td className="p-3.5 text-right font-mono font-black text-rose-600">
                       ₹{Number(cn.totalAmount || 0).toFixed(2)}
+                    </td>
+                    <td className="p-3.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCreditNoteForView(cn)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-xs cursor-pointer"
+                        title="Print Statutory Credit Note Voucher (GST Rule 53)"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-indigo-600" />
+                        <span>Voucher</span>
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -334,6 +350,16 @@ export default function CreditNotesRegisterPage() {
             setSelectedInvoice(null);
             fetchCreditNotes();
           }}
+        />
+      )}
+
+      {/* Credit Note Voucher Print Preview Modal */}
+      {selectedCreditNoteForView && (
+        <CreditNoteVoucherModal
+          isOpen={!!selectedCreditNoteForView}
+          onClose={() => setSelectedCreditNoteForView(null)}
+          creditNote={selectedCreditNoteForView}
+          tenant={tenant}
         />
       )}
     </div>

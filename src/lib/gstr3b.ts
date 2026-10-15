@@ -168,7 +168,7 @@ export function computeGstr3bReturn(input: Gstr3bComputationInput): Gstr3bReport
   const netSgst = Math.max(0, grossSgst - cnSgst);
   const netIgst = Math.max(0, grossIgst - cnIgst);
 
-  // 3. Table 3.2: Inter-state supplies to unregistered persons
+  // 3. Table 3.2: Inter-state supplies to unregistered persons (Net of Credit Notes)
   const interStateMap = new Map<string, { txval: number; iamt: number }>();
   for (const inv of invoices) {
     if (inv.isInterState && (!inv.customerGstin || inv.customerGstin.length < 15)) {
@@ -177,6 +177,21 @@ export function computeGstr3bReturn(input: Gstr3bComputationInput): Gstr3bReport
       existing.txval += Number(inv.subtotal || 0);
       existing.iamt += Number(inv.igstAmount || 0);
       interStateMap.set(pos, existing);
+    }
+  }
+
+  // Deduct Credit Notes issued to unregistered inter-state customers (Table 3.2 Netting)
+  for (const cn of creditNotes) {
+    const custGstin = (cn as any).customerGstin;
+    const isInter = cn.isInterState ?? (cn.igstAmount && Number(cn.igstAmount) > 0);
+    if (isInter && (!custGstin || custGstin.length < 15)) {
+      const pos = (cn as any).customerStateCode || '97';
+      const existing = interStateMap.get(pos);
+      if (existing) {
+        existing.txval = Math.max(0, existing.txval - Number(cn.subtotal || 0));
+        existing.iamt = Math.max(0, existing.iamt - Number(cn.igstAmount || 0));
+        interStateMap.set(pos, existing);
+      }
     }
   }
 
