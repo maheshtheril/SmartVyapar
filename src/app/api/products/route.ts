@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
           barcode: data.barcode,
           hsnCode: data.hsnCode,
           category: data.category,
+          brand: data.brand || null,
           partNumber: data.partNumber,
           oemNumber: data.oemNumber,
           compatibleMakes: data.compatibleMakes,
