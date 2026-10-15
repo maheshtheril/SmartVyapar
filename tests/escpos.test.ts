@@ -6,6 +6,7 @@ import {
   formatTwoColumnRow,
   buildEscposReceipt,
   buildEscposZReport,
+  buildEscposKot,
   concatByteArrays,
   generateEscposBarcode,
 } from "../src/lib/escpos";
@@ -143,4 +144,48 @@ describe("Silent Thermal ESC/POS Hardware Driver", () => {
       assert.equal(zReportStream[len - 1], 0);
     });
   });
+
+  describe("Kitchen Order Ticket (KOT) Slip Construction", () => {
+    test("buildEscposKot should construct high-visibility commercial kitchen slip with modifiers and cut", () => {
+      const kotStream = buildEscposKot({
+        businessName: "Spice Garden Restaurant",
+        tableName: "T-04",
+        kotNumber: "KOT-0089",
+        kotDate: "15/10/2026, 08:15 PM",
+        waiterName: "Rajesh",
+        guestCount: 4,
+        orderType: "DINE_IN",
+        items: [
+          { name: "Chicken Dum Biryani", quantity: 2, notes: "Extra spicy, raita on side" },
+          { name: "Butter Naan", quantity: 4 },
+          { name: "Paneer Butter Masala", quantity: 1, notes: "Less oil" },
+        ],
+        specialInstructions: "Serve starters first, guest has peanut allergy",
+        paperWidth: "80mm",
+      });
+
+      assert.ok(kotStream instanceof Uint8Array);
+      assert.ok(kotStream.length > 150);
+
+      // Verify INIT command at beginning
+      assert.equal(kotStream[0], 0x1b);
+      assert.equal(kotStream[1], 0x40);
+
+      // Verify Cut command at end: 0x1D 0x56 66 0
+      const len = kotStream.length;
+      assert.equal(kotStream[len - 4], 0x1d);
+      assert.equal(kotStream[len - 3], 0x56);
+      assert.equal(kotStream[len - 2], 66);
+      assert.equal(kotStream[len - 1], 0);
+
+      // Convert text and verify table name and notes are present
+      const decoded = new TextDecoder().decode(kotStream);
+      assert.ok(decoded.includes("TABLE: T-04"));
+      assert.ok(decoded.includes("KOT: KOT-0089"));
+      assert.ok(decoded.includes("[ 2x ] Chicken Dum Biryani"));
+      assert.ok(decoded.includes(">> PREP NOTE: Extra spicy, raita on side"));
+      assert.ok(decoded.includes("Serve starters first, guest has peanut allergy"));
+    });
+  });
 });
+

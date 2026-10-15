@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { KotStatus, TableStatus, StockLogType } from "@prisma/client";
 import { GstCalculator } from "@/lib/gst";
 import { UpiService } from "@/lib/upi";
+import { restaurantEventBus } from "@/lib/restaurant-events";
 
 export const dynamic = "force-dynamic";
 
@@ -98,6 +99,19 @@ export async function POST(req: NextRequest) {
       return kot;
     }, DEFAULT_TX_OPTIONS);
 
+    // Emit real-time event to KDS and waiter displays
+    restaurantEventBus.emitTenantEvent({
+      type: "kot.created",
+      tenantId,
+      tableId,
+      tableName: table.name,
+      kotId: result.id,
+      kotNumber: result.kotNumber,
+      status: result.status,
+      timestamp: new Date().toISOString(),
+      data: result,
+    });
+
     return NextResponse.json({
       success: true,
       kot: result,
@@ -147,6 +161,18 @@ export async function PATCH(req: NextRequest) {
         await tx.kotItem.updateMany({ where: { kotId, isVoided: false }, data: { isServed: true } });
       }
       return k;
+    });
+
+    // Emit real-time status update to KDS and floor screens
+    restaurantEventBus.emitTenantEvent({
+      type: "kot.status_changed",
+      tenantId,
+      tableId: kot.tableId,
+      kotId: updated.id,
+      kotNumber: kot.kotNumber,
+      status: updated.status,
+      timestamp: new Date().toISOString(),
+      data: updated,
     });
 
     return NextResponse.json({ success: true, kot: updated });

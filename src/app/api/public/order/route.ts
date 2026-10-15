@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, DEFAULT_TX_OPTIONS } from '@/lib/prisma';
 import { TableStatus } from '@prisma/client';
+import { restaurantEventBus } from '@/lib/restaurant-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,6 +131,21 @@ export async function POST(req: NextRequest) {
 
       return kot;
     }, DEFAULT_TX_OPTIONS);
+
+    // Emit real-time event to Kitchen Display & POS terminals
+    restaurantEventBus.emitTenantEvent({
+      type: "qr.order_received",
+      tenantId: tenant.id,
+      tableId,
+      tableName: table.name,
+      kotNumber: result.kotNumber,
+      timestamp: new Date().toISOString(),
+      data: {
+        customerName,
+        guestCount,
+        totalAmount: totalKotAmount,
+      },
+    });
 
     return NextResponse.json({
       success: true,
