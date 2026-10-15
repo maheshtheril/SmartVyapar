@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ZionaLogo } from './ZionaLogo';
+import CompanySwitcher from './CompanySwitcher';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -294,41 +295,9 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Live Tenant Profile Card */}
+        {/* Live Tenant / Company Switcher (Zoho & SAP Multi-Company) */}
         <div className="p-3 shrink-0">
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3">
-            <div className="flex items-center space-x-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-                <Building2 className="h-4 w-4" />
-              </div>
-              <div className="truncate flex-1 min-w-0">
-                <p className="truncate text-xs font-bold text-slate-900">{tenant.businessName}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <div className="flex items-center space-x-1">
-                    <span className={`inline-block h-1.5 w-1.5 rounded-full ${tenant.subscriptionTier === 'FREE' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
-                    <p className="text-[10px] text-slate-500 font-medium">
-                      Plan: <span className={`font-bold ${tenant.subscriptionTier === 'FREE' ? 'text-amber-700' : 'text-indigo-600'}`}>{tenant.subscriptionTier}</span>
-                    </p>
-                  </div>
-                  {tenant.subscriptionTier === 'FREE' ? (
-                    <button
-                      onClick={() => setProModalFeature({ name: "Ziona POS PRO Plan", href: "/settings?tab=billing" })}
-                      className="inline-flex items-center space-x-0.5 rounded-md bg-amber-500 hover:bg-amber-600 px-1.5 py-0.5 text-[9px] font-extrabold text-white shadow-2xs transition cursor-pointer"
-                      title="Upgrade to Ziona POS PRO"
-                    >
-                      <Zap className="h-2.5 w-2.5" />
-                      <span>UPGRADE</span>
-                    </button>
-                  ) : (
-                    <span className="inline-flex items-center space-x-0.5 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                      <Crown className="h-2.5 w-2.5 text-amber-500" />
-                      <span>ACTIVE</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <CompanySwitcher variant="sidebar" />
         </div>
 
         {/* Quick Menu Search Trigger (Ctrl+K) */}

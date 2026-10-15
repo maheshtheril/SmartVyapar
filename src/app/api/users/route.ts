@@ -22,6 +22,10 @@ export async function GET(req: NextRequest) {
         phone: true,
         role: true,
         isActive: true,
+        assignedWarehouseId: true,
+        assignedWarehouse: {
+          select: { id: true, name: true, code: true }
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -51,7 +55,7 @@ export async function POST(req: NextRequest) {
     const tenantId = session.tenantId;
 
     const body = await req.json();
-    const { name, email, phone, password, role = "STAFF" } = body;
+    const { name, email, phone, password, role = "STAFF", assignedWarehouseId } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "Staff member name is required" }, { status: 400 });
@@ -89,6 +93,7 @@ export async function POST(req: NextRequest) {
         phone: phone.trim(),
         passwordHash,
         role: role as UserRole,
+        assignedWarehouseId: assignedWarehouseId || null,
         isActive: true,
       },
       select: {
@@ -98,6 +103,10 @@ export async function POST(req: NextRequest) {
         phone: true,
         role: true,
         isActive: true,
+        assignedWarehouseId: true,
+        assignedWarehouse: {
+          select: { id: true, name: true, code: true }
+        },
         createdAt: true,
       },
     });

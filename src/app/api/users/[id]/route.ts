@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const targetUserId = params.id;
 
     const body = await req.json();
-    const { role, isActive } = body;
+    const { role, isActive, assignedWarehouseId } = body;
 
     const targetUser = await prisma.user.findFirst({
       where: { id: targetUserId, tenantId },
@@ -41,6 +41,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       data: {
         ...(role && Object.values(UserRole).includes(role) ? { role: role as UserRole } : {}),
         ...(isActive !== undefined ? { isActive: !!isActive } : {}),
+        ...(assignedWarehouseId !== undefined ? { assignedWarehouseId: assignedWarehouseId || null } : {}),
       },
       select: {
         id: true,
@@ -49,6 +50,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         phone: true,
         role: true,
         isActive: true,
+        assignedWarehouseId: true,
+        assignedWarehouse: {
+          select: { id: true, name: true, code: true }
+        },
       },
     });
 

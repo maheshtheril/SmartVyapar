@@ -129,6 +129,7 @@ model Tenant {
   Supplier              Supplier[]
   SalesOrder            SalesOrder[]
   PriceList             PriceList[]
+  memberships           TenantMembership[]
 
   @@map("tenants")
 }
@@ -151,8 +152,12 @@ model User {
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   auditLogs           AuditLog[]
   passwordResetTokens PasswordResetToken[]
+  assignedWarehouseId String?
+  assignedWarehouse   Warehouse?           @relation(fields: [assignedWarehouseId], references: [id], onDelete: SetNull)
+  memberships         TenantMembership[]
 
   @@index([tenantId])
+  @@index([tenantId, assignedWarehouseId])
   @@map("users")
 }
 
@@ -619,6 +624,8 @@ model Invoice {
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer            Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  warehouseId         String?              // The physical store/counter where the bill was issued
+  warehouse           Warehouse?           @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
   items               InvoiceItem[]
   creditNotes         CreditNote[]
   loyaltyTransactions LoyaltyTransaction[]
@@ -627,6 +634,7 @@ model Invoice {
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId, invoiceDate])
   @@index([tenantId, paymentStatus])
+  @@index([tenantId, warehouseId])
   @@map("invoices")
 }
 
@@ -1331,10 +1339,35 @@ model Warehouse {
   stocks            WarehouseStock[]
   transfersSent     StockTransfer[]  @relation("FromWarehouse")
   transfersReceived StockTransfer[]  @relation("ToWarehouse")
+  assignedUsers       User[]
+  assignedMemberships TenantMembership[]
+  invoices            Invoice[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
   @@map("warehouses")
+}
+
+// ----------------------------------------------------
+// 18A. MULTI-COMPANY MEMBERSHIP (Zoho / SAP Switcher)
+// ----------------------------------------------------
+model TenantMembership {
+  id                  String     @id @default(uuid())
+  userId              String
+  tenantId            String
+  role                UserRole   @default(STAFF)
+  assignedWarehouseId String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant            Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignedWarehouse Warehouse? @relation(fields: [assignedWarehouseId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+  @@map("tenant_memberships")
 }
 
 model WarehouseStock {

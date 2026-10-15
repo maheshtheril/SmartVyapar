@@ -87,6 +87,7 @@ function SettingsContent() {
 
   // Users / Team State
   const [users, setUsers] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string>('STAFF');
@@ -105,6 +106,7 @@ function SettingsContent() {
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<'STAFF' | 'MANAGER' | 'OWNER'>('STAFF');
+  const [newUserWarehouseId, setNewUserWarehouseId] = useState<string>('');
   const [addingUser, setAddingUser] = useState(false);
   const [userError, setUserError] = useState<string | null>(null);
 
@@ -228,17 +230,24 @@ function SettingsContent() {
     }
   };
 
-  // Load team members
+  // Load team members and warehouses
   const loadUsers = async () => {
     setLoadingUsers(true);
     try {
-      const res = await fetch('/api/users');
-      const data = await res.json();
+      const [resUsers, resWh] = await Promise.all([
+        fetch('/api/users'),
+        fetch('/api/warehouses')
+      ]);
+      const data = await resUsers.json();
       if (data.success) {
         setUsers(data.users || []);
       }
+      const whData = await resWh.json();
+      if (whData.success) {
+        setWarehouses(whData.warehouses || []);
+      }
     } catch (err) {
-      console.error('Failed to load users:', err);
+      console.error('Failed to load users or warehouses:', err);
     } finally {
       setLoadingUsers(false);
     }
@@ -526,6 +535,7 @@ function SettingsContent() {
           phone: newUserPhone,
           password: newUserPassword,
           role: newUserRole,
+          assignedWarehouseId: newUserWarehouseId || null,
         }),
       });
       const data = await res.json();
@@ -540,12 +550,32 @@ function SettingsContent() {
       setNewUserPhone('');
       setNewUserPassword('');
       setNewUserRole('STAFF');
+      setNewUserWarehouseId('');
       setShowAddUserModal(false);
       loadUsers();
     } catch (err: any) {
       setUserError(err.message || 'Error creating user');
     } finally {
       setAddingUser(false);
+    }
+  };
+
+  // Handle User Branch / Warehouse Reassignment
+  const handleUpdateUserWarehouse = async (user: any, warehouseId: string) => {
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedWarehouseId: warehouseId || null }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        loadUsers();
+      } else {
+        alert(data.error || 'Failed to update branch assignment');
+      }
+    } catch (err) {
+      console.error('Error updating user warehouse:', err);
     }
   };
 
@@ -1068,6 +1098,7 @@ function SettingsContent() {
                   <tr>
                     <th className="py-3 px-4">Member</th>
                     <th className="py-3 px-4">Role & Permissions</th>
+                    <th className="py-3 px-4">Assigned Branch</th>
                     <th className="py-3 px-4">Phone</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -1098,6 +1129,27 @@ function SettingsContent() {
                           }`}>
                             {u.role}
                           </span>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          {currentUserRole === 'OWNER' && !isSelf ? (
+                            <select
+                              value={u.assignedWarehouseId || ''}
+                              onChange={(e) => handleUpdateUserWarehouse(u, e.target.value)}
+                              className="text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-600 shadow-xs"
+                            >
+                              <option value="">🏢 All Branches (Head Office)</option>
+                              {warehouses.map((wh) => (
+                                <option key={wh.id} value={wh.id}>
+                                  {wh.name} ({wh.code})
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md inline-flex items-center space-x-1">
+                              <span>{u.assignedWarehouse ? `${u.assignedWarehouse.name}` : '🏢 All Branches'}</span>
+                            </span>
+                          )}
                         </td>
 
                         <td className="py-3 px-4 font-mono text-slate-700 font-medium">
@@ -1210,18 +1262,37 @@ function SettingsContent() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Role & Permissions Level *</label>
-                    <select
-                      value={newUserRole}
-                      onChange={(e: any) => setNewUserRole(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-600 focus:outline-none font-bold"
-                    >
-                      <option value="STAFF">🏷️ STAFF — Counter Billing Only</option>
-                      <option value="MANAGER">💼 MANAGER — Inventory & Pricing Access</option>
-                      <option value="OWNER">👑 OWNER — Full Administrative Control</option>
-                    </select>
-                  </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Role & Permissions Level *</label>
+                      <select
+                        value={newUserRole}
+                        onChange={(e: any) => setNewUserRole(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-600 focus:outline-none font-bold"
+                      >
+                        <option value="STAFF">🏷️ STAFF — Counter Billing Only</option>
+                        <option value="MANAGER">💼 MANAGER — Inventory & Pricing Access</option>
+                        <option value="OWNER">👑 OWNER — Full Administrative Control</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Assigned Branch / Store Outlet</label>
+                      <select
+                        value={newUserWarehouseId}
+                        onChange={(e) => setNewUserWarehouseId(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-indigo-600 focus:outline-none font-medium"
+                      >
+                        <option value="">🏢 All Branches / Head Office</option>
+                        {warehouses.map((wh) => (
+                          <option key={wh.id} value={wh.id}>
+                            {wh.name} ({wh.code}) {wh.isDefault ? '— Default Outlet' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        Staff members will automatically bill and deduct stock from their assigned branch.
+                      </p>
+                    </div>
 
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
                     <button
