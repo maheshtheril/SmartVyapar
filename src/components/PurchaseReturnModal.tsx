@@ -31,6 +31,7 @@ export default function PurchaseReturnModal({
 }: PurchaseReturnModalProps) {
   // All hooks called unconditionally before any return
   const [reason, setReason] = useState<string>('DEFECTIVE');
+  const [settlementMode, setSettlementMode] = useState<string>('ACCOUNTS_PAYABLE_CREDIT');
   const [notes, setNotes] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -135,18 +136,24 @@ export default function PurchaseReturnModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          purchaseBillId: bill.id,
           supplierName: bill.supplierName,
           supplierGstin: bill.supplierGstin || undefined,
           originalBillNumber: bill.billNumber,
+          originalBillDate: bill.billDate,
           items: selectedItemsPayload.map((it) => ({
             productId: it.productId,
             quantity: it.quantity,
             costRate: it.costRate,
             batchId: it.batchId,
+            batchNumber: it.batchNumber,
+            hsnCode: it.hsnCode,
             supplierStateCode: it.supplierStateCode,
+            gstRate: it.gstRate,
           })),
           reason,
           notes: notes.trim() || undefined,
+          settlementMode,
         }),
       });
 
@@ -163,6 +170,7 @@ export default function PurchaseReturnModal({
         originalBillDate: bill.billDate,
         reason,
         notes,
+        settlementMode,
         createdAt: new Date().toISOString(),
       });
       onSuccess(data.data);
@@ -348,11 +356,11 @@ export default function PurchaseReturnModal({
               </div>
             </div>
 
-            {/* Reason & Notes Selection */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Reason, Settlement Mode & Notes Selection */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Reason for Return (Debit Note) <span className="text-rose-500">*</span>
+                  Reason for Return <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={reason}
@@ -369,13 +377,28 @@ export default function PurchaseReturnModal({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Debit Remarks / Notes (Optional)
+                  Settlement Method <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={settlementMode}
+                  onChange={(e) => setSettlementMode(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 focus:outline-hidden"
+                >
+                  <option value="ACCOUNTS_PAYABLE_CREDIT">Credit Balance (Adjust Payables)</option>
+                  <option value="CASH_REFUND">Cash Refund from Vendor</option>
+                  <option value="BANK_REFUND">Bank / UPI Refund from Vendor</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Debit Remarks (Optional)
                 </label>
                 <input
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Broken packaging / Transporter damage"
+                  placeholder="e.g. Transporter damage"
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 focus:outline-hidden"
                 />
               </div>

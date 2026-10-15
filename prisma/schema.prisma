@@ -106,6 +106,7 @@ model Tenant {
   kitchenOrderTickets   KitchenOrderTicket[]
   invoiceSequences      InvoiceSequence[]
   creditNotes           CreditNote[]
+  debitNotes            DebitNote[]
   auditLogs             AuditLog[]
   printTemplates        PrintTemplate[]
   subscriptionPayments  SubscriptionPayment[]
@@ -203,6 +204,7 @@ model Product {
   invoiceItems         InvoiceItem[]
   purchaseBillItems    PurchaseBillItem[]
   creditNoteItems      CreditNoteItem[]
+  debitNoteItems       DebitNoteItem[]
   warehouseStocks      WarehouseStock[]
   transferItems        StockTransferItem[]
   purchaseOrderItems   PurchaseOrderItem[]
@@ -717,6 +719,7 @@ model PurchaseBill {
 
   tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   items  PurchaseBillItem[]
+  debitNotes DebitNote[]
 
   @@unique([tenantId, supplierName, billNumber])
   @@index([tenantId])
@@ -1128,6 +1131,74 @@ model CreditNoteItem {
   product    Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@map("credit_note_items")
+}
+
+// ----------------------------------------------------
+// 11B. PURCHASE RETURNS & SUPPLIER DEBIT NOTES (GST RULE 34)
+// ----------------------------------------------------
+model DebitNote {
+  id                    String          @id @default(uuid())
+  tenantId              String
+  debitNoteNumber       String          // e.g. "DN-2026-0001"
+  debitNoteDate         DateTime        @default(now())
+  purchaseBillId        String?
+  originalBillNumber    String?
+  originalBillDate      DateTime?
+  supplierId            String?
+  supplierName          String
+  supplierGstin         String?
+  supplierPhone         String?
+  supplierStateCode     String?
+  isInterState          Boolean         @default(false)
+  reason                String          @default("DEFECTIVE") // DEFECTIVE, EXPIRED, EXCESS_SUPPLY, RATE_DIFFERENCE, OTHER
+  remarks               String?
+
+  subtotal              Decimal         @db.Decimal(10, 2)
+  cgstAmount            Decimal         @default(0.0) @db.Decimal(10, 2)
+  sgstAmount            Decimal         @default(0.0) @db.Decimal(10, 2)
+  igstAmount            Decimal         @default(0.0) @db.Decimal(10, 2)
+  totalTax              Decimal         @default(0.0) @db.Decimal(10, 2)
+  totalAmount           Decimal         @db.Decimal(10, 2)
+
+  settlementMode        String          @default("ACCOUNTS_PAYABLE_CREDIT") // ACCOUNTS_PAYABLE_CREDIT, CASH_REFUND, BANK_REFUND
+
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  tenant                Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchaseBill          PurchaseBill?   @relation(fields: [purchaseBillId], references: [id], onDelete: SetNull)
+  supplier              Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items                 DebitNoteItem[]
+
+  @@unique([tenantId, debitNoteNumber])
+  @@index([tenantId, debitNoteDate])
+  @@index([tenantId, purchaseBillId])
+  @@map("debit_notes")
+}
+
+model DebitNoteItem {
+  id               String    @id @default(uuid())
+  debitNoteId      String
+  productId        String?
+  productName      String
+  batchId          String?
+  batchNumber      String?
+  hsnCode          String?
+  unit             String    @default("PCS")
+  quantity         Decimal   @db.Decimal(12, 3)
+  costRate         Decimal   @db.Decimal(10, 2)
+  taxableValue     Decimal   @db.Decimal(10, 2)
+  gstRate          Decimal   @db.Decimal(5, 2)
+  cgstAmount       Decimal   @default(0.0) @db.Decimal(10, 2)
+  sgstAmount       Decimal   @default(0.0) @db.Decimal(10, 2)
+  igstAmount       Decimal   @default(0.0) @db.Decimal(10, 2)
+  taxAmount        Decimal   @db.Decimal(10, 2)
+  totalAmount      Decimal   @db.Decimal(10, 2)
+
+  debitNote        DebitNote @relation(fields: [debitNoteId], references: [id], onDelete: Cascade)
+  product          Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@map("debit_note_items")
 }
 
 // ----------------------------------------------------
@@ -1629,6 +1700,7 @@ model Supplier {
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account       Account?       @relation(fields: [accountId], references: [id])
   purchaseBills PurchaseBill[]
+  debitNotes    DebitNote[]
 
   @@map("suppliers")
 }
