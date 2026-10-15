@@ -212,6 +212,10 @@ export default function NewInvoicePage() {
   const [activePriceList, setActivePriceList] = useState<any>(null);
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState<number>(0);
 
+  // Multi-Branch / Warehouse State (Zoho & SAP Standard)
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
+
   // Multi-item rows (default with 1 empty row for quick scanning)
   const [billItems, setBillItems] = useState<BillItem[]>([
     {
@@ -292,10 +296,24 @@ export default function NewInvoicePage() {
     fetchShiftStatus();
   }, []);
 
-  // Load products & held bills from localStorage
+  // Load products, warehouses & held bills from localStorage
   useEffect(() => {
     async function loadData() {
       try {
+        // Fetch warehouses concurrently
+        fetch("/api/warehouses")
+          .then((r) => r.json())
+          .then((whData) => {
+            if (whData.success && Array.isArray(whData.warehouses) && whData.warehouses.length > 0) {
+              setWarehouses(whData.warehouses);
+              const defaultWh = whData.warehouses.find((w: any) => w.isDefault) || whData.warehouses[0];
+              if (defaultWh) {
+                setSelectedWarehouseId((prev) => prev || defaultWh.id);
+              }
+            }
+          })
+          .catch(() => {});
+
         const res = await fetch("/api/products");
         const data = await res.json();
         if (data.success && Array.isArray(data.products)) {
@@ -1020,6 +1038,7 @@ export default function NewInvoicePage() {
       paymentMode: (isStreamActive || isSplitMode) ? "CASH" : paymentMode,
       paidAmount: computedPaid,
       loyaltyPointsToRedeem: effectiveLoyaltyDiscount > 0 ? effectiveLoyaltyDiscount : undefined,
+      warehouseId: selectedWarehouseId || undefined,
       notes: paymentNotes,
       items: validItems.map((i) => {
         const lineBase = i.price * i.quantity;
@@ -1240,9 +1259,26 @@ export default function NewInvoicePage() {
                 POS Terminal v2.0
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium">
-              Counter 1 • GSTIN: {business.gstin || "Unregistered"} • Place of Supply: State {customerState}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500 font-medium">
+              <span>Counter 1 • GSTIN: {business.gstin || "Unregistered"}</span>
+              {warehouses.length > 0 && (
+                <span className="inline-flex items-center space-x-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold border border-indigo-200">
+                  <Building2 className="w-3 h-3 text-indigo-600" />
+                  <select
+                    value={selectedWarehouseId}
+                    onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                    className="bg-transparent text-indigo-800 font-bold focus:outline-none cursor-pointer"
+                    title="Active Billing Branch / Warehouse"
+                  >
+                    {warehouses.map((wh) => (
+                      <option key={wh.id} value={wh.id}>
+                        {wh.name} ({wh.code}) {wh.isDefault ? '— Default' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

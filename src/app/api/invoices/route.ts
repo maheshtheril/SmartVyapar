@@ -19,10 +19,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("q")?.toLowerCase();
     const status = searchParams.get("status")?.toUpperCase();
+    const warehouseId = searchParams.get("warehouseId");
 
     const where: any = {
       tenantId,
     };
+
+    if (warehouseId && warehouseId !== "ALL") {
+      where.warehouseId = warehouseId;
+    }
 
     if (status) {
       if (status === "ALL") {
@@ -52,6 +57,9 @@ export async function GET(req: NextRequest) {
       include: {
         items: {
           include: { product: true }
+        },
+        warehouse: {
+          select: { id: true, name: true, code: true }
         }
       },
       orderBy: { createdAt: "desc" },
@@ -146,6 +154,25 @@ export async function POST(req: NextRequest) {
     }
 
     const isInterState = data.customerStateCode !== tenant.stateCode;
+
+    // Resolve branch / warehouse: explicit from request, or cashier's assigned warehouse, or default tenant warehouse
+    let targetWarehouseId: string | null = data.warehouseId || null;
+    if (!targetWarehouseId && session.userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { assignedWarehouseId: true }
+      });
+      if (user?.assignedWarehouseId) {
+        targetWarehouseId = user.assignedWarehouseId;
+      }
+    }
+    if (!targetWarehouseId) {
+      const defaultWh = await prisma.warehouse.findFirst({
+        where: { tenantId, isDefault: true },
+        select: { id: true }
+      });
+      targetWarehouseId = defaultWh?.id || null;
+    }
 
     // Fetch product details for all items to verify stock, prices & recipes
     const productIds = data.items.map((i) => i.productId);
@@ -311,6 +338,26 @@ export async function POST(req: NextRequest) {
             throw new Error(`Insufficient global stock for ${product.name}`);
           }
 
+          // Branch/Warehouse Stock Deduction
+          if (targetWarehouseId) {
+            await tx.warehouseStock.upsert({
+              where: {
+                warehouseId_productId: {
+                  warehouseId: targetWarehouseId,
+                  productId: product.id,
+                },
+              },
+              create: {
+                warehouseId: targetWarehouseId,
+                productId: product.id,
+                quantity: -baseQty,
+              },
+              update: {
+                quantity: { decrement: baseQty },
+              },
+            });
+          }
+
           // Audit Stock Log
           await tx.stockLog.create({
             data: {
@@ -395,6 +442,7 @@ export async function POST(req: NextRequest) {
       const invoice = await tx.invoice.create({
         data: {
           tenantId,
+          warehouseId: targetWarehouseId,
           invoiceNumber,
           customerId: customer.id,
           customerName: data.customerName,
@@ -423,6 +471,7 @@ export async function POST(req: NextRequest) {
         },
         include: {
           items: true,
+          warehouse: true,
         },
       });
 

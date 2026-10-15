@@ -22,7 +22,8 @@ import {
   Pencil,
   Save,
   X,
-  Trash2
+  Trash2,
+  Building2
 } from 'lucide-react';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
 import CreditNoteModal from '@/components/CreditNoteModal';
@@ -35,6 +36,8 @@ export default function InvoicesPage() {
 
   // Invoices state
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [warehouseFilter, setWarehouseFilter] = useState<string>("ALL");
   const [selectedInvoiceForEway, setSelectedInvoiceForEway] = useState<any | null>(null);
   const [showEwayModal, setShowEwayModal] = useState(false);
   const [selectedInvoiceForEinvoice, setSelectedInvoiceForEinvoice] = useState<any | null>(null);
@@ -91,6 +94,7 @@ export default function InvoicesPage() {
       const params = new URLSearchParams();
       if (searchQuery) params.append("q", searchQuery);
       if (statusFilter) params.append("status", statusFilter);
+      if (warehouseFilter && warehouseFilter !== "ALL") params.append("warehouseId", warehouseFilter);
       if (params.toString()) url += `?${params.toString()}`;
 
       const res = await fetch(url);
@@ -171,8 +175,17 @@ export default function InvoicesPage() {
   };
 
   useEffect(() => {
+    fetch("/api/warehouses")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.warehouses)) setWarehouses(d.warehouses);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     loadInvoices();
-  }, [statusFilter]);
+  }, [statusFilter, warehouseFilter]);
 
   useEffect(() => {
     if (activeTab === 'CREDIT_NOTES') {
@@ -581,6 +594,25 @@ export default function InvoicesPage() {
 
         {activeTab === 'INVOICES' && (
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            {warehouses.length > 0 && (
+              <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs">
+                <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <select
+                  value={warehouseFilter}
+                  onChange={(e) => setWarehouseFilter(e.target.value)}
+                  className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer"
+                  title="Filter invoices by Branch"
+                >
+                  <option value="ALL">🏢 All Branches</option>
+                  {warehouses.map((wh) => (
+                    <option key={wh.id} value={wh.id}>
+                      {wh.name} ({wh.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
               onClick={() => setStatusFilter("ACTIVE")}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
@@ -660,6 +692,7 @@ export default function InvoicesPage() {
                 <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Bill #</th>
+                    <th className="px-4 py-3 font-semibold">Branch</th>
                     <th className="px-4 py-3 font-semibold">Date</th>
                     <th className="px-4 py-3 font-semibold">Customer</th>
                     <th className="px-4 py-3 font-semibold">Items</th>
@@ -719,6 +752,12 @@ export default function InvoicesPage() {
                             </span>
                           ) : null}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        <span className="inline-flex items-center space-x-1 text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                          <Building2 className="w-3 h-3 text-indigo-600" />
+                          <span>{inv.warehouse ? inv.warehouse.name : 'Main / Default'}</span>
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-slate-500">
                         {new Date(inv.invoiceDate).toLocaleDateString("en-IN")}
