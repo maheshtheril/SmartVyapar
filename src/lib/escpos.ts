@@ -98,6 +98,23 @@ export interface EscposZReportData {
   paperWidth?: "58mm" | "80mm";
 }
 
+export interface EscposKotData {
+  businessName?: string;
+  tableName: string;
+  kotNumber: string;
+  kotDate: string;
+  waiterName?: string;
+  guestCount?: number;
+  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+  items: Array<{
+    name: string;
+    quantity: number;
+    notes?: string;
+  }>;
+  specialInstructions?: string;
+  paperWidth?: "58mm" | "80mm";
+}
+
 export interface HardwarePrinterConfig {
   type: "NONE" | "SERIAL" | "USB";
   baudRate?: number;
@@ -352,6 +369,98 @@ export function buildEscposZReport(data: EscposZReportData): Uint8Array {
   chunks.push(encodeText("\n\n"));
   chunks.push(encodeText(formatTwoColumnRow("Cashier Sig.", "Manager Sig.", maxChars)));
   chunks.push(COMMANDS.FEED_5_LINES);
+  chunks.push(COMMANDS.PAPER_CUT_PARTIAL);
+
+  return concatByteArrays(chunks);
+}
+
+/**
+ * Generates an ESC/POS binary stream for Kitchen Order Ticket (KOT)
+ * Formatted for maximum visibility in noisy, busy commercial kitchens.
+ */
+export function buildEscposKot(data: EscposKotData): Uint8Array {
+  const maxChars = data.paperWidth === "80mm" ? 48 : 32;
+  const divider = "-".repeat(maxChars) + "\n";
+  const doubleDivider = "=".repeat(maxChars) + "\n";
+
+  const chunks: Uint8Array[] = [];
+
+  // 1. Initialize printer
+  chunks.push(COMMANDS.INIT);
+
+  // 2. KOT Header
+  chunks.push(COMMANDS.ALIGN_CENTER);
+  chunks.push(COMMANDS.BOLD_ON);
+  chunks.push(COMMANDS.TEXT_DOUBLE_HEIGHT);
+  chunks.push(encodeText("*** KITCHEN ORDER TICKET ***\n"));
+  chunks.push(COMMANDS.TEXT_NORMAL);
+  chunks.push(COMMANDS.BOLD_OFF);
+
+  if (data.businessName) {
+    chunks.push(encodeText(`${data.businessName.toUpperCase()}\n`));
+  }
+
+  // 3. Prominent Table & Order Type Banner (Large Text)
+  chunks.push(COMMANDS.BOLD_ON);
+  chunks.push(COMMANDS.TEXT_LARGE);
+  chunks.push(encodeText(`\nTABLE: ${data.tableName.toUpperCase()}\n`));
+  chunks.push(COMMANDS.TEXT_NORMAL);
+  chunks.push(COMMANDS.BOLD_OFF);
+
+  const orderTypeBadge = `[ ${data.orderType ? data.orderType.replace("_", "-") : "DINE-IN"} ]\n`;
+  chunks.push(COMMANDS.BOLD_ON);
+  chunks.push(encodeText(orderTypeBadge));
+  chunks.push(COMMANDS.BOLD_OFF);
+
+  chunks.push(encodeText(divider));
+
+  // 4. KOT Metadata
+  chunks.push(COMMANDS.ALIGN_LEFT);
+  chunks.push(encodeText(formatTwoColumnRow(`KOT: ${data.kotNumber}`, `Time: ${data.kotDate}`, maxChars)));
+  if (data.waiterName || data.guestCount) {
+    const waiterInfo = data.waiterName ? `Waiter: ${data.waiterName}` : "";
+    const guestInfo = data.guestCount ? `Guests: ${data.guestCount}` : "";
+    chunks.push(encodeText(formatTwoColumnRow(waiterInfo, guestInfo, maxChars)));
+  }
+  chunks.push(encodeText(doubleDivider));
+
+  // 5. Items Header
+  chunks.push(COMMANDS.BOLD_ON);
+  chunks.push(encodeText(formatTwoColumnRow("QTY", "ITEM & SPECIAL NOTES", maxChars)));
+  chunks.push(COMMANDS.BOLD_OFF);
+  chunks.push(encodeText(divider));
+
+  // 6. Food Items
+  for (const item of data.items) {
+    // Print quantity in bold double-height for kitchen visibility
+    chunks.push(COMMANDS.BOLD_ON);
+    chunks.push(COMMANDS.TEXT_DOUBLE_HEIGHT);
+    chunks.push(encodeText(`[ ${item.quantity}x ] `));
+    chunks.push(encodeText(`${item.name}\n`));
+    chunks.push(COMMANDS.TEXT_NORMAL);
+    chunks.push(COMMANDS.BOLD_OFF);
+
+    // Print item modifier notes clearly indented
+    if (item.notes && item.notes.trim()) {
+      chunks.push(COMMANDS.BOLD_ON);
+      chunks.push(encodeText(`   >> PREP NOTE: ${item.notes.trim()}\n`));
+      chunks.push(COMMANDS.BOLD_OFF);
+    }
+  }
+
+  // 7. General Instructions Box (if any)
+  if (data.specialInstructions && data.specialInstructions.trim()) {
+    chunks.push(encodeText(divider));
+    chunks.push(COMMANDS.BOLD_ON);
+    chunks.push(encodeText(`SPECIAL ORDER INSTRUCTIONS:\n`));
+    chunks.push(encodeText(`*** ${data.specialInstructions.trim()} ***\n`));
+    chunks.push(COMMANDS.BOLD_OFF);
+  }
+
+  chunks.push(encodeText(doubleDivider));
+
+  // 8. Feed and Partial Paper Cut
+  chunks.push(COMMANDS.FEED_3_LINES);
   chunks.push(COMMANDS.PAPER_CUT_PARTIAL);
 
   return concatByteArrays(chunks);

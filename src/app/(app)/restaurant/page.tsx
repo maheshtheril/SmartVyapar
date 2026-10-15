@@ -147,6 +147,58 @@ export default function RestaurantPosPage() {
       .catch(() => {});
   }, []);
 
+  // Web Audio Kitchen Bell Synthesizer (880Hz crystal chime)
+  const playKitchenChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.45);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.45);
+    } catch {}
+  };
+
+  // Real-Time KDS & Floor synchronization via Server-Sent Events (SSE)
+  useEffect(() => {
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource('/api/restaurant/stream');
+
+      es.addEventListener('kot.created', () => {
+        playKitchenChime();
+        loadData();
+      });
+
+      es.addEventListener('qr.order_received', () => {
+        playKitchenChime();
+        loadData();
+      });
+
+      es.addEventListener('kot.status_changed', () => {
+        loadData();
+      });
+
+      es.addEventListener('table.updated', () => {
+        loadData();
+      });
+    } catch (e) {
+      console.warn('Real-time SSE event stream unavailable:', e);
+    }
+
+    return () => {
+      if (es) es.close();
+    };
+  }, []);
+
   // After any reload, refresh the open table and drop selections for items no longer live
   useEffect(() => {
     if (!activeTable) return;
@@ -472,6 +524,14 @@ export default function RestaurantPosPage() {
         </div>
 
         <div className="flex items-center space-x-2">
+          <div className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700 shadow-2xs">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>Live Mesh Active</span>
+          </div>
+
           <button
             type="button"
             onClick={() => setShowManageModal(true)}

@@ -1,7 +1,13 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Printer, X, ChefHat, CheckCircle2 } from 'lucide-react';
+import { Printer, X, ChefHat, CheckCircle2, Zap } from 'lucide-react';
+import { 
+  buildEscposKot, 
+  printDirectHardware, 
+  isWebSerialSupported, 
+  isWebUsbSupported 
+} from '@/lib/escpos';
 
 export interface KotItemData {
   productName: string;
@@ -25,6 +31,46 @@ interface KotPrintModalProps {
 }
 
 export default function KotPrintModal({ isOpen, onClose, kot }: KotPrintModalProps) {
+  const [isPrintingHardware, setIsPrintingHardware] = React.useState(false);
+  const [hardwareStatus, setHardwareStatus] = React.useState<string | null>(null);
+
+  const handleDirectHardwarePrint = async () => {
+    if (!kot) return;
+    setIsPrintingHardware(true);
+    setHardwareStatus(null);
+    try {
+      const kotBytes = buildEscposKot({
+        tableName: kot.tableName,
+        kotNumber: kot.kotNumber,
+        kotDate: new Date(kot.createdAt).toLocaleString('en-IN', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        }),
+        waiterName: kot.waiterName || 'Captain',
+        guestCount: kot.guestCount || 2,
+        orderType: 'DINE_IN',
+        items: kot.items.map((i) => ({
+          name: i.productName,
+          quantity: Number(i.quantity),
+          notes: i.notes || undefined,
+        })),
+        paperWidth: '80mm',
+      });
+
+      const res = await printDirectHardware(kotBytes);
+      if (res.success) {
+        setHardwareStatus('Printed direct to kitchen!');
+        setTimeout(() => setHardwareStatus(null), 3000);
+      } else {
+        setHardwareStatus(res.error || 'Direct print failed');
+      }
+    } catch (err: any) {
+      setHardwareStatus(err.message || 'Direct print error');
+    } finally {
+      setIsPrintingHardware(false);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -65,11 +111,20 @@ export default function KotPrintModal({ isOpen, onClose, kot }: KotPrintModalPro
 
           <div className="flex items-center space-x-2">
             <button
+              onClick={handleDirectHardwarePrint}
+              disabled={isPrintingHardware}
+              className="rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-500 flex items-center space-x-1 transition shadow-sm disabled:opacity-50"
+              title="Silent print directly to ESC/POS thermal printer without browser dialog"
+            >
+              <Zap className="h-4 w-4 fill-white" />
+              <span>{isPrintingHardware ? 'Sending...' : '⚡ Silent ESC/POS'}</span>
+            </button>
+            <button
               onClick={() => window.print()}
               className="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800 flex items-center space-x-1 transition shadow-sm"
             >
               <Printer className="h-4 w-4" />
-              <span>Print KOT (Enter)</span>
+              <span>Print Dialog</span>
             </button>
             <button
               onClick={onClose}
@@ -79,6 +134,15 @@ export default function KotPrintModal({ isOpen, onClose, kot }: KotPrintModalPro
             </button>
           </div>
         </div>
+
+        {hardwareStatus && (
+          <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs font-medium text-amber-900 flex items-center justify-between">
+            <span>{hardwareStatus}</span>
+            <button onClick={() => setHardwareStatus(null)} className="text-amber-700 hover:text-amber-900">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Paper Preview */}
         <div className="p-6 overflow-y-auto flex justify-center">
