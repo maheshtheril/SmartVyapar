@@ -94,4 +94,13 @@ test("Industry-Specific Sidebar Menu Scoping", async (t) => {
     assert.equal(isAutoVisible("SERVICES"), false, "Automotive fields must be hidden for Services");
     assert.equal(isAutoVisible("AUTOMOBILE"), true, "Automotive fields must be shown for Automobile");
   });
+
+  await t.test("Product Master Form: Pharmaceutical Clinical & Drug Schedule fields should ONLY be visible for PHARMACEUTICAL", () => {
+    const isPharmaVisible = (bType: string) => bType === "PHARMACEUTICAL";
+
+    assert.equal(isPharmaVisible("PHARMACEUTICAL"), true, "Pharma clinical card must be shown for Pharmacy");
+    assert.equal(isPharmaVisible("RESTAURANT"), false, "Pharma clinical card must be hidden for Restaurant");
+    assert.equal(isPharmaVisible("AUTOMOBILE"), false, "Pharma clinical card must be hidden for Automobile");
+    assert.equal(isPharmaVisible("RETAIL"), false, "Pharma clinical card must be hidden for Retail");
+  });
 });

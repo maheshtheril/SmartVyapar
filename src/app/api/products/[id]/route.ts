@@ -22,6 +22,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         name: body.name,
         displayName: body.displayName,
         category: body.category,
+        brand: body.brand !== undefined ? body.brand : undefined,
         productType: body.productType,
         sku: body.sku,
         barcode: body.barcode,

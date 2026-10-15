@@ -92,6 +92,7 @@ function getDefaultGstRate(type?: string): string {
   // Form State - World Standard ERP Product Master
   const [name, setName] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
   const [productType, setProductType] = useState<"RETAIL_ITEM"|"RAW_MATERIAL"|"FINISHED_GOOD">("RETAIL_ITEM");
   const [hsnCode, setHsnCode] = useState("2106");
@@ -165,6 +166,12 @@ function getDefaultGstRate(type?: string): string {
         if (bType === "RESTAURANT") {
           setProductType("FINISHED_GOOD");
           setBaseUnit("PORTION");
+        } else if (bType === "PHARMACEUTICAL") {
+          setBaseUnit("TAB");
+          setHasAltUnit(true);
+          setAltUnit("STRIP");
+          setConversionFactor("10");
+          setHasBatchTracking(true);
         }
       }
       const data = await res.json();
@@ -187,26 +194,27 @@ function getDefaultGstRate(type?: string): string {
     setName("");
     setDisplayName("");
     setCategory("");
+    setBrand("");
     setPartNumber("");
     setOemNumber("");
-    setFoodCategory("");
+    setFoodCategory(isPharma ? "ROOM_TEMP" : "");
     setCompatibleMakes("");
-    setCompatibleModels("");
+    setCompatibleModels(isPharma ? "OTC" : "");
     setProductType(isRestaurant ? "FINISHED_GOOD" : "RETAIL_ITEM");
     setHsnCode(getDefaultHsn(businessType));
     setGstRate(getDefaultGstRate(businessType));
-    setBaseUnit(isRestaurant ? "PORTION" : "PCS");
+    setBaseUnit(isRestaurant ? "PORTION" : isPharma ? "TAB" : "PCS");
     setSku("");
     setBarcode("");
     setPurchasePrice("");
     setSellingPrice("");
     setMrp("");
-    setHasAltUnit(false);
-    setAltUnit("");
+    setHasAltUnit(isPharma ? true : false);
+    setAltUnit(isPharma ? "STRIP" : "");
     setConversionFactor("10");
     setInitialStock("0");
     setMinStockAlert("5");
-    setHasBatchTracking(false);
+    setHasBatchTracking(isPharma ? true : false);
     setImageUrl("");
     setImagePreview(null);
     setFormError(null);
@@ -264,6 +272,7 @@ function getDefaultGstRate(type?: string): string {
     setName(item.name || "");
     setDisplayName(item.displayName || "");
     setCategory(item.category || "");
+    setBrand(item.brand || "");
     setPartNumber(item.partNumber || "");
     setOemNumber(item.oemNumber || "");
     setCompatibleMakes(item.compatibleMakes || "");
@@ -327,11 +336,13 @@ function getDefaultGstRate(type?: string): string {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          displayName: displayName.trim() || undefined,
           category: category.trim() || undefined,
-            partNumber: partNumber.trim() || undefined,
-            oemNumber: oemNumber.trim() || undefined,
-            compatibleMakes: compatibleMakes.trim() || undefined,
-            compatibleModels: compatibleModels.trim() || undefined,
+          brand: brand.trim() || undefined,
+          partNumber: partNumber.trim() || undefined,
+          oemNumber: oemNumber.trim() || undefined,
+          compatibleMakes: compatibleMakes.trim() || undefined,
+          compatibleModels: compatibleModels.trim() || undefined,
           productType,
           sku: sku.trim() || undefined,
           barcode: barcode.trim() || undefined,
@@ -937,11 +948,11 @@ function getDefaultGstRate(type?: string): string {
                     </div>
                   </div>
 
-                  {/* Product Name + Category — same row */}
+                  {/* Product Name + Category + Brand */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                        {isRestaurant ? "Dish / Item Name *" : "Product / Item Name *"}
+                        {isRestaurant ? "Dish / Item Name *" : isPharma ? "Medicine / Brand Name *" : "Product / Item Name *"}
                       </label>
                       <input
                         type="text"
@@ -952,7 +963,7 @@ function getDefaultGstRate(type?: string): string {
                             : isAutomobile
                             ? "e.g. Ceramic Front Brake Pad Set, 5W-40 Synthetic Oil"
                             : isPharma
-                            ? "e.g. Paracetamol 650mg, Amoxicillin 625mg Tablets"
+                            ? "e.g. Augmentin 625 Duo, Dolo 650, Azithral 500"
                             : "e.g. Basmati Rice 5kg, Farm Fresh Cow Milk 1L"
                         }
                         value={name}
@@ -961,10 +972,12 @@ function getDefaultGstRate(type?: string): string {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">POS Display Name</label>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        {isPharma ? "POS / Rx Bill Name" : "POS Display Name"}
+                      </label>
                       <input
                         type="text"
-                        placeholder={isRestaurant ? "Short name on KOT / Bill (e.g. Chic Biryani)" : "Clean name for receipts"}
+                        placeholder={isRestaurant ? "Short name on KOT / Bill (e.g. Chic Biryani)" : isPharma ? "e.g. Augmentin 625 Tab" : "Clean name for receipts"}
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         className="w-full rounded-xl border border-indigo-300 bg-indigo-50/50 px-3 py-2 text-xs text-indigo-900 font-bold focus:border-indigo-600 focus:outline-none"
@@ -972,7 +985,7 @@ function getDefaultGstRate(type?: string): string {
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                        {isRestaurant ? "Menu Category / Course" : "Category / Brand"}
+                        {isRestaurant ? "Menu Category / Course" : isPharma ? "Therapeutic Category" : "Category"}
                       </label>
                       <input
                         type="text"
@@ -983,7 +996,7 @@ function getDefaultGstRate(type?: string): string {
                             : isAutomobile
                             ? "e.g. Brake Systems, Engine Oils, Filters"
                             : isPharma
-                            ? "e.g. Antibiotics, Analgesics, Syrups"
+                            ? "e.g. Antibiotics, Analgesics, Antidiabetic, Cardiology"
                             : "e.g. Groceries, Dairy, Beverages, Snacks"
                         }
                         value={category}
@@ -991,60 +1004,210 @@ function getDefaultGstRate(type?: string): string {
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
                       />
                       <datalist id="category-suggestions">
-                          {uniqueCategories.map((cat, idx) => (
+                        {isPharma ? (
+                          <>
+                            <option value="Antibiotics & Anti-Infective" />
+                            <option value="Analgesic & Antipyretic (Pain & Fever)" />
+                            <option value="Antacids & Gastrointestinal" />
+                            <option value="Anti-Diabetic / Endocrine" />
+                            <option value="Cardiovascular & Anti-Hypertensive" />
+                            <option value="Respiratory & Cough / Cold" />
+                            <option value="Dermatology & Skin Care" />
+                            <option value="Vitamins, Minerals & Supplements" />
+                            <option value="Ophthalmic & ENT Drops" />
+                          </>
+                        ) : (
+                          uniqueCategories.map((cat, idx) => (
                             <option key={idx} value={cat as string} />
-                          ))}
-                        </datalist>
+                          ))
+                        )}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        {isPharma ? "Pharma Marketer / Manufacturer" : "Brand / Manufacturer"}
+                      </label>
+                      <input
+                        type="text"
+                        list="brand-suggestions"
+                        placeholder={
+                          isPharma
+                            ? "e.g. Cipla, Sun Pharma, Abbott, Mankind, GSK"
+                            : isAutomobile
+                            ? "e.g. Bosch, Brembo, Motul, Castrol"
+                            : "e.g. Nestlé, Unilever, Tata"
+                        }
+                        value={brand}
+                        onChange={(e) => setBrand(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
+                      />
+                      <datalist id="brand-suggestions">
+                        {isPharma ? (
+                          <>
+                            <option value="Cipla Ltd" />
+                            <option value="Sun Pharmaceutical" />
+                            <option value="Abbott India" />
+                            <option value="Mankind Pharma" />
+                            <option value="GlaxoSmithKline (GSK)" />
+                            <option value="Dr. Reddy's Laboratories" />
+                            <option value="Alkem Laboratories" />
+                            <option value="Torrent Pharmaceuticals" />
+                            <option value="Lupin Ltd" />
+                            <option value="Zydus Lifesciences" />
+                          </>
+                        ) : null}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  {/* AUTOMOTIVE FIELDS — ONLY shown for AUTOMOBILE businesses */}
+                  {isAutomobile && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 pb-2 bg-indigo-50/50 -mx-4 px-4 border-y border-indigo-100">
+                      <div>
+                        <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
+                          Part / OEM Number
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Part No."
+                            value={partNumber}
+                            onChange={(e) => setPartNumber(e.target.value)}
+                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                          />
+                          <input
+                            type="text"
+                            placeholder="OEM No."
+                            value={oemNumber}
+                            onChange={(e) => setOemNumber(e.target.value)}
+                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
+                          Vehicle Compatibility (For Search)
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Makes (e.g. Maruti, Hyundai)"
+                            value={compatibleMakes}
+                            onChange={(e) => setCompatibleMakes(e.target.value)}
+                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Models (e.g. Swift, i20)"
+                            value={compatibleModels}
+                            onChange={(e) => setCompatibleModels(e.target.value)}
+                            className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
+                          />
+                        </div>
                       </div>
                     </div>
+                  )}
 
-                    {/* AUTOMOTIVE FIELDS — ONLY shown for AUTOMOBILE businesses */}
-                    {isAutomobile && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 pb-2 bg-indigo-50/50 -mx-4 px-4 border-y border-indigo-100">
-                        <div>
-                          <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
-                            Part / OEM Number
-                          </label>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="Part No."
-                              value={partNumber}
-                              onChange={(e) => setPartNumber(e.target.value)}
-                              className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
-                            />
-                            <input
-                              type="text"
-                              placeholder="OEM No."
-                              value={oemNumber}
-                              onChange={(e) => setOemNumber(e.target.value)}
-                              className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
-                            Vehicle Compatibility (For Search)
-                          </label>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="Makes (e.g. Maruti, Hyundai)"
-                              value={compatibleMakes}
-                              onChange={(e) => setCompatibleMakes(e.target.value)}
-                              className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Models (e.g. Swift, i20)"
-                              value={compatibleModels}
-                              onChange={(e) => setCompatibleModels(e.target.value)}
-                              className="w-1/2 rounded-xl border border-indigo-200 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
-                            />
-                          </div>
+                  {/* PHARMACEUTICAL CLINICAL & REGULATORY SECTION — ONLY shown for PHARMACEUTICAL */}
+                  {isPharma && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 pb-3 bg-emerald-50/70 -mx-4 px-4 border-y border-emerald-200">
+                      <div className="sm:col-span-2 flex items-center justify-between">
+                        <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Pharmacy Clinical & Drug Schedule Compliance (CDSCO)
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                          Healthcare ERP
+                        </span>
+                      </div>
+
+                      {/* Salt / Generic Molecule */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-wide mb-1 flex items-center justify-between">
+                          <span>Salt / Generic Composition (Molecule)</span>
+                          <span className="text-[9px] font-semibold text-emerald-600 lowercase">Enables substitute search</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Paracetamol 650mg, Amoxicillin 500mg + Potassium Clavulanate 125mg"
+                          value={compatibleMakes}
+                          onChange={(e) => setCompatibleMakes(e.target.value)}
+                          className="w-full rounded-xl border border-emerald-300 px-3 py-2 text-xs text-slate-900 focus:border-emerald-600 focus:outline-none bg-white font-medium"
+                        />
+                      </div>
+
+                      {/* Drug Schedule */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-wide mb-1">
+                          Drug Schedule / Prescription Classification
+                        </label>
+                        <select
+                          value={compatibleModels}
+                          onChange={(e) => setCompatibleModels(e.target.value)}
+                          className="w-full rounded-xl border border-emerald-300 px-3 py-2 text-xs text-slate-900 focus:border-emerald-600 focus:outline-none bg-white font-bold"
+                        >
+                          <option value="">Select Drug Schedule...</option>
+                          <option value="OTC">OTC - Over The Counter (General Sale)</option>
+                          <option value="SCHEDULE_H">Schedule H - Prescription Required (Rx Mandate)</option>
+                          <option value="SCHEDULE_H1">Schedule H1 - 3rd Gen Antibiotic / Habit-Forming (Mandatory Register)</option>
+                          <option value="SCHEDULE_X">Schedule X - Narcotics & Psychotropics (Special Double-Lock License)</option>
+                          <option value="SCHEDULE_G">Schedule G - Cautionary Warning (Medical Supervision)</option>
+                        </select>
+                      </div>
+
+                      {/* Dosage Form & Strength */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-wide mb-1">
+                          Dosage Form & Strength
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            list="pharma-dosage-forms"
+                            placeholder="Form (e.g. Tablet, Syrup)"
+                            value={partNumber}
+                            onChange={(e) => setPartNumber(e.target.value)}
+                            className="w-1/2 rounded-xl border border-emerald-300 px-3 py-2 text-xs text-slate-900 focus:border-emerald-600 focus:outline-none bg-white"
+                          />
+                          <datalist id="pharma-dosage-forms">
+                            <option value="Tablet" />
+                            <option value="Capsule" />
+                            <option value="Syrup / Liquid" />
+                            <option value="Injection / Vial" />
+                            <option value="Ointment / Gel" />
+                            <option value="Eye / Ear Drops" />
+                            <option value="Inhaler / Respule" />
+                            <option value="Suspension" />
+                            <option value="Powder / Sachet" />
+                          </datalist>
+                          <input
+                            type="text"
+                            placeholder="Strength (e.g. 650mg, 5ml)"
+                            value={oemNumber}
+                            onChange={(e) => setOemNumber(e.target.value)}
+                            className="w-1/2 rounded-xl border border-emerald-300 px-3 py-2 text-xs text-slate-900 focus:border-emerald-600 focus:outline-none bg-white"
+                          />
                         </div>
                       </div>
-                    )}
+
+                      {/* Storage Conditions & Cold Chain */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-wide mb-1">
+                          Storage Condition & Cold Chain
+                        </label>
+                        <select
+                          value={foodCategory}
+                          onChange={(e) => setFoodCategory(e.target.value)}
+                          className="w-full rounded-xl border border-emerald-300 px-3 py-2 text-xs text-slate-900 focus:border-emerald-600 focus:outline-none bg-white"
+                        >
+                          <option value="ROOM_TEMP">Room Temperature (Below 25°C - 30°C)</option>
+                          <option value="COLD_CHAIN">Refrigerated (2°C to 8°C - Insulin, Vaccines, Cold Chain)</option>
+                          <option value="COOL_DRY">Cool & Dry Place (Protect from Sunlight/Moisture)</option>
+                          <option value="FREEZER">Deep Freeze (-20°C)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
 
                   {/* SKU, Barcode, HSN */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
@@ -1113,7 +1276,7 @@ function getDefaultGstRate(type?: string): string {
                   {/* Common HSN quick selector badges */}
                   <div className="flex items-center space-x-1.5 flex-wrap pt-1 text-[10px]">
                     <span className="text-slate-400 font-semibold">
-                      {isRestaurant ? "Common Food HSNs:" : "Common HSNs:"}
+                      {isRestaurant ? "Common Food HSNs:" : isPharma ? "Common Pharma HSNs:" : isAutomobile ? "Common Auto HSNs:" : "Common HSNs:"}
                     </span>
                     {(isRestaurant
                       ? [
@@ -1123,6 +1286,24 @@ function getDefaultGstRate(type?: string): string {
                           { code: "0401", name: "Dairy" },
                           { code: "1006", name: "Rice" },
                           { code: "9963", name: "Restaurant Svc" },
+                        ]
+                      : isPharma
+                      ? [
+                          { code: "3004", name: "Medicines & Formulations" },
+                          { code: "3002", name: "Vaccines & Sera" },
+                          { code: "3006", name: "Pharma Preparations" },
+                          { code: "9018", name: "Medical Devices / Syringes" },
+                          { code: "3304", name: "Dermacare / Skin" },
+                          { code: "3005", name: "Bandages / Dressings" },
+                        ]
+                      : isAutomobile
+                      ? [
+                          { code: "8708", name: "Auto Parts" },
+                          { code: "8409", name: "Engine Parts" },
+                          { code: "8511", name: "Electrical / Spark" },
+                          { code: "2710", name: "Lubricants / Oils" },
+                          { code: "4011", name: "Tyres & Tubes" },
+                          { code: "9987", name: "Garage Service" },
                         ]
                       : [
                           { code: "8544", name: "Cables/Wires" },
@@ -1139,7 +1320,7 @@ function getDefaultGstRate(type?: string): string {
                         onClick={() => setHsnCode(hsn.code)}
                         className={`rounded-md px-1.5 py-0.5 font-bold transition ${
                           hsnCode === hsn.code
-                            ? 'bg-indigo-600 text-white'
+                            ? isPharma ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       >
@@ -1250,8 +1431,18 @@ function getDefaultGstRate(type?: string): string {
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-900 focus:border-indigo-600 focus:outline-none bg-white"
                       >
                         <option value="0">0% - Nil Rated / Exempt Goods</option>
-                        <option value="5">{isRestaurant ? "5% - Restaurant Dining & Food (Standard)" : "5% - Essential Goods (Food/Medicines)"}</option>
-                        <option value="12">12% - Standard Concessional</option>
+                        <option value="5">
+                          {isPharma
+                            ? "5% - Critical Life-Saving Drugs, Insulin & Dialysis"
+                            : isRestaurant
+                            ? "5% - Restaurant Dining & Food (Standard)"
+                            : "5% - Essential Goods (Food/Medicines)"}
+                        </option>
+                        <option value="12">
+                          {isPharma
+                            ? "12% - Standard Allopathic Medicines (Statutory)"
+                            : "12% - Standard Concessional"}
+                        </option>
                         <option value="18">18% - Standard GST Rate</option>
                         <option value="28">28% - Luxury & Automobile Parts</option>
                       </select>
@@ -1328,10 +1519,12 @@ function getDefaultGstRate(type?: string): string {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs font-bold text-slate-800">
-                          Enable Dual UOM / Bulk Packaging
+                          {isPharma ? "Enable Strip / Box Dual Packaging (Strip to Tablet Ratio)" : "Enable Dual UOM / Bulk Packaging"}
                         </p>
                         <p className="text-[11px] text-slate-500">
-                          Allow buying and selling in wholesale boxes, cartons, or strips with automatic piece conversion.
+                          {isPharma
+                            ? "Essential for dispensing: Purchase by Box/Strip and dispense by both whole strips and loose cut tablets."
+                            : "Allow buying and selling in wholesale boxes, cartons, or strips with automatic piece conversion."}
                         </p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -1447,21 +1640,30 @@ function getDefaultGstRate(type?: string): string {
                   </div>
 
                   {/* Batch Tracking Checkbox */}
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div className={`rounded-2xl border p-4 ${isPharma ? 'bg-emerald-50/70 border-emerald-200' : 'border-slate-200 bg-slate-50/70'}`}>
                     <div className="flex items-start space-x-3">
                       <input
                         type="checkbox"
                         id="batch-tracking-checkbox"
                         checked={hasBatchTracking}
                         onChange={(e) => setHasBatchTracking(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        className={`mt-0.5 h-4 w-4 rounded border-slate-300 ${isPharma ? 'text-emerald-600 focus:ring-emerald-500' : 'text-indigo-600 focus:ring-indigo-500'}`}
                       />
                       <label htmlFor="batch-tracking-checkbox" className="cursor-pointer">
-                        <p className="text-xs font-bold text-slate-800">
-                          Enable Batch & Expiry Date Tracking (FIFO / FEFO)
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-slate-800">
+                            Enable Batch & Expiry Date Tracking (FIFO / FEFO)
+                          </p>
+                          {isPharma && (
+                            <span className="text-[9px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              CDSCO / Drugs Act Mandate
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                          Recommended for pharmaceuticals, perishable goods, chemicals, and cosmetics. Requires entering Batch Number, Mfd Date, and Exp Date during GRN purchase inward.
+                          {isPharma
+                            ? "Strictly enforced for pharmaceuticals. Inward purchases require Batch Number, Mfg Date, and Expiry Date. POS uses FEFO (First Expired, First Out) to prevent dispensing expired drugs."
+                            : "Recommended for pharmaceuticals, perishable goods, chemicals, and cosmetics. Requires entering Batch Number, Mfd Date, and Exp Date during GRN purchase inward."}
                         </p>
                       </label>
                     </div>

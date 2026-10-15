@@ -9,6 +9,7 @@ export const CreateProductSchema = z
     barcode: z.string().trim().optional().nullable(),
     hsnCode: hsnCodeSchema,
     category: z.string().trim().optional().nullable(),
+    brand: z.string().trim().optional().nullable(),
     partNumber: z.string().trim().optional().nullable(),
     oemNumber: z.string().trim().optional().nullable(),
     compatibleMakes: z.string().trim().optional().nullable(),
