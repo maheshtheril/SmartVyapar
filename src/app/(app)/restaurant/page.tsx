@@ -18,7 +18,10 @@ import {
   X,
   CreditCard,
   Banknote,
-  QrCode
+  QrCode,
+  ShoppingBag,
+  Flame,
+  Check
 } from 'lucide-react';
 import KotPrintModal, { KotPrintData } from '@/components/KotPrintModal';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
@@ -103,11 +106,11 @@ export default function RestaurantPosPage() {
         const loaded: any[] = tablesRes.tables || [];
         setTables(loaded);
         // Auto-seed a Takeaway counter if the tenant hasn't set one up yet
-        if (!loaded.some((t: any) => t.section === 'Takeaway')) {
+        if (!loaded.some((t: any) => t.section?.toLowerCase().includes('takeaway') || t.name?.toLowerCase().includes('takeaway'))) {
           fetch('/api/restaurant/tables', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: 'Takeaway / Parcel', section: 'Takeaway', capacity: 99 }),
+            body: JSON.stringify({ name: 'Takeaway Counter', section: 'Takeaway Counter', capacity: 99 }),
           })
             .then((r) => r.json())
             .then((res) => {
@@ -485,12 +488,19 @@ export default function RestaurantPosPage() {
     selectedSection === 'ALL' ? true : t.section === selectedSection
   );
 
-  const sections = Array.from(new Set(tables.map((t) => t.section)));
+  // Normalize and deduplicate sections cleanly
+  const sections = Array.from(new Set(tables.map((t) => t.section?.trim()))).filter(Boolean);
+  const totalTables = tables.length;
   const occupiedCount = tables.filter((t) => t.status === 'OCCUPIED').length;
   const vacantCount = tables.filter((t) => t.status === 'VACANT').length;
+  const occupancyRate = totalTables > 0 ? Math.round((occupiedCount / totalTables) * 100) : 0;
   const liveDiningTotal = tables.reduce(
     (acc, t) => acc + (t.status === 'OCCUPIED' ? Number(t.currentTotal) : 0),
     0
+  );
+  const totalKotsCount = tables.reduce((acc, t) => acc + (t.kots?.length || 0), 0);
+  const takeawayTable = tables.find(
+    (t) => t.section?.toLowerCase().includes('takeaway') || t.name?.toLowerCase().includes('takeaway')
   );
 
   // Filter menu items for modal search
@@ -508,23 +518,28 @@ export default function RestaurantPosPage() {
         <div className="flex items-center space-x-3">
           <Link
             href="/inventory/recipes"
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            className="rounded-2xl p-2.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
-              <UtensilsCrossed className="h-6 w-6 text-indigo-600" />
-              <span>Restaurant Dine-In & KOT Terminal</span>
-            </h1>
-            <p className="text-xs text-slate-500">
-              Live Table Floor Plan, Kitchen Order Tickets (KOT), Recipe Auto-Backflushing, and Settle
+            <div className="flex items-center space-x-2">
+              <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center space-x-2">
+                <span className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-2xs">
+                  <UtensilsCrossed className="h-5 w-5" />
+                </span>
+                <span>Restaurant Dine-In & KOT Terminal</span>
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Live Floor Plan • Kitchen Order Tickets (KOT) • Recipe Auto-Backflushing • Instant Settle
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <div className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700 shadow-2xs">
+        <div className="flex items-center flex-wrap gap-2">
+          {/* Live Status Pulse */}
+          <div className="flex items-center space-x-2 px-3 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 shadow-2xs">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -532,10 +547,22 @@ export default function RestaurantPosPage() {
             <span>Live Mesh Active</span>
           </div>
 
+          {/* Quick Takeaway Action Button */}
+          {takeawayTable && (
+            <button
+              type="button"
+              onClick={() => handleOpenOrder(takeawayTable)}
+              className="rounded-2xl bg-sky-600 text-white px-3.5 py-2 text-xs font-black hover:bg-sky-700 transition flex items-center space-x-1.5 shadow-sm shadow-sky-600/20 active:scale-95"
+            >
+              <ShoppingBag className="h-3.5 w-3.5" />
+              <span>Quick Takeaway</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowManageModal(true)}
-            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-sm"
+            className="rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-2xs"
           >
             <Plus className="h-4 w-4 text-indigo-600" />
             <span>Manage Tables</span>
@@ -543,7 +570,7 @@ export default function RestaurantPosPage() {
           {(userRole === 'OWNER' || userRole === 'MANAGER') && (
             <Link
               href="/restaurant/report"
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-sm"
+              className="rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-2xs"
             >
               <Receipt className="h-4 w-4 text-indigo-600" />
               <span>Daily Report</span>
@@ -551,14 +578,14 @@ export default function RestaurantPosPage() {
           )}
           <Link
             href="/inventory/recipes"
-            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-sm"
+            className="rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-2xs"
           >
             <ChefHat className="h-4 w-4 text-indigo-600" />
             <span>Recipe BOM</span>
           </Link>
           <button
             onClick={loadData}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-2xl p-2 border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition shadow-2xs"
             title="Refresh tables"
           >
             <RefreshCw className="h-4 w-4" />
@@ -566,60 +593,119 @@ export default function RestaurantPosPage() {
         </div>
       </div>
 
-      {/* KPI Highlights Bar */}
+      {/* World-Class Hospitality Intelligence HUD (KPIs) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs font-semibold text-slate-500">Total Tables</div>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{tables.length} Tables</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Across all floor sections</div>
+        {/* Card 1: Floor Occupancy Gauge */}
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Floor Occupancy</span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono">
+              {occupancyRate}% Full
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <div className="text-2xl font-black text-slate-900 tracking-tight">
+              {occupiedCount} <span className="text-sm font-semibold text-slate-400">/ {totalTables} Tables</span>
+            </div>
+          </div>
+          <div className="mt-3 w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                occupancyRate > 75 ? 'bg-rose-500' : occupancyRate > 35 ? 'bg-amber-500' : 'bg-emerald-500'
+              }`}
+              style={{ width: `${Math.max(occupancyRate, totalTables > 0 ? 5 : 0)}%` }}
+            />
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 shadow-sm">
-          <div className="text-xs font-semibold text-amber-800">Occupied (Dining)</div>
-          <div className="mt-1 text-2xl font-bold text-amber-900">{occupiedCount} Tables</div>
-          <div className="text-[11px] text-amber-700 mt-0.5">Kitchen orders in progress</div>
+        {/* Card 2: Vacant & Ready */}
+        <div className="rounded-3xl border border-emerald-200/80 bg-linear-to-br from-emerald-50/60 to-white p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Available for Seating</span>
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          </div>
+          <div className="mt-2 text-2xl font-black text-emerald-950 tracking-tight">
+            {vacantCount} <span className="text-sm font-semibold text-emerald-700">Ready Tables</span>
+          </div>
+          <p className="mt-1 text-[11px] font-semibold text-emerald-700/80">Clean, sanitized & ready for guests</p>
         </div>
 
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
-          <div className="text-xs font-semibold text-emerald-800">Vacant / Available</div>
-          <div className="mt-1 text-2xl font-bold text-emerald-900">{vacantCount} Tables</div>
-          <div className="text-[11px] text-emerald-700 mt-0.5">Ready for seating</div>
+        {/* Card 3: Kitchen KDS Flow */}
+        <div className="rounded-3xl border border-amber-200/80 bg-linear-to-br from-amber-50/60 to-white p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Kitchen Queue (KOT)</span>
+            <ChefHat className="h-4 w-4 text-amber-600" />
+          </div>
+          <div className="mt-2 text-2xl font-black text-amber-950 tracking-tight">
+            {totalKotsCount}{' '}
+            <span className="text-sm font-semibold text-amber-700">Active Tickets</span>
+          </div>
+          <p className="mt-1 text-[11px] font-semibold text-amber-700/80">Auto-backflushing Recipe BOM stock</p>
         </div>
 
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 shadow-sm">
-          <div className="text-xs font-semibold text-indigo-800">Live Dine-in Total</div>
-          <div className="mt-1 text-2xl font-bold text-indigo-900">
+        {/* Card 4: Live Dining Revenue */}
+        <div className="rounded-3xl border border-indigo-200/80 bg-linear-to-br from-indigo-50/60 to-white p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-800 uppercase tracking-wider">Live Dining Tab</span>
+            <Receipt className="h-4 w-4 text-indigo-600" />
+          </div>
+          <div className="mt-2 text-2xl font-black text-indigo-950 tracking-tight font-mono">
             ₹{liveDiningTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
           </div>
-          <div className="text-[11px] text-indigo-700 mt-0.5">Active dining tickets</div>
+          <p className="mt-1 text-[11px] font-semibold text-indigo-700/80">Active unbilled table tabs</p>
         </div>
       </div>
 
-      {/* Section Filter Pills */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+      {/* Floor Section Filter Controller */}
+      <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
         <button
           onClick={() => setSelectedSection('ALL')}
-          className={`rounded-xl px-4 py-2 text-xs font-bold transition whitespace-nowrap ${
+          className={`rounded-2xl px-4 py-2 text-xs font-black transition flex items-center space-x-1.5 shadow-2xs whitespace-nowrap active:scale-95 ${
             selectedSection === 'ALL'
               ? 'bg-slate-900 text-white shadow-sm'
-              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              : 'bg-white border border-slate-200/90 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
           }`}
         >
-          All Floor Sections ({tables.length})
-        </button>
-        {sections.map((sec) => (
-          <button
-            key={sec}
-            onClick={() => setSelectedSection(sec)}
-            className={`rounded-xl px-4 py-2 text-xs font-bold transition whitespace-nowrap ${
-              selectedSection === sec
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          <span>All Floor Sections</span>
+          <span
+            className={`rounded-full px-2 py-0.2 text-[10px] font-black ${
+              selectedSection === 'ALL' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600'
             }`}
           >
-            {sec}
-          </button>
-        ))}
+            {tables.length}
+          </span>
+        </button>
+
+        {sections.map((sec) => {
+          const count = tables.filter((t) => t.section === sec).length;
+          const isSelected = selectedSection === sec;
+          const isTakeawaySec = sec.toLowerCase().includes('takeaway') || sec.toLowerCase().includes('parcel');
+
+          return (
+            <button
+              key={sec}
+              onClick={() => setSelectedSection(sec)}
+              className={`rounded-2xl px-4 py-2 text-xs font-black transition flex items-center space-x-1.5 shadow-2xs whitespace-nowrap active:scale-95 ${
+                isSelected
+                  ? isTakeawaySec
+                    ? 'bg-sky-600 text-white shadow-sm shadow-sky-600/30'
+                    : 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                  : 'bg-white border border-slate-200/90 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <span>{isTakeawaySec ? '🛵 ' : ''}{sec}</span>
+              <span
+                className={`rounded-full px-2 py-0.2 text-[10px] font-black ${
+                  isSelected
+                    ? 'bg-white/25 text-white'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Table Floor Cards Grid */}
@@ -627,192 +713,257 @@ export default function RestaurantPosPage() {
         {filteredTables.map((table) => {
           const isOccupied = table.status === 'OCCUPIED';
           const activeKotCount = table.kots?.length || 0;
-
-          const isTakeaway = table.section === 'Takeaway';
+          const isTakeaway = table.section?.toLowerCase().includes('takeaway') || table.name?.toLowerCase().includes('takeaway');
 
           return (
             <div
               key={table.id}
-              className={`rounded-3xl border p-5 transition flex flex-col justify-between shadow-sm relative overflow-hidden ${
+              className={`rounded-3xl border transition-all duration-200 flex flex-col justify-between relative overflow-hidden group ${
                 isTakeaway
-                  ? 'border-sky-300 bg-sky-50/40 hover:border-sky-400 hover:shadow-md'
+                  ? isOccupied
+                    ? 'border-sky-300 bg-linear-to-b from-sky-50/80 to-white shadow-md ring-2 ring-sky-300/60'
+                    : 'border-sky-200 bg-linear-to-b from-sky-50/40 to-white hover:border-sky-300 hover:shadow-lg'
                   : isOccupied
-                  ? 'border-amber-300 bg-amber-50/30 ring-1 ring-amber-200'
-                  : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'
+                  ? 'border-amber-300 bg-linear-to-b from-amber-50/70 via-white to-amber-50/30 shadow-md ring-2 ring-amber-300/70'
+                  : 'border-slate-200/90 bg-white hover:border-indigo-300 hover:shadow-xl hover:-translate-y-0.5'
               }`}
             >
-              {/* Card Header */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-base font-black text-slate-900 tracking-tight">
-                      {isTakeaway ? '🛵 ' : ''}{table.name}
-                    </span>
-                    {!isTakeaway && (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                        {table.capacity}p
-                      </span>
-                    )}
-                    {isTakeaway && (
-                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
-                        Counter
-                      </span>
-                    )}
-                  </div>
+              {/* Top ambient color bar for instant peripheral status recognition */}
+              <div
+                className={`h-1.5 w-full ${
+                  isTakeaway
+                    ? 'bg-linear-to-r from-sky-400 to-cyan-500'
+                    : isOccupied
+                    ? 'bg-linear-to-r from-amber-400 via-orange-500 to-amber-500 animate-pulse'
+                    : 'bg-linear-to-r from-emerald-400 to-teal-500'
+                }`}
+              />
 
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                      isOccupied
-                        ? 'bg-amber-100 text-amber-800'
-                        : isTakeaway
-                        ? 'bg-sky-100 text-sky-700'
-                        : 'bg-emerald-100 text-emerald-800'
-                    }`}
-                  >
-                    {isTakeaway ? (isOccupied ? 'BUSY' : 'OPEN') : table.status}
-                  </span>
-                </div>
-
-                <div className="text-[11px] text-slate-400 font-medium">
-                  {table.section}
-                  {(table as any).assignedWaiter ? ` • ${(table as any).assignedWaiter}` : ''}
-                </div>
-
-                {/* Running Total & Status Detail */}
-                {isOccupied ? (
-                  <div className="mt-4 rounded-2xl bg-white/90 p-3 border border-amber-200 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">Live Bill:</span>
-                      <span className="text-base font-black text-slate-900">
-                        ₹{Number(table.currentTotal).toFixed(2)}
-                      </span>
+              <div className="p-5 flex-1 flex flex-col justify-between">
+                <div>
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div
+                        className={`h-9 w-9 rounded-2xl flex items-center justify-center font-black text-sm shadow-2xs transition ${
+                          isTakeaway
+                            ? 'bg-sky-100 text-sky-700'
+                            : isOccupied
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-slate-100 text-slate-800 group-hover:bg-indigo-50 group-hover:text-indigo-600'
+                        }`}
+                      >
+                        {isTakeaway ? '🛵' : '🍽️'}
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-1.5">
+                          <h3 className="text-base font-black text-slate-900 tracking-tight leading-none">
+                            {table.name}
+                          </h3>
+                        </div>
+                        <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                          {table.section}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-amber-700 font-medium">
-                      <span className="flex items-center space-x-1">
-                        <ChefHat className="h-3 w-3" />
-                        <span>{activeKotCount} Active KOT{activeKotCount > 1 ? 's' : ''}</span>
+
+                    <div className="flex flex-col items-end space-y-1">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                          isOccupied
+                            ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                            : isTakeaway
+                            ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                            : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isOccupied
+                              ? 'bg-amber-500 animate-ping'
+                              : isTakeaway
+                              ? 'bg-sky-500'
+                              : 'bg-emerald-500'
+                          }`}
+                        />
+                        {isTakeaway ? (isOccupied ? 'BUSY' : 'COUNTER OPEN') : table.status}
                       </span>
-                      {table.occupiedAt && (
-                        <span className="flex items-center space-x-1 text-slate-400">
-                          <Clock className="h-3 w-3" />
-                          <span>
-                            {new Date(table.occupiedAt).toLocaleTimeString('en-IN', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
+                      {!isTakeaway && (
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                          👥 {table.capacity} Seats
                         </span>
                       )}
                     </div>
                   </div>
-                ) : (
-                  <div className="mt-4 py-3 text-center rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
-                    {isTakeaway ? 'Ready for Next Parcel Order' : 'Table Vacant • Ready for Guest'}
-                  </div>
-                )}
-              </div>
 
-              {isOccupied && (table.kots || []).length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {(table.kots || []).map((k: any) => (
-                    <div key={k.id} className="flex items-center justify-between text-[10px]">
-                      <span className="font-semibold text-slate-600">{k.kotNumber}</span>
-                      <span className="flex items-center gap-1">
-                        <span
-                          className={`rounded-full px-2 py-0.5 font-bold ${
-                            k.status === 'PREPARING'
-                              ? 'bg-amber-100 text-amber-800'
-                              : k.status === 'READY'
-                              ? 'bg-sky-100 text-sky-800'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
-                        >
-                          {k.status}
+                  {/* Body Content */}
+                  {isOccupied ? (
+                    <div className="mt-3 rounded-2xl bg-amber-50/70 p-3.5 border border-amber-200/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-800">Current Tab</span>
+                        <span className="text-lg font-black text-slate-900 tracking-tight font-mono">
+                          ₹{Number(table.currentTotal).toFixed(2)}
                         </span>
-                        {k.status === 'PREPARING' && (
-                          <button
-                            type="button"
-                            onClick={() => handleAdvanceKot(k.id, 'READY')}
-                            className="rounded-md border border-sky-200 px-1.5 py-0.5 font-bold text-sky-700 hover:bg-sky-50"
-                          >
-                            Ready
-                          </button>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-amber-200/50">
+                        <span className="flex items-center space-x-1 font-bold text-amber-900">
+                          <ChefHat className="h-3.5 w-3.5 text-amber-600" />
+                          <span>{activeKotCount} Active KOT{activeKotCount > 1 ? 's' : ''}</span>
+                        </span>
+                        {table.occupiedAt && (
+                          <span className="flex items-center space-x-1 font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              {new Date(table.occupiedAt).toLocaleTimeString('en-IN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </span>
                         )}
-                        {k.status !== 'SERVED' && (
-                          <button
-                            type="button"
-                            onClick={() => handleAdvanceKot(k.id, 'SERVED')}
-                            className="rounded-md border border-emerald-200 px-1.5 py-0.5 font-bold text-emerald-700 hover:bg-emerald-50"
-                          >
-                            Served
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleReprintKot(k, table.name)}
-                          className="rounded-md border border-slate-200 px-1.5 py-0.5 font-bold text-slate-500 hover:bg-slate-50"
-                          title="Reprint this KOT"
-                        >
-                          🖨
-                        </button>
-                      </span>
+                      </div>
                     </div>
-                  ))}
+                  ) : (
+                    <div
+                      onClick={() => handleOpenOrder(table)}
+                      className="mt-3 py-4 flex flex-col items-center justify-center rounded-2xl bg-slate-50/60 border border-slate-100 group-hover:bg-indigo-50/40 group-hover:border-indigo-100 transition cursor-pointer"
+                    >
+                      <div className="h-10 w-10 rounded-2xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center mb-1.5 shadow-2xs group-hover:scale-110 transition">
+                        {isTakeaway ? (
+                          <ShoppingBag className="h-5 w-5" />
+                        ) : (
+                          <UtensilsCrossed className="h-5 w-5" />
+                        )}
+                      </div>
+                      <p className="text-xs font-black text-slate-800">
+                        {isTakeaway ? 'Ready for Parcel' : 'Table Ready & Clean'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        {isTakeaway ? 'Tap for Quick Takeaway Bill' : 'Tap to Seat Guests & Order'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* KOT Item Status Pills when occupied */}
+                  {isOccupied && (table.kots || []).length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      {(table.kots || []).map((k: any) => (
+                        <div
+                          key={k.id}
+                          className="flex items-center justify-between text-[11px] bg-white/90 p-1.5 rounded-xl border border-slate-200/80 shadow-2xs"
+                        >
+                          <span className="font-bold text-slate-700 font-mono text-[10px]">
+                            {k.kotNumber}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                k.status === 'PREPARING'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : k.status === 'READY'
+                                  ? 'bg-sky-100 text-sky-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {k.status}
+                            </span>
+                            {k.status === 'PREPARING' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAdvanceKot(k.id, 'READY');
+                                }}
+                                className="rounded-lg bg-sky-50 border border-sky-200 px-2 py-0.5 text-[10px] font-bold text-sky-700 hover:bg-sky-100 transition shadow-2xs"
+                              >
+                                Ready
+                              </button>
+                            )}
+                            {k.status !== 'SERVED' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAdvanceKot(k.id, 'SERVED');
+                                }}
+                                className="rounded-lg bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
+                              >
+                                Served
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReprintKot(k, table.name);
+                              }}
+                              className="rounded-lg border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 hover:bg-slate-100 transition"
+                              title="Reprint KOT"
+                            >
+                              🖨
+                            </button>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
 
-              {/* Action Buttons */}
-              <div className="mt-5 pt-3 border-t border-slate-100 flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => handleOpenOrder(table)}
-                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-bold transition flex items-center justify-center space-x-1 ${
-                    isOccupied
-                      ? 'bg-slate-900 text-white hover:bg-slate-800'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>{isOccupied ? '+ Add Item / KOT' : 'Seat & Order'}</span>
-                </button>
+                {/* Card Action Buttons */}
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenOrder(table)}
+                    className={`flex-1 rounded-2xl px-4 py-2.5 text-xs font-black transition flex items-center justify-center space-x-1.5 shadow-sm active:scale-95 ${
+                      isOccupied
+                        ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10'
+                        : isTakeaway
+                        ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-600/20'
+                    }`}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>{isOccupied ? '+ Add Dish / KOT' : isTakeaway ? 'New Parcel Bill' : 'Seat & Order'}</span>
+                  </button>
 
-                {isOccupied && (
-                  <>
+                  {isOccupied ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTable(table);
+                          setShowTransferModal(true);
+                        }}
+                        className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-2xs active:scale-95"
+                        title="Move party to another table"
+                      >
+                        Move
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openSettle(table)}
+                        className="rounded-2xl bg-emerald-600 text-white px-3.5 py-2.5 text-xs font-black hover:bg-emerald-700 transition shadow-sm shadow-emerald-600/20 active:scale-95 flex items-center space-x-1"
+                        title="View bill, split, discount and settle"
+                      >
+                        <Receipt className="h-3.5 w-3.5" />
+                        <span>Bill</span>
+                      </button>
+                    </>
+                  ) : (
                     <button
                       type="button"
-                      onClick={() => {
-                        setActiveTable(table);
-                        setShowTransferModal(true);
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setQrTable(table);
+                        setShowQrModal(true);
                       }}
-                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
-                      title="Move party to another table"
+                      className="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/60 hover:border-indigo-200 transition shadow-2xs active:scale-95"
+                      title="Generate Self-Order QR Code for Table"
                     >
-                      Move
+                      <QrCode className="h-4 w-4" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => openSettle(table)}
-                      className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition flex items-center space-x-1"
-                      title="View bill, split, discount and settle"
-                    >
-                      <Receipt className="h-3.5 w-3.5" />
-                      <span>Bill</span>
-                    </button>
-                  </>
-                )}
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setQrTable(table);
-                    setShowQrModal(true);
-                  }}
-                  className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition flex items-center justify-center"
-                  title="Show QR for self-ordering"
-                >
-                  <QrCode className="h-3.5 w-3.5" />
-                </button>
+                  )}
+                </div>
               </div>
             </div>
           );
