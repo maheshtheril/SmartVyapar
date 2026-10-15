@@ -105,7 +105,7 @@ export function generateSignedQrPayload(params: {
   const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
   
-  const irpSecret = process.env.IRP_SECRET;
+  const irpSecret = process.env.IRP_SECRET || (process.env.NODE_ENV !== "production" ? "default-irp-secret-test-environment-32chars" : undefined);
   if (!irpSecret) {
     throw new Error("IRP_SECRET is not configured");
   }
