@@ -87,6 +87,7 @@ export default function InventoryPage() {
   const [oemNumber, setOemNumber] = useState("");
   const [compatibleMakes, setCompatibleMakes] = useState("");
   const [compatibleModels, setCompatibleModels] = useState("");
+  const [foodCategory, setFoodCategory] = useState(""); // restaurant: food course category
   const [hasBatchTracking, setHasBatchTracking] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -95,6 +96,9 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<"GENERAL" | "PRICING" | "PACKAGING" | "INVENTORY">("GENERAL");
   const [isMaximized, setIsMaximized] = useState(true);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+
+  // Derived from tenant — controls restaurant-specific UI without a separate fetch
+  const isRestaurant = tenant?.businessType === "RESTAURANT";
 
   // Handle local image file upload & conversion to Data URL
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -298,6 +302,7 @@ export default function InventoryPage() {
       setCategory("");
     setPartNumber("");
     setOemNumber("");
+    setFoodCategory("");
     setCompatibleMakes("");
     setCompatibleModels("");
       setImageUrl("");
@@ -446,6 +451,7 @@ export default function InventoryPage() {
     setCategory("");
     setPartNumber("");
     setOemNumber("");
+    setFoodCategory("");
     setCompatibleMakes("");
     setCompatibleModels("");
     setProductType("RETAIL_ITEM");
@@ -566,6 +572,7 @@ export default function InventoryPage() {
     setCategory("");
     setPartNumber("");
     setOemNumber("");
+    setFoodCategory("");
     setCompatibleMakes("");
     setCompatibleModels("");
     setProductType("RETAIL_ITEM");
@@ -1063,15 +1070,27 @@ export default function InventoryPage() {
 
                   {/* Common HSN quick selector badges */}
                   <div className="flex items-center space-x-1.5 flex-wrap pt-1 text-[10px]">
-                    <span className="text-slate-400 font-semibold">Common HSNs:</span>
-                    {[
-                      { code: "8544", name: "Cables/Wires" },
-                      { code: "8708", name: "Auto Parts" },
-                      { code: "9983", name: "Services" },
-                      { code: "2106", name: "Food Prep" },
-                      { code: "3004", name: "Medicines" },
-                      { code: "8471", name: "IT Hardware" },
-                    ].map((hsn) => (
+                    <span className="text-slate-400 font-semibold">
+                      {isRestaurant ? "Common Food HSNs:" : "Common HSNs:"}
+                    </span>
+                    {(isRestaurant
+                      ? [
+                          { code: "2106", name: "Food Prep" },
+                          { code: "2009", name: "Juices" },
+                          { code: "2202", name: "Beverages" },
+                          { code: "0401", name: "Dairy" },
+                          { code: "1006", name: "Rice" },
+                          { code: "9963", name: "Restaurant Svc" },
+                        ]
+                      : [
+                          { code: "8544", name: "Cables/Wires" },
+                          { code: "8708", name: "Auto Parts" },
+                          { code: "9983", name: "Services" },
+                          { code: "2106", name: "Food Prep" },
+                          { code: "3004", name: "Medicines" },
+                          { code: "8471", name: "IT Hardware" },
+                        ]
+                    ).map((hsn) => (
                       <button
                         key={hsn.code}
                         type="button"

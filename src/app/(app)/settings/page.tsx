@@ -71,6 +71,7 @@ function SettingsContent() {
     pincode: '',
     upiId: '',
     businessType: 'RETAIL',
+    restaurantPlan: 'NONE',
     isComposition: false,
     allowNegativeStock: false,
     taxInclusiveMode: true,
@@ -204,6 +205,7 @@ function SettingsContent() {
           pincode: data.tenant.pincode || '',
           upiId: data.tenant.upiId || '',
           businessType: data.tenant.businessType || 'RETAIL',
+          restaurantPlan: data.tenant.restaurantPlan || 'NONE',
           isComposition: !!data.tenant.isComposition,
           allowNegativeStock: !!data.tenant.allowNegativeStock,
           taxInclusiveMode: data.tenant.taxInclusiveMode !== false,
@@ -790,6 +792,52 @@ function SettingsContent() {
                   Tailors your navigation sidebar and print templates to only show relevant documents for your store.
                 </p>
               </div>
+
+              {/* Restaurant Plan Add-On — only shown when RESTAURANT is selected */}
+              {profile.businessType === 'RESTAURANT' && (
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+                  <label className="block text-xs font-bold text-indigo-700 mb-2">
+                    🍽️ Restaurant Module Plan
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'NONE',    label: 'Not Active',      desc: 'No restaurant features', price: '' },
+                      { id: 'STARTER', label: 'Starter',         desc: 'Tables + KOT (Free)', price: '₹0' },
+                      { id: 'PRO',     label: 'Restaurant Pro',  desc: 'Multi-printer, BOM, analytics', price: '+₹300/mo' },
+                      { id: 'CHAIN',   label: 'Chain',           desc: 'KDS, central menu, Zomato API', price: '+₹2,499/outlet' },
+                    ].map((plan) => (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => setProfile({ ...profile, restaurantPlan: plan.id })}
+                        className={`flex flex-col text-left p-3 rounded-xl border transition ${
+                          profile.restaurantPlan === plan.id
+                            ? 'border-indigo-600 bg-indigo-100 ring-2 ring-indigo-600/20'
+                            : 'border-slate-200 bg-white hover:border-indigo-300'
+                        }`}
+                      >
+                        <span className="text-xs font-bold text-slate-900">{plan.label}</span>
+                        <span className="text-[10px] text-slate-500 mt-0.5 leading-snug">{plan.desc}</span>
+                        {plan.price && (
+                          <span className="text-[10px] font-extrabold text-indigo-600 mt-1">{plan.price}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  {profile.restaurantPlan !== 'NONE' && profile.restaurantPlan !== 'STARTER' && (
+                    <p className="text-[11px] text-indigo-600 mt-2 font-medium">
+                      ⚡ To activate paid restaurant plans, go to{' '}
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('BILLING')}
+                        className="underline font-bold"
+                      >
+                        Settings → Billing & Subscription
+                      </button>.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

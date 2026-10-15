@@ -29,9 +29,10 @@ export async function GET(req: NextRequest) {
       where: { tenantId },
       include: {
         kots: {
-          where: { status: { in: ["PREPARING", "SERVED"] } },
+          where: { status: { in: ["PREPARING", "READY", "SERVED"] } },
           include: {
-            items: true,
+            // Only live lines: voided and already-paid (split) items are hidden
+            items: { where: { isVoided: false, settledInvoiceId: null } },
           },
           orderBy: { createdAt: "desc" },
         },
@@ -116,12 +117,128 @@ export async function POST(req: NextRequest) {
         status: status as TableStatus,
         occupiedAt: status === "OCCUPIED" ? new Date() : null,
         currentTotal: status === "VACANT" ? 0 : undefined,
+        assignedWaiter: status === "VACANT" ? null : String(waiterName || "").trim() || null,
       },
     });
 
     return NextResponse.json({ success: true, table: updated });
   } catch (error: any) {
     console.error("Error updating table:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// PUT /api/restaurant/tables - Create a new table from the UI
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await requireSession(req);
+    const tenantId = session.tenantId;
+    const { name, section = "Main Hall", capacity = 4 } = await req.json();
+
+    if (!name || !String(name).trim()) {
+      return NextResponse.json({ error: "Table name is required" }, { status: 400 });
+    }
+    const cap = Number(capacity);
+    if (!Number.isInteger(cap) || cap < 1 || cap > 100) {
+      return NextResponse.json({ error: "Capacity must be between 1 and 100" }, { status: 400 });
+    }
+
+    const exists = await prisma.restaurantTable.findFirst({
+      where: { tenantId, name: String(name).trim() },
+    });
+    if (exists) {
+      return NextResponse.json({ error: `Table "${exists.name}" already exists` }, { status: 409 });
+    }
+
+    const table = await prisma.restaurantTable.create({
+      data: {
+        tenantId,
+        name: String(name).trim(),
+        section: String(section).trim() || "Main Hall",
+        capacity: cap,
+        status: TableStatus.VACANT,
+      },
+    });
+    return NextResponse.json({ success: true, table });
+  } catch (error: any) {
+    console.error("Error creating table:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// PATCH /api/restaurant/tables - Edit name / section / capacity of a table
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await requireSession(req);
+    const tenantId = session.tenantId;
+    const { tableId, name, section, capacity } = await req.json();
+
+    const table = await prisma.restaurantTable.findFirst({ where: { id: tableId, tenantId } });
+    if (!table) {
+      return NextResponse.json({ error: "Table not found" }, { status: 404 });
+    }
+
+    if (name !== undefined && String(name).trim() !== table.name) {
+      const dup = await prisma.restaurantTable.findFirst({
+        where: { tenantId, name: String(name).trim(), NOT: { id: tableId } },
+      });
+      if (dup) {
+        return NextResponse.json({ error: `Table "${dup.name}" already exists` }, { status: 409 });
+      }
+    }
+    if (capacity !== undefined) {
+      const cap = Number(capacity);
+      if (!Number.isInteger(cap) || cap < 1 || cap > 100) {
+        return NextResponse.json({ error: "Capacity must be between 1 and 100" }, { status: 400 });
+      }
+    }
+
+    const updated = await prisma.restaurantTable.update({
+      where: { id: tableId },
+      data: {
+        ...(name !== undefined ? { name: String(name).trim() } : {}),
+        ...(section !== undefined ? { section: String(section).trim() || "Main Hall" } : {}),
+        ...(capacity !== undefined ? { capacity: Number(capacity) } : {}),
+      },
+    });
+    return NextResponse.json({ success: true, table: updated });
+  } catch (error: any) {
+    console.error("Error editing table:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// DELETE /api/restaurant/tables?id=... - Remove a vacant table with no history blocking it
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await requireSession(req);
+    const tenantId = session.tenantId;
+    const id = req.nextUrl.searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ error: "Table id is required" }, { status: 400 });
+    }
+
+    const table = await prisma.restaurantTable.findFirst({ where: { id, tenantId } });
+    if (!table) {
+      return NextResponse.json({ error: "Table not found" }, { status: 404 });
+    }
+    if (table.status !== TableStatus.VACANT) {
+      return NextResponse.json({ error: "Cannot delete a table that is in use" }, { status: 409 });
+    }
+
+    // KOT history cascades with the table, so refuse if past orders exist (keeps audit trail)
+    const history = await prisma.kitchenOrderTicket.count({ where: { tableId: id, tenantId } });
+    if (history > 0) {
+      return NextResponse.json(
+        { error: "This table has order history and cannot be deleted. Rename it instead." },
+        { status: 409 }
+      );
+    }
+
+    await prisma.restaurantTable.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting table:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

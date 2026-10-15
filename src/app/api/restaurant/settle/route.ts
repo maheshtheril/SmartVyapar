@@ -8,7 +8,12 @@ import { generateNextInvoiceNumber } from "@/lib/invoice-sequence";
 
 export const dynamic = "force-dynamic";
 
-// POST /api/restaurant/settle - Settle table, generate invoice, backflush recipes, reset table
+// POST /api/restaurant/settle
+// Body: { tableId, customerName?, customerPhone?, paymentMode?, itemIds?: string[] }
+//  - itemIds omitted  -> settle everything still open on the table
+//  - itemIds provided -> SPLIT BILL: settle only those KOT lines; the rest stay on the table
+// Voided lines and already-paid lines are always skipped. Discounts and
+// complimentary lines are honoured (complimentary = billed at 0, stock still consumed).
 export async function POST(req: NextRequest) {
   try {
     const session = await requireSession(req);
@@ -20,16 +25,19 @@ export async function POST(req: NextRequest) {
       customerName = "Dine-in Guest",
       customerPhone = "",
       paymentMode = "UPI",
+      itemIds,
     } = body;
 
     if (!tableId) {
       return NextResponse.json({ error: "Table ID is required" }, { status: 400 });
     }
+    const ALLOWED_MODES = ["CASH", "UPI", "CARD", "BANK_TRANSFER"];
+    if (!ALLOWED_MODES.includes(paymentMode)) {
+      return NextResponse.json({ error: `Unsupported payment mode: ${paymentMode}` }, { status: 400 });
+    }
+    const isSplit = Array.isArray(itemIds) && itemIds.length > 0;
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
-
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) {
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
     }
@@ -38,110 +46,91 @@ export async function POST(req: NextRequest) {
       where: { id: tableId, tenantId },
       include: {
         kots: {
-          where: { status: { in: ["PREPARING", "SERVED"] } },
-          include: {
-            items: true,
-          },
+          where: { status: { in: ["PREPARING", "READY", "SERVED"] } },
+          include: { items: true },
         },
       },
     });
-
     if (!table) {
       return NextResponse.json({ error: "Table not found" }, { status: 404 });
     }
 
-    // Collect all items across active KOTs
-    const aggregatedItems: {
-      productId: string;
-      productName: string;
-      quantity: number;
-      unitPrice: number;
-    }[] = [];
+    // Open lines = not voided, not yet paid (and, for split, in the selected set)
+    const openLines = table.kots
+      .flatMap((k) => k.items)
+      .filter((i) => !i.isVoided && !i.settledInvoiceId)
+      .filter((i) => (isSplit ? itemIds.includes(i.id) : true));
 
-    table.kots.forEach((kot) => {
-      kot.items.forEach((item) => {
-        const existing = aggregatedItems.find((x) => x.productId === item.productId);
-        if (existing) {
-          existing.quantity += Number(item.quantity);
-        } else {
-          aggregatedItems.push({
-            productId: item.productId,
-            productName: item.productName,
-            quantity: Number(item.quantity),
-            unitPrice: Number(item.unitPrice),
-          });
-        }
-      });
-    });
+    if (isSplit && openLines.length !== itemIds.length) {
+      return NextResponse.json(
+        { error: "Some selected items are voided, already paid, or not on this table" },
+        { status: 400 }
+      );
+    }
 
-    if (aggregatedItems.length === 0) {
-      // Empty table, just mark as VACANT
-      await prisma.restaurantTable.update({
-        where: { id: tableId },
-        data: {
-          status: TableStatus.VACANT,
-          currentTotal: 0,
-          occupiedAt: null,
-        },
-      });
+    if (openLines.length === 0) {
+      // Nothing billable: free the table and close out any (fully voided) KOTs
+      await prisma.$transaction([
+        prisma.kitchenOrderTicket.updateMany({
+          where: { tableId, tenantId, status: { in: [KotStatus.PREPARING, KotStatus.READY, KotStatus.SERVED] } },
+          data: { status: KotStatus.CANCELLED },
+        }),
+        prisma.restaurantTable.update({
+          where: { id: tableId },
+          data: { status: TableStatus.VACANT, currentTotal: 0, occupiedAt: null, assignedWaiter: null },
+        }),
+      ]);
       return NextResponse.json({ success: true, message: "Table marked as vacant" });
     }
 
+    // Aggregate by product. Billable amount per line = qty*price - discount (0 if complimentary).
+    type Agg = {
+      productId: string;
+      productName: string;
+      quantity: number; // physical qty (for stock)
+      billedGross: number; // sum of qty*price for NON-complimentary lines
+      discount: number;
+    };
+    const agg = new Map<string, Agg>();
+    for (const l of openLines) {
+      const qty = Number(l.quantity);
+      const gross = qty * Number(l.unitPrice);
+      const a = agg.get(l.productId) || {
+        productId: l.productId,
+        productName: l.productName,
+        quantity: 0,
+        billedGross: 0,
+        discount: 0,
+      };
+      a.quantity += qty;
+      if (!l.isComplimentary) {
+        a.billedGross += gross;
+        a.discount += Number(l.discountAmount || 0);
+      }
+      agg.set(l.productId, a);
+    }
+    const aggregatedItems = Array.from(agg.values());
+
     const invoiceResult = await prisma.$transaction(async (tx) => {
-      // Generate Invoice Number atomically inside transaction (race-condition safe)
       const { invoiceNumber } = await generateNextInvoiceNumber(tx, { tenantId });
 
       let subtotal = 0;
       let totalCgst = 0;
       let totalSgst = 0;
-      let totalIgst = 0;
-
-      const processedItems = [];
+      const processedItems: any[] = [];
 
       for (const item of aggregatedItems) {
         const product = await tx.product.findUnique({
           where: { id: item.productId },
-          include: {
-            recipeIngredients: {
-              include: { ingredient: true },
-            },
-          },
+          include: { recipeIngredients: { include: { ingredient: true } } },
         });
-
         if (!product) continue;
 
         const qty = item.quantity;
-        const lineTaxable = item.unitPrice * qty;
+        const lineTaxable = Math.max(0, item.billedGross - item.discount);
         subtotal += lineTaxable;
 
-        const tax = GstCalculator.calculate(
-          lineTaxable,
-          Number(product.gstRate),
-          tenant.stateCode,
-          tenant.stateCode, // Dine-in is intra-state
-          tenant.isComposition
-        );
-
-        totalCgst += tax.cgstAmount;
-        totalSgst += tax.sgstAmount;
-
-        processedItems.push({
-          productId: product.id,
-          productName: product.name,
-          hsnCode: product.hsnCode,
-          unitSold: product.baseUnit,
-          quantity: qty,
-          conversionFactor: 1,
-          baseQuantity: qty,
-          unitPrice: item.unitPrice,
-          gstRate: Number(product.gstRate),
-          cgstAmount: tax.cgstAmount,
-          sgstAmount: tax.sgstAmount,
-          igstAmount: 0,
-          lineTotal: tax.totalAmount,
-        });
-
-        // Backflushing: If product has recipe ingredients (e.g. Biryani -> Raw Chicken, Rice, Oil)
+        // Stock is always consumed, even for complimentary food
         if (product.recipeIngredients && product.recipeIngredients.length > 0) {
           for (const recipeItem of product.recipeIngredients) {
             const rawReqPerPortion = Number(recipeItem.quantityRequired);
@@ -150,11 +139,8 @@ export async function POST(req: NextRequest) {
 
             await tx.product.update({
               where: { id: recipeItem.ingredientId },
-              data: {
-                currentStock: { decrement: totalRawConsumed },
-              },
+              data: { currentStock: { decrement: totalRawConsumed } },
             });
-
             await tx.stockLog.create({
               data: {
                 tenantId,
@@ -167,14 +153,10 @@ export async function POST(req: NextRequest) {
             });
           }
         } else {
-          // Finished goods / Beverage direct stock deduction
           await tx.product.update({
             where: { id: product.id },
-            data: {
-              currentStock: { decrement: qty },
-            },
+            data: { currentStock: { decrement: qty } },
           });
-
           await tx.stockLog.create({
             data: {
               tenantId,
@@ -186,9 +168,39 @@ export async function POST(req: NextRequest) {
             },
           });
         }
+
+        // Fully complimentary product -> no invoice line / no tax
+        if (lineTaxable <= 0) continue;
+
+        const tax = GstCalculator.calculate(
+          lineTaxable,
+          Number(product.gstRate),
+          tenant.stateCode,
+          tenant.stateCode, // dine-in is intra-state
+          tenant.isComposition
+        );
+        totalCgst += tax.cgstAmount;
+        totalSgst += tax.sgstAmount;
+
+        // Billed quantity is derived so unitPrice*quantity == taxable value
+        processedItems.push({
+          productId: product.id,
+          productName: product.name,
+          hsnCode: product.hsnCode,
+          unitSold: product.baseUnit,
+          quantity: qty,
+          conversionFactor: 1,
+          baseQuantity: qty,
+          unitPrice: Number((lineTaxable / qty).toFixed(4)),
+          gstRate: Number(product.gstRate),
+          cgstAmount: tax.cgstAmount,
+          sgstAmount: tax.sgstAmount,
+          igstAmount: 0,
+          lineTotal: tax.totalAmount,
+        });
       }
 
-      const totalTax = totalCgst + totalSgst + totalIgst;
+      const totalTax = totalCgst + totalSgst;
       const totalAmount = Number((subtotal + totalTax).toFixed(2));
 
       const upiUri = UpiService.generateUpiUri({
@@ -199,7 +211,6 @@ export async function POST(req: NextRequest) {
         note: `Table ${table.name} Bill ${invoiceNumber}`,
       });
 
-      // Create Customer Invoice
       const createdInvoice = await tx.invoice.create({
         data: {
           tenantId,
@@ -220,44 +231,54 @@ export async function POST(req: NextRequest) {
           paymentStatus: PaymentStatus.PAID,
           paymentMode: paymentMode as PaymentMode,
           upiUri,
-          notes: `Settled from Table ${table.name} (${table.section})`,
-          items: {
-            create: processedItems,
-          },
+          notes: `${isSplit ? "Split bill — " : ""}Settled from Table ${table.name} (${table.section})`,
+          items: { create: processedItems },
         },
-        include: {
-          items: true,
-        },
+        include: { items: true },
       });
 
-      // Mark all KOTs as SETTLED
-      await tx.kitchenOrderTicket.updateMany({
+      // Mark the paid lines
+      await tx.kotItem.updateMany({
+        where: { id: { in: openLines.map((l) => l.id) } },
+        data: { settledInvoiceId: createdInvoice.id },
+      });
+
+      // Anything left unpaid on the table?
+      const remaining = await tx.kotItem.findMany({
         where: {
-          tableId,
-          status: { in: [KotStatus.PREPARING, KotStatus.SERVED] },
-        },
-        data: {
-          status: KotStatus.SETTLED,
-          invoiceId: createdInvoice.id,
+          kot: { tableId, tenantId, status: { in: [KotStatus.PREPARING, KotStatus.READY, KotStatus.SERVED] } },
+          isVoided: false,
+          settledInvoiceId: null,
         },
       });
 
-      // Free Table to VACANT
-      await tx.restaurantTable.update({
-        where: { id: tableId },
-        data: {
-          status: TableStatus.VACANT,
-          currentTotal: 0,
-          occupiedAt: null,
-        },
-      });
+      if (remaining.length === 0) {
+        await tx.kitchenOrderTicket.updateMany({
+          where: { tableId, tenantId, status: { in: [KotStatus.PREPARING, KotStatus.READY, KotStatus.SERVED] } },
+          data: { status: KotStatus.SETTLED, invoiceId: createdInvoice.id },
+        });
+        await tx.restaurantTable.update({
+          where: { id: tableId },
+          data: { status: TableStatus.VACANT, currentTotal: 0, occupiedAt: null, assignedWaiter: null },
+        });
+      } else {
+        const remainingTotal = remaining.reduce((a, i) => {
+          if (i.isComplimentary) return a;
+          return a + Math.max(0, Number(i.quantity) * Number(i.unitPrice) - Number(i.discountAmount || 0));
+        }, 0);
+        await tx.restaurantTable.update({
+          where: { id: tableId },
+          data: { currentTotal: remainingTotal },
+        });
+      }
 
-      return createdInvoice;
+      return { invoice: createdInvoice, tableFreed: remaining.length === 0 };
     }, DEFAULT_TX_OPTIONS);
 
     return NextResponse.json({
       success: true,
-      invoice: invoiceResult,
+      invoice: invoiceResult.invoice,
+      tableFreed: invoiceResult.tableFreed,
       tableName: table.name,
       tenant: {
         businessName: tenant.businessName,
@@ -272,4 +293,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

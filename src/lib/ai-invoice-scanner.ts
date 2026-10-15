@@ -45,16 +45,16 @@ export function cleanHumanReadableAiError(error: any): string {
   const msg = typeof error === "string" ? error : error.message || String(error);
 
   if (/API_KEY_INVALID|API key not valid/i.test(msg)) {
-    return "AI Scanner configuration error. Please contact support.";
+    return "Google Gemini API key is invalid. AI Scanner configuration error. Please contact support.";
   }
   if (/PERMISSION_DENIED|denied access|403/i.test(msg)) {
-    return "AI Scanner is temporarily unavailable. Please enter items manually.";
+    return "Google Cloud access denied. AI Scanner is temporarily unavailable. Please enter items manually.";
   }
   if (/RESOURCE_EXHAUSTED|quota|429/i.test(msg)) {
     return "AI Scanner is busy right now. Please wait a moment and try again, or enter items manually.";
   }
   if (/not found|404|no longer available/i.test(msg)) {
-    return "AI Scanner service is temporarily unavailable. Please enter items manually.";
+    return "Google AI model is currently unavailable. AI Scanner service is temporarily unavailable. Please enter items manually.";
   }
   if (/timed out|timeout/i.test(msg)) {
     return "AI scan took too long. Please try a clearer or smaller image, or enter items manually.";
@@ -70,14 +70,31 @@ export function cleanHumanReadableAiError(error: any): string {
 }
 
 export async function scanPurchaseInvoiceWithGemini(
-  files: { base64Data: string; mimeType: string }[],
-  apiKey?: string
+  input: { base64Data: string; mimeType: string }[] | string,
+  mimeTypeOrApiKey?: string,
+  maybeApiKey?: string
 ): Promise<ScannedInvoiceResult> {
+  let files: { base64Data: string; mimeType: string }[];
+  let apiKey: string | undefined;
+
+  if (typeof input === "string") {
+    files = [{ base64Data: input, mimeType: mimeTypeOrApiKey || "image/jpeg" }];
+    apiKey = maybeApiKey;
+  } else {
+    files = input;
+    apiKey = mimeTypeOrApiKey;
+  }
+
   const isValidKey = (k: string) => k.startsWith("AIzaSy") || k.startsWith("AQ.");
-  const validCustomKey = apiKey && isValidKey(apiKey.trim()) ? apiKey.trim() : undefined;
-  const finalApiKey = validCustomKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  let finalApiKey: string | undefined;
+  if (apiKey !== undefined) {
+    finalApiKey = isValidKey(apiKey.trim()) ? apiKey.trim() : undefined;
+  } else {
+    finalApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  }
+
   if (!finalApiKey || finalApiKey.trim() === "") {
-    throw new Error("AI Scanner is not configured. Please contact support.");
+    throw new Error("Google Gemini API key is not configured. AI Scanner is not configured. Please contact support.");
   }
 
   const ai = new GoogleGenAI({ apiKey: finalApiKey, apiVersion: "v1" });

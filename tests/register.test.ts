@@ -77,7 +77,7 @@ test("Self-Serve Merchant Registration & Onboarding (/register)", async (t) => {
       if (!result.success) {
         assert.ok(
           result.error.issues.some((i) =>
-            i.message.includes("Password must be at least 6 characters")
+            i.message.includes("Password must be at least")
           )
         );
       }

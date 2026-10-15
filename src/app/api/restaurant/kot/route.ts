@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
         data: {
           status: TableStatus.OCCUPIED,
           occupiedAt: table.occupiedAt || new Date(),
+          assignedWaiter: table.assignedWaiter || waiterName || "Captain",
           currentTotal: {
             increment: totalKotAmount,
           },
@@ -107,6 +108,50 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error creating KOT:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// PATCH /api/restaurant/kot - Advance kitchen status: PREPARING -> READY -> SERVED
+// Body: { kotId, status: "READY" | "SERVED" }
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await requireSession(req);
+    const tenantId = session.tenantId;
+    const { kotId, status } = await req.json();
+
+    if (!kotId || !["READY", "SERVED"].includes(status)) {
+      return NextResponse.json({ error: "kotId and status (READY or SERVED) are required" }, { status: 400 });
+    }
+
+    const kot = await prisma.kitchenOrderTicket.findFirst({ where: { id: kotId, tenantId } });
+    if (!kot) {
+      return NextResponse.json({ error: "KOT not found" }, { status: 404 });
+    }
+
+    // Only allow forward moves from an open state
+    const allowed: Record<string, string[]> = {
+      READY: ["PREPARING"],
+      SERVED: ["PREPARING", "READY"],
+    };
+    if (!allowed[status].includes(kot.status)) {
+      return NextResponse.json({ error: `Cannot move a ${kot.status} KOT to ${status}` }, { status: 409 });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const k = await tx.kitchenOrderTicket.update({
+        where: { id: kotId },
+        data: { status: status as KotStatus },
+      });
+      if (status === "SERVED") {
+        await tx.kotItem.updateMany({ where: { kotId, isVoided: false }, data: { isServed: true } });
+      }
+      return k;
+    });
+
+    return NextResponse.json({ success: true, kot: updated });
+  } catch (error: any) {
+    console.error("Error updating KOT status:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

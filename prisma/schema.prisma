@@ -79,6 +79,7 @@ model Tenant {
   autoRoundOff            Boolean          @default(true)  // Round off bill to nearest integer
   logoUrl                 String?
   businessType       String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES"
+  restaurantPlan     String           @default("NONE") // "NONE" | "STARTER" | "PRO" | "CHAIN" — Restaurant-specific add-on tier
   subscriptionTier   SubscriptionTier @default(FREE)
   subscriptionStatus String           @default("ACTIVE") // "ACTIVE", "CANCELLED", "EXPIRED", "TRIALING"
   planBillingCycle   String           @default("MONTHLY") // "MONTHLY", "ANNUAL"
@@ -101,6 +102,7 @@ model Tenant {
   recipeItems           RecipeItem[]
   batches               Batch[]
   restaurantTables      RestaurantTable[]
+  tableReservations     TableReservation[]
   kitchenOrderTickets   KitchenOrderTicket[]
   invoiceSequences      InvoiceSequence[]
   creditNotes           CreditNote[]
@@ -928,6 +930,7 @@ model RestaurantTable {
   capacity     Int         @default(4)
   status       TableStatus @default(VACANT)
   activeKotId  String? // Link to currently open session
+  assignedWaiter String? // Captain/waiter responsible for this table
   currentTotal Decimal     @default(0.0) @db.Decimal(10, 2)
   occupiedAt   DateTime?
   createdAt    DateTime    @default(now())
@@ -940,8 +943,36 @@ model RestaurantTable {
   @@map("restaurant_tables")
 }
 
+model TableReservation {
+  id              String    @id @default(uuid())
+  tenantId        String
+  tableId         String?   // null = waitlist (no specific table yet)
+  customerName    String
+  customerPhone   String
+  guestCount      Int       @default(2)
+  reservedAt      DateTime  // Requested date+time for the booking
+  notes           String?   // Dietary needs, special occasion, etc.
+  status          ReservationStatus @default(PENDING)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("table_reservations")
+}
+
+enum ReservationStatus {
+  PENDING    // Received, not confirmed
+  CONFIRMED  // Staff confirmed
+  SEATED     // Guest arrived and seated
+  COMPLETED  // Visit done
+  CANCELLED  // No-show or cancelled
+  WAITLIST   // Walk-in waiting for a table
+}
+
 enum KotStatus {
   PREPARING
+  READY
   SERVED
   SETTLED
   CANCELLED
@@ -969,15 +1000,21 @@ model KitchenOrderTicket {
 }
 
 model KotItem {
-  id          String   @id @default(uuid())
-  kotId       String
-  productId   String
-  productName String
-  quantity    Decimal  @db.Decimal(10, 2)
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  notes       String? // e.g. "Extra spicy, no mayo"
-  isServed    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id               String   @id @default(uuid())
+  kotId            String
+  productId        String
+  productName      String
+  quantity         Decimal  @db.Decimal(10, 2)
+  unitPrice        Decimal  @db.Decimal(10, 2)
+  discountAmount   Decimal  @default(0.0) @db.Decimal(10, 2) // flat rupee discount on this line
+  isComplimentary  Boolean  @default(false)                  // "on the house" — full item free
+  notes            String?  // e.g. "Extra spicy, no mayo"
+  isServed         Boolean  @default(false)
+  isVoided         Boolean  @default(false)                  // item cancelled after KOT fired
+  voidedAt         DateTime?
+  voidReason       String?
+  settledInvoiceId String?  // set when this line is paid (supports split bills)
+  createdAt        DateTime @default(now())
 
   kot     KitchenOrderTicket @relation(fields: [kotId], references: [id], onDelete: Cascade)
   product Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
