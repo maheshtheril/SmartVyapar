@@ -38,6 +38,13 @@ export interface Gstr3bComputationInput {
     igstAmount: number | string;
     totalAmount: number | string;
   }>;
+  debitNotes?: Array<{
+    subtotal: number | string;
+    cgstAmount: number | string;
+    sgstAmount: number | string;
+    igstAmount: number | string;
+    totalAmount: number | string;
+  }>;
   reconciled2bItc?: {
     igst: number;
     cgst: number;
@@ -198,11 +205,27 @@ export function computeGstr3bReturn(input: Gstr3bComputationInput): Gstr3bReport
     }
   }
 
+  // 4B. ITC Reversal from Debit Notes (Rule 37/42 / Table 4(B)(2))
+  let dnIgst = 0;
+  let dnCgst = 0;
+  let dnSgst = 0;
+  if (input.debitNotes && Array.isArray(input.debitNotes)) {
+    for (const dn of input.debitNotes) {
+      dnIgst += Number(dn.igstAmount || 0);
+      dnCgst += Number(dn.cgstAmount || 0);
+      dnSgst += Number(dn.sgstAmount || 0);
+    }
+  }
+
+  const netItcIgst = Math.max(0, itcIgst - dnIgst);
+  const netItcCgst = Math.max(0, itcCgst - dnCgst);
+  const netItcSgst = Math.max(0, itcSgst - dnSgst);
+
   // 5. Rule 88A Tax Offset Math
   // Step A: Pay IGST liability first with IGST credit
-  let availableIgstCredit = itcIgst;
-  let availableCgstCredit = itcCgst;
-  let availableSgstCredit = itcSgst;
+  let availableIgstCredit = netItcIgst;
+  let availableCgstCredit = netItcCgst;
+  let availableSgstCredit = netItcSgst;
 
   let liabilityIgst = netIgst;
   let liabilityCgst = netCgst;
@@ -286,12 +309,17 @@ export function computeGstr3bReturn(input: Gstr3bComputationInput): Gstr3bReport
       },
       itcReversed: {
         asPerRule4243: { iamt: 0, camt: 0, samt: 0, csamt: 0 },
-        others: { iamt: 0, camt: 0, samt: 0, csamt: 0 },
+        others: {
+          iamt: Math.round(dnIgst * 100) / 100,
+          camt: Math.round(dnCgst * 100) / 100,
+          samt: Math.round(dnSgst * 100) / 100,
+          csamt: 0,
+        },
       },
       netItc: {
-        iamt: Math.round(itcIgst * 100) / 100,
-        camt: Math.round(itcCgst * 100) / 100,
-        samt: Math.round(itcSgst * 100) / 100,
+        iamt: Math.round(netItcIgst * 100) / 100,
+        camt: Math.round(netItcCgst * 100) / 100,
+        samt: Math.round(netItcSgst * 100) / 100,
         csamt: 0.0,
       },
       ineligibleItc: {

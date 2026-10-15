@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     }
 
-    const [tenant, invoices, creditNotes, purchases, reconciliation2b, savedReturn] = await Promise.all([
+    const [tenant, invoices, creditNotes, purchases, debitNotes, reconciliation2b, savedReturn] = await Promise.all([
       prisma.tenant.findUnique({
         where: { id: tenantId },
       }),
@@ -49,6 +49,12 @@ export async function GET(req: NextRequest) {
         where: {
           tenantId,
           billDate: { gte: startDate, lte: endDate },
+        },
+      }),
+      prisma.debitNote.findMany({
+        where: {
+          tenantId,
+          debitNoteDate: { gte: startDate, lte: endDate },
         },
       }),
       prisma.gstr2bReconciliation.findUnique({
@@ -120,6 +126,7 @@ export async function GET(req: NextRequest) {
       invoices: invoices as any,
       creditNotes: creditNotes as any,
       purchaseBills: purchases as any,
+      debitNotes: debitNotes as any,
       reconciled2bItc,
     });
 
