@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import ThermalReceiptModal, { ThermalReceiptData } from '@/components/ThermalReceiptModal';
 import CreditNoteModal from '@/components/CreditNoteModal';
+import CreditNoteVoucherModal from '@/components/CreditNoteVoucherModal';
 import EWayBillModal from '@/components/EWayBillModal';
 import EInvoiceModal from '@/components/EInvoiceModal';
 
@@ -64,6 +65,7 @@ export default function InvoicesPage() {
   });
   const [selectedInvoiceForReturn, setSelectedInvoiceForReturn] = useState<any | null>(null);
   const [showCreditNoteModal, setShowCreditNoteModal] = useState(false);
+  const [selectedCreditNoteForView, setSelectedCreditNoteForView] = useState<any | null>(null);
 
   const cancelInvoice = async (invoiceId: string, invoiceNumber: string) => {
     const reason = prompt(`Cancel Invoice #${invoiceNumber}?\n\nEnter reason (or press OK to proceed):\n`, 'Cancelled by owner');
@@ -870,6 +872,7 @@ export default function InvoicesPage() {
                     <th className="px-4 py-3 font-semibold">Refund Mode</th>
                     <th className="px-4 py-3 font-semibold">Tax Reversed</th>
                     <th className="px-4 py-3 font-semibold">Total Credited</th>
+                    <th className="px-4 py-3 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -904,6 +907,17 @@ export default function InvoicesPage() {
                       <td className="px-4 py-3 font-extrabold text-slate-900">
                         ₹{Number(cn.totalAmount || 0).toFixed(2)}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCreditNoteForView(cn)}
+                          className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50 transition shadow-xs font-semibold"
+                          title="Print Statutory Credit Note Voucher (GST Rule 53)"
+                        >
+                          <Printer className="h-3 w-3 text-amber-600" />
+                          <span>Voucher</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -928,6 +942,16 @@ export default function InvoicesPage() {
           onClose={() => setShowCreditNoteModal(false)}
           invoice={selectedInvoiceForReturn}
           onSuccess={handleCreditNoteSuccess}
+        />
+      )}
+
+      {/* Credit Note Voucher Print Preview Modal */}
+      {selectedCreditNoteForView && (
+        <CreditNoteVoucherModal
+          isOpen={!!selectedCreditNoteForView}
+          onClose={() => setSelectedCreditNoteForView(null)}
+          creditNote={selectedCreditNoteForView}
+          tenant={business}
         />
       )}
 
