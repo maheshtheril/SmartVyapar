@@ -139,6 +139,14 @@ export async function GET(req: NextRequest) {
             href: "/billing/shifts", 
             icon: "Wallet" 
           },
+          { 
+            id: "customer-display", 
+            name: "Customer Pole Display", 
+            href: "/display", 
+            icon: "Tv",
+            badge: "Dual Screen",
+            badgeColor: "indigo"
+          },
         ],
       },
       {

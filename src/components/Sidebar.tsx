@@ -51,11 +51,13 @@ import {
   CheckCircle2,
   Wrench,
   Calendar,
+  Tv,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
   Receipt,
+  Tv,
   PlusCircle,
   FileText,
   FileCheck,
