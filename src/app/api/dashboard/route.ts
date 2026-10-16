@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 
     const lowStockItems = await prisma.$queryRaw<any[]>`
       SELECT id, name, sku, "currentStock", "minStockAlert", "baseUnit"
-      FROM "Product"
+      FROM "products"
       WHERE "tenantId" = ${tenantId} 
         AND "isActive" = true 
         AND "currentStock" <= "minStockAlert"
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     const lowStockTotalResult = await prisma.$queryRaw<any[]>`
       SELECT COUNT(*) as count
-      FROM "Product"
+      FROM "products"
       WHERE "tenantId" = ${tenantId} 
         AND "isActive" = true 
         AND "currentStock" <= "minStockAlert"
