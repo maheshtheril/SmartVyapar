@@ -46,6 +46,7 @@ export interface ThermalReceiptData {
   customerPhone?: string;
   customerState?: string;
   cashierName?: string;
+  counterName?: string;
   docTitle?: string;
   items: ThermalReceiptItem[];
   subTotal: number;
@@ -183,6 +184,7 @@ export default function ThermalReceiptModal({
         invoiceDate: new Date(data.invoiceDate).toLocaleDateString('en-IN'),
         customerName: data.customerName,
         customerPhone: data.customerPhone,
+        counterName: data.counterName,
         items: data.items.map((i) => ({
           name: i.name,
           quantity: i.quantity,
@@ -581,6 +583,9 @@ export default function ThermalReceiptModal({
                 </div>
                 {data.customerPhone && (
                   <div>Mobile: {data.customerPhone}</div>
+                )}
+                {data.counterName && (
+                  <div>Counter: {data.counterName}</div>
                 )}
                 {data.cashierName && (
                   <div>Cashier: {data.cashierName}</div>

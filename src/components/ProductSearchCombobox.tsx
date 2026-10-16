@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Check, AlertTriangle, X, ChevronDown } from 'lucide-react';
+import { Search, Check, AlertTriangle, X, ChevronDown, Scale } from 'lucide-react';
+import { parseScaleBarcode } from '@/lib/scale-barcode';
 
 export interface ProductOption {
   id: string;
@@ -25,6 +26,7 @@ interface ProductSearchComboboxProps {
   onSelect: (product: ProductOption | null) => void;
   placeholder?: string;
   onBarcodeScan?: (product: ProductOption) => void;
+  onScaleBarcodeScan?: (product: ProductOption, weightKg: number) => void;
   autoClearOnSelect?: boolean;
   openOnFocus?: boolean;
 }
@@ -35,6 +37,7 @@ export default function ProductSearchCombobox({
   onSelect,
   placeholder = "Search product name, SKU, or barcode (F1)...",
   onBarcodeScan,
+  onScaleBarcodeScan,
   autoClearOnSelect = false,
   openOnFocus = true,
   id,
@@ -144,7 +147,40 @@ export default function ProductSearchCombobox({
       // 1. Check exact barcode match first (barcode scanner gun fires text + Enter)
       const trimmed = query.trim();
       if (trimmed) {
-        // Search in the currently available list (local or server fetched)
+        // A. Electronic Weighing Scale Barcode Check (EAN-13 Type 2)
+        const scaleParsed = parseScaleBarcode(trimmed);
+        if (scaleParsed && scaleParsed.isScaleBarcode) {
+          const allProds = products || serverResults || [];
+          const matchedScaleItem = allProds.find((p) => {
+            const b = p.barcode?.toLowerCase() || "";
+            const s = p.sku?.toLowerCase() || "";
+            const plu = scaleParsed.pluCode.toLowerCase();
+            const clean = scaleParsed.cleanPlu.toLowerCase();
+            return (
+              b === plu ||
+              b === clean ||
+              s === plu ||
+              s === clean ||
+              s.endsWith(clean) ||
+              b.startsWith(scaleParsed.prefix + plu)
+            );
+          });
+
+          if (matchedScaleItem) {
+            if (onScaleBarcodeScan) {
+              onScaleBarcodeScan(matchedScaleItem, scaleParsed.weightKg);
+            } else if (onBarcodeScan) {
+              onBarcodeScan(matchedScaleItem);
+            } else {
+              onSelect(matchedScaleItem);
+            }
+            if (autoClearOnSelect) setQuery("");
+            setIsOpen(false);
+            return;
+          }
+        }
+
+        // B. Standard Product Barcode search
         const exactBarcode = filtered.find(
           (p) => p.barcode && p.barcode.toLowerCase() === trimmed.toLowerCase()
         );
