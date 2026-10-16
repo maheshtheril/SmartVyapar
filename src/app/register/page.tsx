@@ -259,11 +259,14 @@ export default function RegisterPage() {
                 <Building2 className="h-3.5 w-3.5" />
                 <span>2. Industry Type</span>
               </h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {[
                   { id: 'RETAIL', label: 'Retail & POS' },
+                  { id: 'APPAREL', label: 'Textiles & Apparel' },
+                  { id: 'ELECTRONICS', label: 'Electronics & Mobiles' },
                   { id: 'PHARMACY', label: 'Pharmacy & Healthcare' },
                   { id: 'RESTAURANT', label: 'Restaurant & F&B' },
+                  { id: 'SALON_SPA', label: 'Salon, Spa & Wellness' },
                   { id: 'DISTRIBUTION', label: 'FMCG & Distribution' },
                   { id: 'AUTOMOBILE', label: 'Automobile & Garage' },
                   { id: 'SERVICES', label: 'Services & Billing' }
@@ -272,12 +275,30 @@ export default function RegisterPage() {
                     key={type.id}
                     type="button"
                     onClick={() => setBusinessType(type.id)}
-                    className={`flex items-center justify-center py-2.5 rounded-xl border text-xs font-bold transition ${businessType === type.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-indigo-300'}`}
+                    className={`flex items-center justify-center py-2.5 px-2 text-center rounded-xl border text-xs font-bold transition ${businessType === type.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-indigo-300'}`}
                   >
                     {type.label}
                   </button>
                 ))}
               </div>
+              {businessType === 'APPAREL' && (
+                <p className="text-[10px] text-indigo-600 mt-2 font-medium bg-indigo-50 p-2 rounded-lg">
+                  <Sparkles className="h-3 w-3 inline mr-1" />
+                  Size-Color-Fit matrix, parent-child barcode labels, and fabric meter cut billing will be enabled.
+                </p>
+              )}
+              {businessType === 'ELECTRONICS' && (
+                <p className="text-[10px] text-indigo-600 mt-2 font-medium bg-indigo-50 p-2 rounded-lg">
+                  <Sparkles className="h-3 w-3 inline mr-1" />
+                  Dual IMEI & Serial number tracking, 15-digit warranty lookup, and gadget trade-in vouchers will be enabled.
+                </p>
+              )}
+              {businessType === 'SALON_SPA' && (
+                <p className="text-[10px] text-indigo-600 mt-2 font-medium bg-indigo-50 p-2 rounded-lg">
+                  <Sparkles className="h-3 w-3 inline mr-1" />
+                  Stylist/therapist commission splitting, appointment scheduler, and prepaid wellness packages will be enabled.
+                </p>
+              )}
               {businessType === 'PHARMACY' && (
                 <p className="text-[10px] text-indigo-600 mt-2 font-medium bg-indigo-50 p-2 rounded-lg">
                   <Sparkles className="h-3 w-3 inline mr-1" />

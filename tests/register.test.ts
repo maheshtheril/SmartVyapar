@@ -62,6 +62,25 @@ test("Self-Serve Merchant Registration & Onboarding (/register)", async (t) => {
       }
     });
 
+    await t.test("should accept APPAREL, ELECTRONICS, and SALON_SPA business types", () => {
+      const basePayload = {
+        businessName: "Fashion & Style Hub",
+        ownerName: "Ananya Roy",
+        email: "ananya@stylehub.in",
+        phone: "+91 98765 11223",
+        password: "secretpassword123",
+        upiId: "ananya@okaxis",
+      };
+
+      for (const bType of ["APPAREL", "ELECTRONICS", "SALON_SPA"]) {
+        const res = RegisterTenantSchema.safeParse({ ...basePayload, businessType: bType });
+        assert.equal(res.success, true, `businessType ${bType} must be accepted`);
+        if (res.success) {
+          assert.equal(res.data.businessType, bType);
+        }
+      }
+    });
+
     await t.test("should reject registration with password shorter than 6 characters", () => {
       const invalid = {
         businessName: "Kochi Retail Hub",

@@ -78,7 +78,7 @@ model Tenant {
   financialYearStartMonth Int              @default(4) // 4 = April, 1 = January
   autoRoundOff            Boolean          @default(true) // Round off bill to nearest integer
   logoUrl                 String?
-  businessType            String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES", "PHARMACY"
+  businessType            String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES", "PHARMACY", "DISTRIBUTION", "APPAREL", "ELECTRONICS", "SALON_SPA"
   pharmacyDrugLicense20B  String? // Retail Allopathic Drug License Form 20B
   pharmacyDrugLicense21B  String? // Retail Drug License Form 21B
   restaurantPlan          String           @default("NONE") // "NONE" | "STARTER" | "PRO" | "CHAIN" — Restaurant-specific add-on tier

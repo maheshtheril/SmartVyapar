@@ -70,6 +70,9 @@ function getDefaultHsn(type?: string): string {
     case "RESTAURANT": return "2106"; // Food preparation / Prepared Dish
     case "AUTOMOBILE": return "8708"; // Motor vehicle parts & accessories
     case "PHARMACEUTICAL": return "3004"; // Medicaments
+    case "APPAREL": return "6203"; // Men's or boys' suits, ensembles, jackets, trousers
+    case "ELECTRONICS": return "8517"; // Mobile phones, wireless equipment & electronics
+    case "SALON_SPA": return "9997"; // Washing, cleaning & beauty services (SAC)
     case "SERVICES": return "9983"; // IT & Professional Services
     case "DISTRIBUTION":
     case "RETAIL":
@@ -80,7 +83,10 @@ function getDefaultHsn(type?: string): string {
 function getDefaultGstRate(type?: string): string {
   switch (type) {
     case "RESTAURANT": return "5"; // 5% GST standard for restaurant food & dining
+    case "APPAREL": return "12"; // 12% standard apparel rate
     case "PHARMACEUTICAL": return "12"; // 12% on standard medicines
+    case "ELECTRONICS": return "18"; // 18% consumer electronics & IT goods
+    case "SALON_SPA": return "18"; // 18% standard beauty & personal care SAC
     case "AUTOMOBILE": return "18"; // 18% standard auto parts
     case "SERVICES": return "18"; // 18% standard SAC services
     case "DISTRIBUTION":
@@ -166,12 +172,21 @@ function getDefaultGstRate(type?: string): string {
         if (bType === "RESTAURANT") {
           setProductType("FINISHED_GOOD");
           setBaseUnit("PORTION");
-        } else if (bType === "PHARMACEUTICAL") {
+        } else if (bType === "PHARMACEUTICAL" || bType === "PHARMACY") {
           setBaseUnit("TAB");
           setHasAltUnit(true);
           setAltUnit("STRIP");
           setConversionFactor("10");
           setHasBatchTracking(true);
+        } else if (bType === "SALON_SPA") {
+          setBaseUnit("SERVICE");
+        } else if (bType === "APPAREL") {
+          setBaseUnit("PCS");
+          setHasAltUnit(true);
+          setAltUnit("MTR");
+          setConversionFactor("1");
+        } else if (bType === "ELECTRONICS") {
+          setBaseUnit("PCS");
         }
       }
       const data = await res.json();
@@ -203,15 +218,19 @@ function getDefaultGstRate(type?: string): string {
     setProductType(isRestaurant ? "FINISHED_GOOD" : "RETAIL_ITEM");
     setHsnCode(getDefaultHsn(businessType));
     setGstRate(getDefaultGstRate(businessType));
-    setBaseUnit(isRestaurant ? "PORTION" : isPharma ? "TAB" : "PCS");
+    setBaseUnit(
+      businessType === "RESTAURANT" ? "PORTION" :
+      (businessType === "PHARMACEUTICAL" || businessType === "PHARMACY") ? "TAB" :
+      businessType === "SALON_SPA" ? "SERVICE" : "PCS"
+    );
     setSku("");
     setBarcode("");
     setPurchasePrice("");
     setSellingPrice("");
     setMrp("");
-    setHasAltUnit(isPharma ? true : false);
-    setAltUnit(isPharma ? "STRIP" : "");
-    setConversionFactor("10");
+    setHasAltUnit(isPharma || businessType === "APPAREL");
+    setAltUnit(isPharma ? "STRIP" : businessType === "APPAREL" ? "MTR" : "");
+    setConversionFactor(businessType === "APPAREL" ? "1" : "10");
     setInitialStock("0");
     setMinStockAlert("5");
     setHasBatchTracking(isPharma ? true : false);

@@ -140,11 +140,35 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-3">
               {[
                 {
+                  id: 'APPAREL',
+                  title: 'Textiles & Apparel Store',
+                  emoji: '👗',
+                  desc: 'Raymond Cotton Shirts, Levi’s 511 Denims, Kanchipuram Silk Sarees, and unstitched fabric meters.',
+                  badge: 'Matrix & Fabric',
+                  badgeColor: 'bg-violet-100 text-violet-800',
+                },
+                {
+                  id: 'ELECTRONICS',
+                  title: 'Electronics & Mobile Store',
+                  emoji: '📱',
+                  desc: 'Apple iPhone 16 Pro, Samsung S24 Ultra, Sony ANC Headphones, Dell Laptops with 15-digit serials.',
+                  badge: 'IMEI & Warranty',
+                  badgeColor: 'bg-cyan-100 text-cyan-800',
+                },
+                {
+                  id: 'SALON_SPA',
+                  title: 'Salon, Spa & Wellness Center',
+                  emoji: '💇',
+                  desc: 'Director Haircuts, Keratin Spas, Hydra-Facials with therapist commission & Moroccanoil retail.',
+                  badge: 'Appointments & Comm.',
+                  badgeColor: 'bg-pink-100 text-pink-800',
+                },
+                {
                   id: 'PHARMACY',
                   title: 'Pharmacy & Healthcare',
                   emoji: '💊',
                   desc: 'Dolo 650, Augmentin 625, Azithral (Schedule H/H1), doctors, and 30-day near-expiry batches.',
-                  badge: 'New Module',
+                  badge: 'Rx & Schedules',
                   badgeColor: 'bg-emerald-100 text-emerald-800',
                 },
                 {

@@ -90,6 +90,9 @@ test("Industry-Specific Sidebar Menu Scoping", async (t) => {
 
     assert.equal(isAutoVisible("RESTAURANT"), false, "Automotive fields must be hidden for Restaurant");
     assert.equal(isAutoVisible("RETAIL"), false, "Automotive fields must be hidden for Retail");
+    assert.equal(isAutoVisible("APPAREL"), false, "Automotive fields must be hidden for Apparel");
+    assert.equal(isAutoVisible("ELECTRONICS"), false, "Automotive fields must be hidden for Electronics");
+    assert.equal(isAutoVisible("SALON_SPA"), false, "Automotive fields must be hidden for Salon & Spa");
     assert.equal(isAutoVisible("PHARMACEUTICAL"), false, "Automotive fields must be hidden for Pharmacy");
     assert.equal(isAutoVisible("SERVICES"), false, "Automotive fields must be hidden for Services");
     assert.equal(isAutoVisible("AUTOMOBILE"), true, "Automotive fields must be shown for Automobile");
@@ -102,5 +105,22 @@ test("Industry-Specific Sidebar Menu Scoping", async (t) => {
     assert.equal(isPharmaVisible("RESTAURANT"), false, "Pharma clinical card must be hidden for Restaurant");
     assert.equal(isPharmaVisible("AUTOMOBILE"), false, "Pharma clinical card must be hidden for Automobile");
     assert.equal(isPharmaVisible("RETAIL"), false, "Pharma clinical card must be hidden for Retail");
+    assert.equal(isPharmaVisible("APPAREL"), false, "Pharma clinical card must be hidden for Apparel");
+    assert.equal(isPharmaVisible("ELECTRONICS"), false, "Pharma clinical card must be hidden for Electronics");
+    assert.equal(isPharmaVisible("SALON_SPA"), false, "Pharma clinical card must be hidden for Salon & Spa");
+  });
+
+  await t.test("APPAREL, ELECTRONICS, and SALON_SPA tenants should NOT see Garage or Restaurant specific modules", () => {
+    for (const bType of ["APPAREL", "ELECTRONICS", "SALON_SPA"]) {
+      const tree = generateTestMenuTree({ businessType: bType });
+      const hasGarage = tree.some((m) => m.id === "garage");
+      const hasRestaurant = tree.some((m) => m.id === "restaurant");
+      const inventoryGroup = tree.find((m) => m.id === "inventory");
+      const hasRecipes = inventoryGroup.children.some((c: any) => c.id === "recipes");
+
+      assert.equal(hasGarage, false, `Garage menu must NOT be visible to ${bType}`);
+      assert.equal(hasRestaurant, false, `Restaurant menu must NOT be visible to ${bType}`);
+      assert.equal(hasRecipes, false, `Recipes BOM must NOT be visible to ${bType}`);
+    }
   });
 });
