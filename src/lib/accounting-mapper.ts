@@ -18,9 +18,22 @@ export async function postJournalEntry(
 
   const accountMap = new Map(accounts.map((a: any) => [a.code, a]));
 
-  const missing = accountCodes.filter((c) => !accountMap.has(c));
+  let missing = accountCodes.filter((c) => !accountMap.has(c));
   if (missing.length > 0) {
-    throw new Error(`Missing ledger accounts for automated posting: ${missing.join(", ")}`);
+    // Self-healing: seed default Chart of Accounts for older or unseeded tenants
+    const { seedDefaultAccounts } = await import("@/lib/default-accounts");
+    await seedDefaultAccounts(tx, tenantId);
+    
+    // Re-fetch accounts to populate accountMap
+    const reloadedAccounts = await tx.account.findMany({
+      where: { tenantId, code: { in: accountCodes } },
+    });
+    reloadedAccounts.forEach((a: any) => accountMap.set(a.code, a));
+
+    missing = accountCodes.filter((c) => !accountMap.has(c));
+    if (missing.length > 0) {
+      throw new Error(`Missing ledger accounts for automated posting: ${missing.join(", ")}`);
+    }
   }
 
   // Calculate total amount from debits

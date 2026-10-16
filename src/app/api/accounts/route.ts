@@ -23,10 +23,20 @@ export async function GET(req: NextRequest) {
       where.classification = classification as AccountClassification;
     }
 
-    const accounts = await prisma.account.findMany({
+    let accounts = await prisma.account.findMany({
       where,
       orderBy: { code: "asc" },
     });
+
+    // Auto-seed default accounts if this tenant has zero accounts created yet
+    if (accounts.length === 0 && !classification) {
+      const { seedDefaultAccounts } = await import("@/lib/default-accounts");
+      await seedDefaultAccounts(prisma, tenantId);
+      accounts = await prisma.account.findMany({
+        where,
+        orderBy: { code: "asc" },
+      });
+    }
 
     // Compute totals per classification
     const summary = {
