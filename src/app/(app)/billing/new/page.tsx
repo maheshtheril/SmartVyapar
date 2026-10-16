@@ -30,7 +30,8 @@ import { Tag,
   AlertTriangle,
   Coins,
   Wallet,
-  Scale
+  Scale,
+  Tv
 } from 'lucide-react';
 import Link from 'next/link';
 import ProductSearchCombobox, { ProductOption } from '@/components/ProductSearchCombobox';
@@ -41,6 +42,7 @@ import ThermalZReportModal, { ZReportData } from '@/components/ThermalZReportMod
 import QrCodeCanvas from '@/components/QrCodeCanvas';
 import { cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
 import OfflineStatusPill from '@/components/OfflineStatusPill';
+import { sendCustomerDisplayUpdate } from '@/lib/customer-display';
 
 const HYPERMARKET_LANES = [
   "Lane 01 • Ground Floor (Express / Quick)",
@@ -514,6 +516,112 @@ export default function NewInvoicePage() {
     { label: '₹2,000', value: 2000 },
   ].filter((d, idx, arr) => d.value >= grandTotal && arr.findIndex(x => x.value === d.value) === idx);
 
+  // Running savings across all scanned items for customer pole display
+  let runningSavings = totalDiscount;
+  billItems.forEach((item) => {
+    if (item.productId && item.price > 0) {
+      const catItem = catalog.find((c) => c.id === item.productId);
+      const itemMrp = item.batchMrp || (catItem && catItem.mrp ? Number(catItem.mrp) : (catItem && catItem.sellingPrice ? Math.max(item.price, Number(catItem.sellingPrice) * 1.15) : item.price));
+      if (itemMrp > item.price) {
+        runningSavings += (itemMrp - item.price) * item.quantity;
+      }
+    }
+  });
+
+  // Open Customer-Facing Pole Display in a dedicated secondary auxiliary window
+  const handleOpenCustomerDisplay = () => {
+    if (typeof window !== "undefined") {
+      window.open("/display", "ZionaCustomerDisplay", "width=1200,height=800,menubar=no,toolbar=no,location=no");
+    }
+  };
+
+  // Real-Time Customer Pole Display Broadcast Sync via BroadcastChannel
+  useEffect(() => {
+    const validItems = billItems.filter((i) => i.productId && i.price > 0);
+
+    if (showReceiptModal) {
+      // Handled upon invoice creation
+      return;
+    }
+
+    if (isPaymentModalOpen) {
+      sendCustomerDisplayUpdate({
+        storeName: business.name || "Ziona Supermarket",
+        counterName: counterLane,
+        status: "PAYMENT",
+        items: validItems.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.price,
+          total: Number((i.price * i.quantity).toFixed(2)),
+        })),
+        subtotal: grossSubtotal,
+        taxAmount: Number((isIntraState ? totalCgst + totalSgst : totalIgst).toFixed(2)),
+        discountAmount: totalDiscount,
+        totalAmount: grandTotal,
+        totalSavings: runningSavings,
+        customerName: customerName || undefined,
+        paymentMode: paymentMode === "SPLIT" ? "SPLIT" : paymentMode,
+        upiUri: paymentMode === "SPLIT" ? splitUpiUri : currentUpiUri,
+        updatedAt: Date.now(),
+      });
+      return;
+    }
+
+    if (validItems.length === 0) {
+      sendCustomerDisplayUpdate({
+        storeName: business.name || "Ziona Supermarket",
+        counterName: counterLane,
+        status: "IDLE",
+        items: [],
+        subtotal: 0,
+        taxAmount: 0,
+        discountAmount: 0,
+        totalAmount: 0,
+        totalSavings: 0,
+        updatedAt: Date.now(),
+      });
+      return;
+    }
+
+    sendCustomerDisplayUpdate({
+      storeName: business.name || "Ziona Supermarket",
+      counterName: counterLane,
+      status: "BILLING",
+      items: validItems.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        unitPrice: i.price,
+        total: Number((i.price * i.quantity).toFixed(2)),
+      })),
+      subtotal: grossSubtotal,
+      taxAmount: Number((isIntraState ? totalCgst + totalSgst : totalIgst).toFixed(2)),
+      discountAmount: totalDiscount,
+      totalAmount: grandTotal,
+      totalSavings: runningSavings,
+      customerName: customerName || undefined,
+      updatedAt: Date.now(),
+    });
+  }, [
+    billItems,
+    grandTotal,
+    grossSubtotal,
+    totalDiscount,
+    runningSavings,
+    isPaymentModalOpen,
+    showReceiptModal,
+    splitUpiUri,
+    currentUpiUri,
+    paymentMode,
+    customerName,
+    business.name,
+    counterLane,
+    isIntraState,
+    totalCgst,
+    totalSgst,
+    totalIgst,
+  ]);
+
   // Auto-fill exact cash when switching to Cash or preset when switching to Split
   useEffect(() => {
     if (paymentMode === 'CASH' && grandTotal > 0 && !cashReceived) {
@@ -644,6 +752,9 @@ export default function NewInvoicePage() {
       } else if (e.key === 'F9') {
         e.preventDefault();
         handleResetNewSale();
+      } else if (e.key === 'F10') {
+        e.preventDefault();
+        handleOpenCustomerDisplay();
       } else if (e.key === 'F11') {
         e.preventDefault();
         toggleFullScreenPOS();
@@ -1046,6 +1157,18 @@ export default function NewInvoicePage() {
     setCardLast4("");
     setBillDiscountType('PERCENT');
     setBillDiscountValue(0);
+    sendCustomerDisplayUpdate({
+      storeName: business.name || "Ziona Supermarket",
+      counterName: counterLane,
+      status: "IDLE",
+      items: [],
+      subtotal: 0,
+      taxAmount: 0,
+      discountAmount: 0,
+      totalAmount: 0,
+      totalSavings: 0,
+      updatedAt: Date.now(),
+    });
     setBillItems([
       {
         id: `row-${Date.now()}`,
@@ -1223,6 +1346,25 @@ export default function NewInvoicePage() {
         notes: paymentNotes,
       });
 
+      sendCustomerDisplayUpdate({
+        storeName: business.name || "Ziona Supermarket",
+        counterName: counterLane,
+        status: "COMPLETED",
+        items: receiptItems.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.price,
+          total: i.total,
+        })),
+        subtotal: Number(grossSubtotal),
+        taxAmount: Number((isIntraState ? totalCgst + totalSgst : totalIgst).toFixed(2)),
+        discountAmount: totalDiscount,
+        totalAmount: grandTotal,
+        totalSavings,
+        changeReturned: changeDue > 0 ? changeDue : undefined,
+        updatedAt: Date.now(),
+      });
+
       setBillItems([{ id: `row-${Date.now()}`, productId: "", name: "", hsn: "", quantity: 1, price: 0, gst: 18 }]);
       setShowReceiptModal(true);
       setIsPaymentModalOpen(false);
@@ -1273,6 +1415,25 @@ export default function NewInvoicePage() {
         customerLoyaltyBalance: data.invoice.customerLoyalty?.currentBalance,
       });
 
+      sendCustomerDisplayUpdate({
+        storeName: business.name || "Ziona Supermarket",
+        counterName: counterLane,
+        status: "COMPLETED",
+        items: receiptItems.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.price,
+          total: i.total,
+        })),
+        subtotal: Number(data.invoice.subTotal || grossSubtotal),
+        taxAmount: Number((isIntraState ? totalCgst + totalSgst : totalIgst).toFixed(2)),
+        discountAmount: totalDiscount,
+        totalAmount: Number(data.invoice.totalAmount || grandTotal),
+        totalSavings,
+        changeReturned: changeDue > 0 ? changeDue : undefined,
+        updatedAt: Date.now(),
+      });
+
       setBillItems([{ id: `row-${Date.now()}`, productId: "", name: "", hsn: "", quantity: 1, price: 0, gst: 18 }]);
       setShowReceiptModal(true);
       setIsPaymentModalOpen(false);
@@ -1305,6 +1466,26 @@ export default function NewInvoicePage() {
             upiUri: currentUpiUri,
             notes: paymentNotes,
           });
+
+          sendCustomerDisplayUpdate({
+            storeName: business.name || "Ziona Supermarket",
+            counterName: counterLane,
+            status: "COMPLETED",
+            items: receiptItems.map((i) => ({
+              name: i.name,
+              quantity: i.quantity,
+              unitPrice: i.price,
+              total: i.total,
+            })),
+            subtotal: Number(grossSubtotal),
+            taxAmount: Number((isIntraState ? totalCgst + totalSgst : totalIgst).toFixed(2)),
+            discountAmount: totalDiscount,
+            totalAmount: grandTotal,
+            totalSavings,
+            changeReturned: changeDue > 0 ? changeDue : undefined,
+            updatedAt: Date.now(),
+          });
+
           setBillItems([{ id: `row-${Date.now()}`, productId: "", name: "", hsn: "", quantity: 1, price: 0, gst: 18 }]);
           setShowReceiptModal(true);
           setIsPaymentModalOpen(false);
@@ -1407,6 +1588,7 @@ export default function NewInvoicePage() {
           <span><kbd className="bg-white border border-slate-300 text-slate-700 px-1 py-0.5 rounded font-bold">F7</kbd> Hold</span>
           <span><kbd className="bg-white border border-slate-300 text-slate-700 px-1 py-0.5 rounded font-bold">F8</kbd> Carts</span>
           <span><kbd className="bg-white border border-slate-300 text-slate-700 px-1 py-0.5 rounded font-bold">F9</kbd> New</span>
+          <span><kbd className="bg-indigo-600 text-white px-1.5 py-0.5 rounded font-bold shadow-xs">F10</kbd> Pole Screen</span>
           <span><kbd className="bg-white border border-slate-300 text-slate-700 px-1 py-0.5 rounded font-bold">Esc</kbd> Exit</span>
         </div>
 
@@ -1439,6 +1621,18 @@ export default function NewInvoicePage() {
           </div>
 
           <OfflineStatusPill />
+
+          {/* Customer-Facing Pole Display Button */}
+          <button
+            type="button"
+            onClick={handleOpenCustomerDisplay}
+            className="px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-800 text-xs font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
+            title="Open Customer-Facing Dual Screen / Pole Display (F10)"
+          >
+            <Tv className="h-4 w-4 text-indigo-600" />
+            <span className="hidden lg:inline">Customer Screen</span>
+            <span className="text-[9px] font-mono bg-indigo-200/80 text-indigo-950 px-1 rounded">F10</span>
+          </button>
 
           {/* Cash Drawer Shift Management */}
           <button

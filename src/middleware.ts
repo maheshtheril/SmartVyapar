@@ -17,6 +17,7 @@ const PUBLIC_PATHS = [
   "/refund-policy",
   "/contact",
   "/pricing",
+  "/display",
   "/api/whatsapp/webhook",
   "/api/admin/backup",
 ];
