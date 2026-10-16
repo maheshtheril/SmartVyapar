@@ -216,6 +216,13 @@ export default function NewInvoicePage() {
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
 
+  // Pharmacy & Healthcare Rx Prescription States
+  const [rxDoctorName, setRxDoctorName] = useState<string>("");
+  const [rxDoctorRegNo, setRxDoctorRegNo] = useState<string>("");
+  const [rxPatientAge, setRxPatientAge] = useState<string>("");
+  const [rxPatientGender, setRxPatientGender] = useState<string>("");
+  const [showRxModal, setShowRxModal] = useState<boolean>(false);
+
   // Multi-item rows (default with 1 empty row for quick scanning)
   const [billItems, setBillItems] = useState<BillItem[]>([
     {
@@ -1039,6 +1046,12 @@ export default function NewInvoicePage() {
       paidAmount: computedPaid,
       loyaltyPointsToRedeem: effectiveLoyaltyDiscount > 0 ? effectiveLoyaltyDiscount : undefined,
       warehouseId: selectedWarehouseId || undefined,
+      // Pharmacy Prescription Fields
+      doctorName: rxDoctorName || undefined,
+      doctorRegNo: rxDoctorRegNo || undefined,
+      patientName: customerName || undefined,
+      patientAge: rxPatientAge ? Number(rxPatientAge) : undefined,
+      patientGender: rxPatientGender || undefined,
       notes: paymentNotes,
       items: validItems.map((i) => {
         const lineBase = i.price * i.quantity;
@@ -1725,6 +1738,73 @@ export default function NewInvoicePage() {
                 onPhoneChange={setCustomerPhone}
                 isDark={false}
               />
+
+              {/* Pharmacy Rx Prescription Drawer */}
+              <div className="mt-3 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-sm">💊</span>
+                    <span className="text-xs font-bold text-indigo-900">
+                      Rx Doctor & Prescription (Schedule H/H1)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowRxModal(!showRxModal)}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline"
+                  >
+                    {showRxModal ? 'Hide Details' : (rxDoctorName ? `Dr. ${rxDoctorName}` : '+ Attach Doctor / Rx')}
+                  </button>
+                </div>
+
+                {showRxModal && (
+                  <div className="mt-3 pt-3 border-t border-indigo-100/80 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Doctor Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Dr. Ramesh Varma"
+                        value={rxDoctorName}
+                        onChange={(e) => setRxDoctorName(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Doctor Reg No.</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. KMC-10291"
+                        value={rxDoctorRegNo}
+                        onChange={(e) => setRxDoctorRegNo(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Patient Age</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 34"
+                        value={rxPatientAge}
+                        onChange={(e) => setRxPatientAge(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Patient Gender</label>
+                      <select
+                        value={rxPatientGender}
+                        onChange={(e) => setRxPatientGender(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium"
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="MALE">Male</option>
+                        <option value="FEMALE">Female</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             {/* SINGLE DEFINITIVE ORDER FINANCIAL BREAKDOWN CARD */}
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">

@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
       unpaidInvoicesCount,
       creditNotesCount,
       occupiedTablesCount,
-      customersCount
+      customersCount,
+      nearExpiryCount
     ] = await Promise.all([
       prisma.product.count({
         where: {
@@ -71,6 +72,15 @@ export async function GET(req: NextRequest) {
       }),
       prisma.customer.count({
         where: { tenantId },
+      }),
+      prisma.batch.count({
+        where: {
+          tenantId,
+          expiryDate: {
+            lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+          currentStock: { gt: 0 },
+        },
       }),
     ]);
 
@@ -318,6 +328,41 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Industry-Specific Module: Only show Pharmacy & Healthcare for PHARMACY businesses
+    if (tenant.businessType === "PHARMACY") {
+      menuTree.splice(2, 0, {
+        id: "pharmacy",
+        name: "Pharmacy & Rx",
+        icon: "ShieldCheck",
+        badge: nearExpiryCount > 0 ? `${nearExpiryCount} Expiring` : undefined,
+        badgeColor: "rose",
+        children: [
+          {
+            id: "schedule-h-register",
+            name: "Schedule H & H1 Drug Register",
+            href: "/pharmacy/register",
+            icon: "FileCheck",
+            badge: "Govt Rule",
+            badgeColor: "indigo",
+          },
+          {
+            id: "near-expiry-monitor",
+            name: "Near-Expiry Return Monitor",
+            href: "/pharmacy/expiry",
+            icon: "Clock",
+            badge: nearExpiryCount > 0 ? `${nearExpiryCount}` : undefined,
+            badgeColor: "rose",
+          },
+          {
+            id: "doctors-master",
+            name: "Prescribing Doctors Directory",
+            href: "/pharmacy/doctors",
+            icon: "Users",
+          },
+        ],
+      });
+    }
+
     // RBAC Security: Only OWNER and MANAGER can view Accounting & Statutory Ledgers
     if (userRole === "OWNER" || userRole === "MANAGER") {
       menuTree.push({
@@ -452,12 +497,14 @@ export async function GET(req: NextRequest) {
         pincode: tenant.pincode,
         upiId: tenant.upiId,
         businessType: tenant.businessType || "RETAIL",
-          isComposition: tenant.isComposition,
-          allowNegativeStock: tenant.allowNegativeStock,
-          taxInclusiveMode: tenant.taxInclusiveMode,
-          enforceCreditLimit: tenant.enforceCreditLimit,
-          financialYearStartMonth: tenant.financialYearStartMonth,
-          autoRoundOff: tenant.autoRoundOff,
+        pharmacyDrugLicense20B: tenant.pharmacyDrugLicense20B || "",
+        pharmacyDrugLicense21B: tenant.pharmacyDrugLicense21B || "",
+        isComposition: tenant.isComposition,
+        allowNegativeStock: tenant.allowNegativeStock,
+        taxInclusiveMode: tenant.taxInclusiveMode,
+        enforceCreditLimit: tenant.enforceCreditLimit,
+        financialYearStartMonth: tenant.financialYearStartMonth,
+        autoRoundOff: tenant.autoRoundOff,
         subscriptionTier: tenant.subscriptionTier,
         restaurantPlan: tenant.restaurantPlan || "NONE",
         planExpiresAt: tenant.planExpiresAt,
@@ -475,6 +522,7 @@ export async function GET(req: NextRequest) {
         creditNotesCount,
         occupiedTablesCount,
         customersCount,
+        nearExpiryCount,
       },
       menuTree,
     });
@@ -500,6 +548,8 @@ export async function PATCH(req: NextRequest) {
       legalName,
       logoUrl,
       businessType,
+      pharmacyDrugLicense20B,
+      pharmacyDrugLicense21B,
       phone,
       email,
       address,
@@ -522,6 +572,8 @@ export async function PATCH(req: NextRequest) {
         ...(legalName !== undefined ? { legalName: legalName ? legalName.trim() : null } : {}),
         ...(logoUrl !== undefined ? { logoUrl: logoUrl ? logoUrl.trim() : null } : {}),
         ...(businessType !== undefined ? { businessType } : {}),
+        ...(pharmacyDrugLicense20B !== undefined ? { pharmacyDrugLicense20B: pharmacyDrugLicense20B ? pharmacyDrugLicense20B.trim() : null } : {}),
+        ...(pharmacyDrugLicense21B !== undefined ? { pharmacyDrugLicense21B: pharmacyDrugLicense21B ? pharmacyDrugLicense21B.trim() : null } : {}),
         ...(businessType === "DISTRIBUTION" ? { enableTerritory: true } : {}),
         ...(restaurantPlan !== undefined ? { restaurantPlan } : {}),
         ...(phone !== undefined ? { phone: phone.trim() } : {}),

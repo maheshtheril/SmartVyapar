@@ -262,10 +262,11 @@ export default function RegisterPage() {
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { id: 'RETAIL', label: 'Retail & POS' },
-                  { id: 'DISTRIBUTION', label: 'FMCG & Distribution' },
+                  { id: 'PHARMACY', label: 'Pharmacy & Healthcare' },
                   { id: 'RESTAURANT', label: 'Restaurant & F&B' },
-                  { id: 'SERVICES', label: 'Services & Billing' },
-                  { id: 'AUTOMOBILE', label: 'Automobile & Garage' }
+                  { id: 'DISTRIBUTION', label: 'FMCG & Distribution' },
+                  { id: 'AUTOMOBILE', label: 'Automobile & Garage' },
+                  { id: 'SERVICES', label: 'Services & Billing' }
                 ].map(type => (
                   <button
                     key={type.id}
@@ -277,6 +278,12 @@ export default function RegisterPage() {
                   </button>
                 ))}
               </div>
+              {businessType === 'PHARMACY' && (
+                <p className="text-[10px] text-indigo-600 mt-2 font-medium bg-indigo-50 p-2 rounded-lg">
+                  <Sparkles className="h-3 w-3 inline mr-1" />
+                  Statutory Schedule H/H1 Drug Dispensing Register, Doctor Master, and Expiry Monitor will be enabled.
+                </p>
+              )}
               {businessType === 'DISTRIBUTION' && (
                 <p className="text-[10px] text-indigo-600 mt-2 font-medium bg-indigo-50 p-2 rounded-lg">
                   <Sparkles className="h-3 w-3 inline mr-1" />
