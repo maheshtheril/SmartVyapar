@@ -54,6 +54,13 @@ const INDUSTRY_PRO_EXTRAS: Record<string, string[]> = {
     "Customer Outstanding & Dunning",
     "Professional PDF Invoice Templates",
   ],
+  PHARMACY: [
+    "Schedule H & H1 Statutory Drug Dispensing Register",
+    "Prescribing Doctors Master with Reg No auto-complete",
+    "Near-Expiry Loss Prevention Monitor (30/60/90 Days)",
+    "Strip-to-Tablet Loose Unit Selling & Fractional Deductions",
+    "State Drug License Forms 20B & 21B on Invoices",
+  ],
   RESTAURANT: [
     "Dining Tables & Visual Floor Plan",
     "Kitchen Order Tickets (KOT) — Thermal Print",
@@ -88,10 +95,11 @@ const RESTAURANT_CHAIN_FEATURES = [
 
 const INDUSTRIES = [
   { id: "RETAIL",       label: "Retail & POS",        emoji: "🛒" },
+  { id: "PHARMACY",     label: "Pharmacy & Medical",   emoji: "💊" },
+  { id: "RESTAURANT",   label: "Restaurant & F&B",     emoji: "🍽️" },
   { id: "DISTRIBUTION", label: "FMCG & Distribution", emoji: "🚚" },
   { id: "AUTOMOBILE",   label: "Automobile & Garage",  emoji: "🚗" },
   { id: "SERVICES",     label: "Services & Billing",   emoji: "💼" },
-  { id: "RESTAURANT",   label: "Restaurant & F&B",     emoji: "🍽️" },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
