@@ -462,6 +462,12 @@ export async function POST(req: NextRequest) {
           paymentMode: data.paymentMode as PaymentMode,
           upiUri,
           notes: data.notes,
+          // Pharmacy Doctor & Patient Prescription tracking
+          doctorName: data.doctorName || null,
+          doctorRegNo: data.doctorRegNo || null,
+          patientName: data.patientName || data.customerName,
+          patientAge: data.patientAge ? Number(data.patientAge) : null,
+          patientGender: data.patientGender || null,
           loyaltyPointsEarned: pointsEarned,
           loyaltyPointsRedeemed: pointsToRedeem,
           loyaltyDiscountAmount,

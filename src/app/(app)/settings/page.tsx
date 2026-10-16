@@ -72,6 +72,8 @@ function SettingsContent() {
     pincode: '',
     upiId: '',
     businessType: 'RETAIL',
+    pharmacyDrugLicense20B: '',
+    pharmacyDrugLicense21B: '',
     restaurantPlan: 'NONE',
     isComposition: false,
     allowNegativeStock: false,
@@ -209,6 +211,8 @@ function SettingsContent() {
           pincode: data.tenant.pincode || '',
           upiId: data.tenant.upiId || '',
           businessType: data.tenant.businessType || 'RETAIL',
+          pharmacyDrugLicense20B: data.tenant.pharmacyDrugLicense20B || '',
+          pharmacyDrugLicense21B: data.tenant.pharmacyDrugLicense21B || '',
           restaurantPlan: data.tenant.restaurantPlan || 'NONE',
           isComposition: !!data.tenant.isComposition,
           allowNegativeStock: !!data.tenant.allowNegativeStock,
@@ -794,12 +798,13 @@ function SettingsContent() {
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Business Industry & Store Category
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {[
                     { id: 'RETAIL', label: 'Retail & POS', desc: 'Electricals, Supermarket, Garments, Electronics', emoji: '🛒' },
-                      { id: 'DISTRIBUTION', label: 'FMCG & Distribution', desc: 'Territory management, wholesale beats, distribution', emoji: '🚚' },
-                    { id: 'AUTOMOBILE', label: 'Automobile Workshop', desc: 'Vehicle Job-Cards, Spare Parts & Labor', emoji: '🚗' },
+                    { id: 'PHARMACY', label: 'Pharmacy & Healthcare', desc: 'Schedule H/H1 Register, Doctor Master & Expiry Monitor', emoji: '💊' },
                     { id: 'RESTAURANT', label: 'Restaurant & Cafe', desc: 'Dining Tables, KOT, Bakery & Takeaway', emoji: '🍽️' },
+                    { id: 'DISTRIBUTION', label: 'FMCG & Distribution', desc: 'Territory management, wholesale beats, distribution', emoji: '🚚' },
+                    { id: 'AUTOMOBILE', label: 'Automobile Workshop', desc: 'Vehicle Job-Cards, Spare Parts & Labor', emoji: '🚗' },
                     { id: 'SERVICES', label: 'Services & Repair', desc: 'Consulting, Repair Services & Freelance', emoji: '💼' },
                   ].map((cat) => (
                     <button
@@ -824,6 +829,44 @@ function SettingsContent() {
                   Tailors your navigation sidebar and print templates to only show relevant documents for your store.
                 </p>
               </div>
+
+              {/* Pharmacy Statutory Licenses — only shown when PHARMACY is selected */}
+              {profile.businessType === 'PHARMACY' && (
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">💊</span>
+                    <label className="block text-xs font-bold text-indigo-900">
+                      State Drugs Control Department Licenses (Forms 20B & 21B)
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Drug License No. (Form 20B - Allopathic Drugs)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. KL-EKM-20B-184920"
+                        value={profile.pharmacyDrugLicense20B}
+                        onChange={(e) => setProfile({ ...profile, pharmacyDrugLicense20B: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Drug License No. (Form 21B - Specified Drugs)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. KL-EKM-21B-184921"
+                        value={profile.pharmacyDrugLicense21B}
+                        onChange={(e) => setProfile({ ...profile, pharmacyDrugLicense21B: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Restaurant Plan Add-On — only shown when RESTAURANT is selected */}
               {profile.businessType === 'RESTAURANT' && (

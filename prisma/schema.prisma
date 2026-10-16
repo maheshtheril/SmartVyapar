@@ -78,7 +78,9 @@ model Tenant {
   financialYearStartMonth Int              @default(4) // 4 = April, 1 = January
   autoRoundOff            Boolean          @default(true) // Round off bill to nearest integer
   logoUrl                 String?
-  businessType            String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES"
+  businessType            String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES", "PHARMACY"
+  pharmacyDrugLicense20B  String? // Retail Allopathic Drug License Form 20B
+  pharmacyDrugLicense21B  String? // Retail Drug License Form 21B
   restaurantPlan          String           @default("NONE") // "NONE" | "STARTER" | "PRO" | "CHAIN" — Restaurant-specific add-on tier
   subscriptionTier        SubscriptionTier @default(FREE)
   subscriptionStatus      String           @default("ACTIVE") // "ACTIVE", "CANCELLED", "EXPIRED", "TRIALING"
@@ -90,6 +92,7 @@ model Tenant {
 
   users                 User[]
   products              Product[]
+  doctors               Doctor[]
   stockLogs             StockLog[]
   customers             Customer[]
   regions               Region[]
@@ -199,6 +202,13 @@ model Product {
   isActive            Boolean     @default(true)
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
+
+  // Pharmacy & Healthcare Drug Compliance
+  isScheduleH         Boolean     @default(false) // Schedule H drug: Prescription required
+  isScheduleH1        Boolean     @default(false) // Schedule H1 drug: Special antibiotic/habit-forming register
+  isNarcotic          Boolean     @default(false) // NDPS Act compliance
+  drugGenericName     String? // e.g. "Amoxicillin 500mg + Potassium Clavulanate 125mg"
+  dosageForm          String? // e.g. "TABLET", "SYRUP", "INJECTION", "CAPSULE", "OINTMENT"
 
   hasBatchTracking Boolean   @default(false)
   batches          Batch[]
@@ -613,6 +623,13 @@ model Invoice {
   loyaltyPointsEarned   Int     @default(0)
   loyaltyPointsRedeemed Int     @default(0)
   loyaltyDiscountAmount Decimal @default(0.0) @db.Decimal(10, 2)
+
+  // Pharmacy & Medical Prescription Compliance (Schedule H / H1)
+  doctorName           String?
+  doctorRegNo          String?
+  patientName          String?
+  patientAge           Int?
+  patientGender        String?
 
   // Soft Cancellation (world standard — never hard delete financial records)
   isCancelled        Boolean   @default(false)
@@ -1819,3 +1836,26 @@ model PriceListItem {
 
   @@unique([priceListId, productId])
 }
+
+// ----------------------------------------------------
+// 21. PHARMACY DOCTOR MASTER (SCHEDULE H/H1 COMPLIANCE)
+// ----------------------------------------------------
+model Doctor {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  regNumber     String?
+  qualification String?
+  clinicName    String?
+  phone         String?
+  city          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("doctors")
+}
+
