@@ -178,6 +178,14 @@ export default function A4InvoicePrint({
               </div>
               <div className="w-1/2 p-1.5 font-semibold">{data.cashierName || '-'}</div>
             </div>
+            {data.counterName && (
+              <div className="flex border-b border-black">
+                <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">
+                  Counter / Lane
+                </div>
+                <div className="w-1/2 p-1.5 font-semibold text-indigo-900">{data.counterName}</div>
+              </div>
+            )}
             <div className="flex flex-1">
               <div className="w-1/2 border-r border-black p-1.5 font-semibold bg-slate-50 text-slate-800">
                 Destination

@@ -50,6 +50,7 @@ export interface EscposReceiptData {
   invoiceDate: string;
   customerName?: string;
   customerPhone?: string;
+  counterName?: string;
   items: Array<{
     name: string;
     quantity: number;
@@ -233,6 +234,9 @@ export function buildEscposReceipt(data: EscposReceiptData): Uint8Array {
   chunks.push(COMMANDS.ALIGN_LEFT);
   chunks.push(encodeText(formatTwoColumnRow("Bill No:", data.invoiceNumber, maxChars)));
   chunks.push(encodeText(formatTwoColumnRow("Date:", data.invoiceDate, maxChars)));
+  if (data.counterName) {
+    chunks.push(encodeText(formatTwoColumnRow("Counter:", data.counterName, maxChars)));
+  }
   if (data.customerName) {
     chunks.push(encodeText(formatTwoColumnRow("Cust:", data.customerName, maxChars)));
   }

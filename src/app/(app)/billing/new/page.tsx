@@ -29,7 +29,8 @@ import { Tag,
   Copy,
   AlertTriangle,
   Coins,
-  Wallet
+  Wallet,
+  Scale
 } from 'lucide-react';
 import Link from 'next/link';
 import ProductSearchCombobox, { ProductOption } from '@/components/ProductSearchCombobox';
@@ -40,6 +41,18 @@ import ThermalZReportModal, { ZReportData } from '@/components/ThermalZReportMod
 import QrCodeCanvas from '@/components/QrCodeCanvas';
 import { cacheProductsLocally, getCachedProducts, cacheBusinessProfile, enqueueOfflineInvoice } from '@/lib/offline-db';
 import OfflineStatusPill from '@/components/OfflineStatusPill';
+
+const HYPERMARKET_LANES = [
+  "Lane 01 • Ground Floor (Express / Quick)",
+  "Lane 02 • Ground Floor (FMCG / Grocery)",
+  "Lane 03 • Ground Floor (Produce / Veg & Fruits)",
+  "Lane 04 • 1st Floor (Apparel & Fashion)",
+  "Lane 05 • 1st Floor (Footwear & Luggage)",
+  "Lane 06 • 2nd Floor (Electronics & Appliances)",
+  "Lane 07 • 2nd Floor (Home & Kitchen / Plastics)",
+  "Lane 08 • Food Court & Bakery",
+  "Basement • Bulk Wholesale Counter",
+];
 
 interface BillItem {
   id: string;
@@ -223,6 +236,10 @@ export default function NewInvoicePage() {
   const [rxPatientGender, setRxPatientGender] = useState<string>("");
   const [showRxModal, setShowRxModal] = useState<boolean>(false);
 
+  // Hypermarket Multi-Floor & Lane Counter State
+  const [counterLane, setCounterLane] = useState<string>("Lane 01 • Ground Floor (FMCG)");
+  const [showLaneSelector, setShowLaneSelector] = useState<boolean>(false);
+
   // Multi-item rows (default with 1 empty row for quick scanning)
   const [billItems, setBillItems] = useState<BillItem[]>([
     {
@@ -379,8 +396,26 @@ export default function NewInvoicePage() {
       console.warn("Could not read held bills from storage", e);
     }
 
+    // Load Hypermarket POS Terminal Counter / Lane
+    try {
+      const savedLane = localStorage.getItem("sv_pos_counter_lane");
+      if (savedLane) {
+        setCounterLane(savedLane);
+      }
+    } catch (e) {
+      // Ignore
+    }
+
     loadData();
   }, []);
+
+  const handleSelectLane = (lane: string) => {
+    setCounterLane(lane);
+    try {
+      localStorage.setItem("sv_pos_counter_lane", lane);
+    } catch (e) {}
+    setShowLaneSelector(false);
+  };
 
   // Sync held bills to localStorage
   const saveHeldBillsToStorage = (updated: HeldBill[]) => {
@@ -714,6 +749,57 @@ export default function NewInvoicePage() {
     });
   };
 
+  // Instant Electronic Weighing Scale Barcode auto-add with fractional quantity in kg
+  const handleScaleBarcodeScan = (product: ProductOption, weightKg: number) => {
+    playScanBeep();
+
+    setBillItems((prev) => {
+      // Check if this product is already in the cart
+      const existingIdx = prev.findIndex((i) => i.productId === product.id);
+
+      if (existingIdx !== -1) {
+        // Increment quantity of existing item by weighed fraction
+        const updated = [...prev];
+        const newQty = Math.round((updated[existingIdx].quantity + weightKg) * 1000) / 1000;
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity: newQty,
+        };
+        return updated;
+      }
+
+      // Check if there's an empty row waiting to be filled
+      const emptyIdx = prev.findIndex((i) => !i.productId);
+      if (emptyIdx !== -1) {
+        const updated = [...prev];
+        updated[emptyIdx] = {
+          ...updated[emptyIdx],
+          productId: product.id,
+          name: product.name,
+          hsn: product.hsnCode || "8504",
+          quantity: weightKg,
+          price: Number(product.sellingPrice) || 0,
+          gst: Number(product.gstRate) || 18,
+        };
+        return updated;
+      }
+
+      // Add a fresh row with weighed fraction
+      return [
+        ...prev,
+        {
+          id: `row-${Date.now()}`,
+          productId: product.id,
+          name: product.name,
+          hsn: product.hsnCode || "8504",
+          quantity: weightKg,
+          price: Number(product.sellingPrice) || 0,
+          gst: Number(product.gstRate) || 18,
+        },
+      ];
+    });
+  };
+
   // Multi-Item Handlers
   const handleAddItem = () => {
     setBillItems((prev) => [
@@ -1036,6 +1122,8 @@ export default function NewInvoicePage() {
       const discNote = `Discount: ₹${totalDiscount.toFixed(2)}${billDiscountValue > 0 ? ` (${billDiscountValue}${billDiscountType === 'PERCENT' ? '%' : '₹'} Bill Disc)` : ''}`;
       paymentNotes = paymentNotes ? `${paymentNotes} | ${discNote}` : discNote;
     }
+    const laneNote = `Counter: ${counterLane}`;
+    paymentNotes = paymentNotes ? `${paymentNotes} | ${laneNote}` : laneNote;
 
     const invoicePayload = {
       customerName: customerName || "Cash Customer",
@@ -1114,7 +1202,8 @@ export default function NewInvoicePage() {
         customerName: customerName || "Cash Customer",
         customerPhone: customerPhone,
         customerState: customerState,
-        cashierName: "Counter 1 (Offline)",
+        cashierName: `${counterLane} (Offline)`,
+        counterName: counterLane,
         docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : (business?.isComposition ? "Bill of Supply" : "Tax Invoice"),
         items: receiptItems,
         subTotal: Number(grossSubtotal),
@@ -1160,7 +1249,8 @@ export default function NewInvoicePage() {
         customerName: customerName || "Cash Customer",
         customerPhone: customerPhone,
         customerState: customerState,
-        cashierName: "Counter 1",
+        cashierName: counterLane,
+        counterName: counterLane,
         docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : (business?.isComposition ? "Bill of Supply" : "Tax Invoice"),
         items: receiptItems,
         subTotal: Number(data.invoice.subTotal || grossSubtotal),
@@ -1196,7 +1286,8 @@ export default function NewInvoicePage() {
             customerName: customerName || "Cash Customer",
             customerPhone: customerPhone,
             customerState: customerState,
-            cashierName: "Counter 1 (Offline)",
+            cashierName: `${counterLane} (Offline)`,
+            counterName: counterLane,
             docTitle: billType === "ESTIMATE" ? "Cash Memo / Estimate" : (business?.isComposition ? "Bill of Supply" : "Tax Invoice"),
             items: receiptItems,
             subTotal: Number(totalTaxable),
@@ -1273,7 +1364,20 @@ export default function NewInvoicePage() {
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500 font-medium">
-              <span>Counter 1 • GSTIN: {business.gstin || "Unregistered"}</span>
+              <span>GSTIN: {business.gstin || "Unregistered"}</span>
+              {/* Hypermarket Lane / Floor Counter Selector Pill */}
+              <button
+                type="button"
+                onClick={() => setShowLaneSelector(true)}
+                className="inline-flex items-center space-x-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold border border-amber-300 transition shadow-2xs group cursor-pointer"
+                title="Click to Switch Register Counter / Floor"
+              >
+                <Layers className="w-3 h-3 text-amber-600" />
+                <span className="truncate max-w-[140px] sm:max-w-[200px]">{counterLane}</span>
+                <span className="text-[9px] bg-amber-200/90 text-amber-950 px-1 py-0.2 rounded font-semibold group-hover:bg-amber-300">
+                  Switch
+                </span>
+              </button>
               {warehouses.length > 0 && (
                 <span className="inline-flex items-center space-x-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold border border-indigo-200">
                   <Building2 className="w-3 h-3 text-indigo-600" />
@@ -1444,9 +1548,12 @@ export default function NewInvoicePage() {
                 onBarcodeScan={(product) => {
                   handleFastBarcodeScan(product);
                 }}
+                onScaleBarcodeScan={(product, weightKg) => {
+                  handleScaleBarcodeScan(product, weightKg);
+                }}
                 autoClearOnSelect={true}
                 openOnFocus={false}
-                placeholder="Scan barcode gun or search product name / SKU / MRP (F1)..."
+                placeholder="Scan barcode gun, weighing scale barcode (EAN-13), or search (F1)..."
               />
             </div>
 
@@ -1473,6 +1580,10 @@ export default function NewInvoicePage() {
                               qtyInput.select();
                             }
                           }, 50);
+                        }}
+                        onScaleBarcodeScan={(prod, weightKg) => {
+                          handleProductSelect(idx, prod);
+                          handleQuantityChange(idx, weightKg);
                         }}
                       />
                     {item.batchNumber && (
@@ -2525,6 +2636,81 @@ export default function NewInvoicePage() {
         }}
         data={zReportData}
       />
+
+      {/* Hypermarket Multi-Floor & Lane Counter Selector Modal */}
+      {showLaneSelector && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2.5 bg-amber-100 text-amber-800 rounded-xl">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Select Register Lane & Floor</h3>
+                  <p className="text-xs text-slate-500">Designates this physical POS terminal across floors</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLaneSelector(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2 max-h-72 overflow-y-auto pr-1">
+              {HYPERMARKET_LANES.map((lane) => (
+                <button
+                  key={lane}
+                  type="button"
+                  onClick={() => handleSelectLane(lane)}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
+                    counterLane === lane
+                      ? "bg-amber-50 border-amber-400 text-amber-950 font-bold shadow-xs"
+                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  <span>{lane}</span>
+                  {counterLane === lane && <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 ml-2" />}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Or Custom Terminal / Counter Name:</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  defaultValue={counterLane}
+                  id="custom-lane-input"
+                  placeholder="e.g. Register 12 - Bulk Counter"
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val) handleSelectLane(val);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById("custom-lane-input") as HTMLInputElement;
+                    if (el && el.value.trim()) {
+                      handleSelectLane(el.value.trim());
+                    }
+                  }}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition shadow-xs cursor-pointer shrink-0"
+                >
+                  Set Counter
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
