@@ -43,6 +43,14 @@ export async function PATCH(
     if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
     if (body.invoiceId !== undefined) data.invoiceId = body.invoiceId || null;
 
+    // Enterprise Salon Suite Fields
+    if (body.servicesJson !== undefined) data.servicesJson = body.servicesJson;
+    if (body.clientHistory !== undefined) data.clientHistory = body.clientHistory;
+    if (body.tokenNumber !== undefined) data.tokenNumber = body.tokenNumber?.trim() || null;
+    if (body.tipAmount !== undefined) data.tipAmount = Number(body.tipAmount || 0);
+    if (body.totalCommission !== undefined) data.totalCommission = Number(body.totalCommission || 0);
+    if (body.isWalkIn !== undefined) data.isWalkIn = Boolean(body.isWalkIn);
+
     const updated = await prisma.salonAppointment.update({
       where: { id },
       data,

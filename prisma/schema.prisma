@@ -1054,9 +1054,9 @@ model SalonAppointment {
   tenantId        String
   clientName      String
   clientPhone     String
-  stylistName     String?                // e.g. "Senior Stylist Priya", "Therapist Arjun"
+  stylistName     String?                // Primary stylist (e.g. "Senior Stylist Priya", "Therapist Arjun")
   chairNumber     String?                // e.g. "Chair 1", "Hair Spa Station", "Massage Suite 2"
-  serviceName     String                 // e.g. "Hydra Facial (60 mins)", "Hair Color & Highlights"
+  serviceName     String                 // Primary/summary service description
   servicePrice    Decimal                @default(0) @db.Decimal(12, 2)
   durationMinutes Int                    @default(30)
   scheduledDate   DateTime               // Appointment Date
@@ -1064,17 +1064,28 @@ model SalonAppointment {
   status          SalonAppointmentStatus @default(BOOKED)
   notes           String?
   invoiceId       String?
+
+  // Enterprise Salon Suite Enhancements
+  tokenNumber     String?                // Walk-in queue token e.g. "W-01", "T-05"
+  isWalkIn        Boolean                @default(false)
+  servicesJson    Json?                  // Multi-service list: [{ name, price, durationMinutes, stylistName, commissionPercent, commissionAmount }]
+  clientHistory   Json?                  // Consultation card: { hairType, skinType, colorFormula, allergies, patchTestStatus, preferences }
+  tipAmount       Decimal                @default(0) @db.Decimal(10, 2)
+  totalCommission Decimal                @default(0) @db.Decimal(10, 2)
+
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 
   tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, scheduledDate])
+  @@index([tenantId, isWalkIn, status])
   @@map("salon_appointments")
 }
 
 enum SalonAppointmentStatus {
   BOOKED
+  WAITING
   CHECKED_IN
   IN_SERVICE
   COMPLETED
