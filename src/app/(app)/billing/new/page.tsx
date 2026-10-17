@@ -411,6 +411,38 @@ export default function NewInvoicePage() {
     loadData();
   }, []);
 
+  // Prefill from URL query params (e.g. from Salon & Spa Appointment Booking)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const cName = urlParams.get('customerName');
+    const cPhone = urlParams.get('customerPhone');
+    const sName = urlParams.get('serviceName');
+    const sPrice = urlParams.get('servicePrice');
+    const note = urlParams.get('notes');
+
+    if (cName) setCustomerName(cName);
+    if (cPhone) setCustomerPhone(cPhone);
+    if (note) setInvoiceNote(note);
+
+    if (sName) {
+      const price = Number(sPrice) || 0;
+      setBillItems([
+        {
+          id: 'row-salon-1',
+          productId: 'custom-service',
+          name: sName,
+          hsn: '9997',
+          quantity: 1,
+          price: price,
+          discountPercent: 0,
+          gst: 18,
+          unitSold: 'SERVICE',
+        },
+      ]);
+    }
+  }, []);
+
   const handleSelectLane = (lane: string) => {
     setCounterLane(lane);
     try {

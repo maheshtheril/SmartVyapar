@@ -5,9 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -106,6 +106,7 @@ model Tenant {
   batches               Batch[]
   restaurantTables      RestaurantTable[]
   tableReservations     TableReservation[]
+  salonAppointments     SalonAppointment[]
   kitchenOrderTickets   KitchenOrderTicket[]
   invoiceSequences      InvoiceSequence[]
   creditNotes           CreditNote[]
@@ -1043,6 +1044,42 @@ enum ReservationStatus {
   COMPLETED // Visit done
   CANCELLED // No-show or cancelled
   WAITLIST // Walk-in waiting for a table
+}
+
+// ----------------------------------------------------
+// SALON, SPA & WELLNESS APPOINTMENTS & CHAIR SLOTS
+// ----------------------------------------------------
+model SalonAppointment {
+  id              String                 @id @default(uuid())
+  tenantId        String
+  clientName      String
+  clientPhone     String
+  stylistName     String?                // e.g. "Senior Stylist Priya", "Therapist Arjun"
+  chairNumber     String?                // e.g. "Chair 1", "Hair Spa Station", "Massage Suite 2"
+  serviceName     String                 // e.g. "Hydra Facial (60 mins)", "Hair Color & Highlights"
+  servicePrice    Decimal                @default(0) @db.Decimal(12, 2)
+  durationMinutes Int                    @default(30)
+  scheduledDate   DateTime               // Appointment Date
+  scheduledTime   String                 // "10:30", "14:00"
+  status          SalonAppointmentStatus @default(BOOKED)
+  notes           String?
+  invoiceId       String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, scheduledDate])
+  @@map("salon_appointments")
+}
+
+enum SalonAppointmentStatus {
+  BOOKED
+  CHECKED_IN
+  IN_SERVICE
+  COMPLETED
+  CANCELLED
+  NO_SHOW
 }
 
 enum KotStatus {
