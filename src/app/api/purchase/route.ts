@@ -273,6 +273,11 @@ export async function POST(req: NextRequest) {
         batchNumber: item.batchNumber?.trim() || null,
         mfgDate: item.mfgDate ? new Date(item.mfgDate) : null,
         expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+        imeiList: Array.isArray(item.imeiList)
+          ? item.imeiList.map((s: any) => String(s).trim()).filter(Boolean)
+          : (typeof item.imeiList === 'string' && item.imeiList.trim()
+            ? item.imeiList.split(/[\n,]+/).map((s: string) => s.trim()).filter(Boolean)
+            : []),
         hsnCode: item.hsnCode?.trim() || null,
         unit: (item.unit || "PCS").toUpperCase(),
         quantity: qty,
@@ -424,6 +429,7 @@ export async function POST(req: NextRequest) {
             batchNumber: item.batchNumber,
             mfgDate: item.mfgDate,
             expiryDate: item.expiryDate,
+            imeiList: item.imeiList && item.imeiList.length > 0 ? JSON.stringify(item.imeiList) : null,
             hsnCode: item.hsnCode,
             unit: item.unit,
             quantity: item.quantity,
@@ -439,6 +445,42 @@ export async function POST(req: NextRequest) {
             lineTotal: item.lineTotal,
           },
         });
+
+        // Upsert Serial / IMEI DeviceUnits for mobile phones & electronics
+        if (item.imeiList && item.imeiList.length > 0) {
+          await tx.product.update({
+            where: { id: product.id },
+            data: { hasSerialTracking: true },
+          });
+
+          for (const imei of item.imeiList) {
+            const cleanImei = String(imei).trim();
+            if (!cleanImei) continue;
+            await tx.deviceUnit.upsert({
+              where: {
+                tenantId_imei1: {
+                  tenantId,
+                  imei1: cleanImei,
+                },
+              },
+              create: {
+                tenantId,
+                productId: product.id,
+                imei1: cleanImei,
+                status: "IN_STOCK",
+                purchaseBillId: bill.id,
+                warrantyMonths: 12,
+              },
+              update: {
+                productId: product.id,
+                status: "IN_STOCK",
+                purchaseBillId: bill.id,
+                invoiceItemId: null,
+                soldAt: null,
+              },
+            });
+          }
+        }
 
         // Upsert Batch if batchNumber is provided
         if (item.batchNumber) {

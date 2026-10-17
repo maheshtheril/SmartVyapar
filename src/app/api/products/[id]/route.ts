@@ -39,6 +39,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         gstRate: body.gstRate ? Number(body.gstRate) : 0,
         minStockAlert: body.minStockAlert ? Number(body.minStockAlert) : 5,
         hasBatchTracking: body.hasBatchTracking || false,
+        hasSerialTracking: body.hasSerialTracking !== undefined ? !!body.hasSerialTracking : false,
         imageUrl: body.imageUrl,
         partNumber: body.partNumber,
         oemNumber: body.oemNumber,

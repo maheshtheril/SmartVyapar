@@ -257,6 +257,7 @@ async function main() {
       gstRate: 18,
       currentStock: 12,
       minStockAlert: 2,
+      hasSerialTracking: true,
     },
     {
       name: "Samsung Galaxy S24 Ultra 5G 256GB (Titanium Gray)",
@@ -272,6 +273,7 @@ async function main() {
       gstRate: 18,
       currentStock: 10,
       minStockAlert: 2,
+      hasSerialTracking: true,
     },
     {
       name: "Sony WH-1000XM5 Wireless Noise Canceling Headphones",
