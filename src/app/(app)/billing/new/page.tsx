@@ -425,7 +425,28 @@ export default function NewInvoicePage() {
     if (cPhone) setCustomerPhone(cPhone);
     if (note) setInvoiceNote(note);
 
-    if (sName) {
+    const servicesJsonParam = urlParams.get('servicesJson');
+    if (servicesJsonParam) {
+      try {
+        const parsedServices = JSON.parse(decodeURIComponent(servicesJsonParam));
+        if (Array.isArray(parsedServices) && parsedServices.length > 0) {
+          const items: BillItem[] = parsedServices.map((svc: any, idx: number) => ({
+            id: `row-salon-${idx + 1}`,
+            productId: 'custom-service',
+            name: svc.name || 'Salon Service',
+            hsn: '9997',
+            quantity: 1,
+            price: Number(svc.price || 0),
+            discountPercent: 0,
+            gst: 18,
+            unitSold: 'SERVICE',
+          }));
+          setBillItems(items);
+        }
+      } catch (err) {
+        console.warn('Failed to parse servicesJson param', err);
+      }
+    } else if (sName) {
       const price = Number(sPrice) || 0;
       setBillItems([
         {
