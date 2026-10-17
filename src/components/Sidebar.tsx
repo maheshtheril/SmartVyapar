@@ -52,10 +52,12 @@ import {
   Wrench,
   Calendar,
   Tv,
+  Scissors,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
+  Scissors,
   Receipt,
   Tv,
   PlusCircle,
@@ -189,6 +191,7 @@ export default function Sidebar() {
         '/accounting': 'accounting',
         '/garage': 'garage',
         '/pharmacy': 'pharmacy',
+        '/salon': 'salon',
       };
       let targetGroup: string | null = null;
       for (const [prefix, groupId] of Object.entries(groupMap)) {

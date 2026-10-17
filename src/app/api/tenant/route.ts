@@ -293,6 +293,28 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Industry-Specific Module: Only show Salon, Spa & Wellness for SALON_SPA businesses
+    if (tenant.businessType === "SALON_SPA") {
+      menuTree.splice(2, 0, {
+        id: "salon",
+        name: "Salon & Wellness",
+        icon: "Scissors",
+        badge: "Live Slots",
+        badgeColor: "emerald",
+        children: [
+          {
+            id: "salon-appointments",
+            name: "Appointment & Chair Slots",
+            href: "/salon/appointments",
+            icon: "Calendar",
+            badge: "Live Slots",
+            badgeColor: "emerald",
+            highlight: true,
+          },
+        ],
+      });
+    }
+
     // Industry-Specific Module: Only show Food & Restaurant for RESTAURANT businesses
     if (tenant.businessType === "RESTAURANT") {
       menuTree.splice(2, 0, {
