@@ -986,7 +986,9 @@ function getDefaultGstRate(type?: string): string {
                         type="text"
                         required
                         placeholder={
-                          isRestaurant
+                          hasSerialTracking || isElectronics
+                            ? "e.g. Apple iPhone 16 Pro 128GB, Samsung Galaxy S24 Ultra, OnePlus 12"
+                            : isRestaurant
                             ? "e.g. Malabar Chicken Biryani, Filter Coffee"
                             : isAutomobile
                             ? "e.g. Ceramic Front Brake Pad Set, 5W-40 Synthetic Oil"
@@ -1005,7 +1007,15 @@ function getDefaultGstRate(type?: string): string {
                       </label>
                       <input
                         type="text"
-                        placeholder={isRestaurant ? "Short name on KOT / Bill (e.g. Chic Biryani)" : isPharma ? "e.g. Augmentin 625 Tab" : "Clean name for receipts"}
+                        placeholder={
+                          hasSerialTracking || isElectronics
+                            ? "e.g. iPhone 16 Pro 128GB"
+                            : isRestaurant
+                            ? "Short name on KOT / Bill (e.g. Chic Biryani)"
+                            : isPharma
+                            ? "e.g. Augmentin 625 Tab"
+                            : "Clean name for receipts"
+                        }
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         className="w-full rounded-xl border border-indigo-300 bg-indigo-50/50 px-3 py-2 text-xs text-indigo-900 font-bold focus:border-indigo-600 focus:outline-none"
@@ -1019,7 +1029,9 @@ function getDefaultGstRate(type?: string): string {
                         type="text"
                         list="category-suggestions"
                         placeholder={
-                          isRestaurant
+                          hasSerialTracking || isElectronics
+                            ? "e.g. Smartphones, Tablets, Audio & Headsets, Laptops"
+                            : isRestaurant
                             ? "e.g. Starters, Main Course, Hot Beverages, Breads"
                             : isAutomobile
                             ? "e.g. Brake Systems, Engine Oils, Filters"
@@ -1032,7 +1044,18 @@ function getDefaultGstRate(type?: string): string {
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
                       />
                       <datalist id="category-suggestions">
-                        {isPharma ? (
+                        {hasSerialTracking || isElectronics ? (
+                          <>
+                            <option value="Smartphones" />
+                            <option value="Feature Phones" />
+                            <option value="Tablets & iPads" />
+                            <option value="Laptops & MacBooks" />
+                            <option value="Audio & Earbuds" />
+                            <option value="Smartwatches & Wearables" />
+                            <option value="Mobile Accessories & Cables" />
+                            <option value="Power Banks & Chargers" />
+                          </>
+                        ) : isPharma ? (
                           <>
                             <option value="Antibiotics & Anti-Infective" />
                             <option value="Analgesic & Antipyretic (Pain & Fever)" />
@@ -1059,7 +1082,9 @@ function getDefaultGstRate(type?: string): string {
                         type="text"
                         list="brand-suggestions"
                         placeholder={
-                          isPharma
+                          hasSerialTracking || isElectronics
+                            ? "e.g. Apple, Samsung, OnePlus, Xiaomi, Vivo, Realme, Sony"
+                            : isPharma
                             ? "e.g. Cipla, Sun Pharma, Abbott, Mankind, GSK"
                             : isAutomobile
                             ? "e.g. Bosch, Brembo, Motul, Castrol"
@@ -1070,7 +1095,25 @@ function getDefaultGstRate(type?: string): string {
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
                       />
                       <datalist id="brand-suggestions">
-                        {isPharma ? (
+                        {hasSerialTracking || isElectronics ? (
+                          <>
+                            <option value="Apple" />
+                            <option value="Samsung" />
+                            <option value="OnePlus" />
+                            <option value="Xiaomi / Redmi" />
+                            <option value="Vivo" />
+                            <option value="Realme" />
+                            <option value="Oppo" />
+                            <option value="Motorola" />
+                            <option value="Google Pixel" />
+                            <option value="Sony" />
+                            <option value="Dell" />
+                            <option value="HP" />
+                            <option value="Lenovo" />
+                            <option value="Boat" />
+                            <option value="Noise" />
+                          </>
+                        ) : isPharma ? (
                           <>
                             <option value="Cipla Ltd" />
                             <option value="Sun Pharmaceutical" />
@@ -1256,7 +1299,15 @@ function getDefaultGstRate(type?: string): string {
                       </div>
                       <input
                         type="text"
-                        placeholder={isRestaurant ? "e.g. DISH-BIRYANI-01" : isAutomobile ? "e.g. PART-BRK-01" : "e.g. POL-25-01"}
+                        placeholder={
+                          hasSerialTracking || isElectronics
+                            ? "e.g. IPH-16P-128 or SAM-S24U"
+                            : isRestaurant
+                            ? "e.g. DISH-BIRYANI-01"
+                            : isAutomobile
+                            ? "e.g. PART-BRK-01"
+                            : "e.g. POL-25-01"
+                        }
                         value={sku}
                         onChange={(e) => setSku(e.target.value.toUpperCase())}
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-indigo-600 focus:outline-none uppercase"
