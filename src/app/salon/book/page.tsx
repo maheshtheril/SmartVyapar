@@ -22,6 +22,9 @@ import {
   Flame,
   AlertCircle,
   ArrowRight,
+  Smartphone,
+  RotateCcw,
+  Share,
 } from 'lucide-react';
 
 import { useParams, useSearchParams } from 'next/navigation';
@@ -110,6 +113,78 @@ function SalonBookingContent() {
 
   // Confirmed Result
   const [confirmedBooking, setConfirmedBooking] = useState<ConfirmedBooking | null>(null);
+
+  // PWA Install / Home Screen States
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState<boolean>(true);
+  const [isIosPromptOpen, setIsIosPromptOpen] = useState<boolean>(false);
+
+  // Returning Customer Profile State
+  const [pastProfile, setPastProfile] = useState<{
+    name: string;
+    phone: string;
+    stylistName?: string;
+    services?: Service[];
+    lastBookedDate?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    // Capture PWA beforeinstallprompt on Android/Chrome
+    const handleBeforeInstall = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    // Load returning customer profile from localStorage
+    try {
+      const saved = localStorage.getItem('ziona_client_salon_profile');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.name && parsed.phone) {
+          setPastProfile(parsed);
+          setClientName(parsed.name);
+          setClientPhone(parsed.phone);
+        }
+      }
+    } catch (e) {}
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, []);
+
+  const handleInstallApp = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice?.then((choice: any) => {
+        if (choice.outcome === 'accepted') {
+          setShowInstallBanner(false);
+        }
+        setDeferredPrompt(null);
+      });
+    } else {
+      const isIos = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIos) {
+        setIsIosPromptOpen(true);
+      } else {
+        alert("To install this salon app shortcut on your phone:\n\nTap your browser menu (⋮ or Share) and select 'Add to Home Screen' or 'Install App' 📲");
+      }
+    }
+  };
+
+  const handleQuickReBook = () => {
+    if (!pastProfile) return;
+    if (pastProfile.stylistName) {
+      const matchStylist = stylists.find((s) => s.name === pastProfile.stylistName);
+      if (matchStylist) setSelectedStylist(matchStylist);
+    }
+    if (Array.isArray(pastProfile.services) && pastProfile.services.length > 0) {
+      setSelectedServices(pastProfile.services);
+    }
+    setStep(3); // Jump straight to picking Date & Time Slot!
+  };
 
   // Load Salon Data & Slots
   useEffect(() => {
@@ -269,6 +344,19 @@ function SalonBookingContent() {
         tenantAddress: data.tenant.address,
       });
 
+      try {
+        localStorage.setItem(
+          'ziona_client_salon_profile',
+          JSON.stringify({
+            name: data.appointment.clientName,
+            phone: data.appointment.clientPhone,
+            stylistName: data.appointment.stylistName,
+            services: selectedServices,
+            lastBookedDate: data.appointment.scheduledDate,
+          })
+        );
+      } catch (e) {}
+
       setStep(5); // Confirmation screen
     } catch (err: any) {
       setErrorMessage(err.message || 'Something went wrong');
@@ -322,6 +410,77 @@ function SalonBookingContent() {
 
       {/* Main Container */}
       <main className="max-w-2xl mx-auto w-full p-4 md:p-6 space-y-6 flex-1">
+        {/* Smartphone Home Screen Shortcut Banner */}
+        {showInstallBanner && (
+          <div className="p-3.5 bg-gradient-to-r from-pink-950/40 via-purple-950/30 to-slate-900 border border-pink-500/40 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white flex items-center justify-center shrink-0 shadow-md">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div className="text-xs">
+                <div className="font-extrabold text-white flex items-center gap-1.5">
+                  <span>Add {tenantInfo.name.split(' ')[0]} App to Phone</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.2 bg-emerald-500 text-slate-950 rounded">
+                    1-Tap Shortcut
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Keep our salon on your phone screen for instant zero-wait re-booking!
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleInstallApp}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 text-white font-bold text-xs shadow-md shadow-pink-500/20"
+              >
+                + Install
+              </button>
+              <button
+                onClick={() => setShowInstallBanner(false)}
+                className="p-1 text-slate-500 hover:text-slate-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* VIP Returning Client 1-Tap Re-Book Usual Services Card */}
+        {pastProfile && step === 1 && (
+          <div className="p-4 bg-gradient-to-tr from-purple-950/60 via-pink-950/30 to-slate-900 border border-purple-500/50 rounded-2xl space-y-2.5 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-purple-400" />
+                <span className="font-bold text-xs text-white">
+                  Welcome Back, {pastProfile.name}! ✨
+                </span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+                VIP Repeat Client
+              </span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+              <div className="text-xs text-slate-300">
+                <span className="text-slate-400 block text-[11px]">Re-Book Your Usual:</span>
+                <strong className="text-white">
+                  {pastProfile.services?.map((s) => s.name).join(' + ') || 'Haircut & Spa'}
+                </strong>
+                {pastProfile.stylistName && (
+                  <span className="text-pink-400 ml-2 font-semibold">with {pastProfile.stylistName}</span>
+                )}
+              </div>
+              <button
+                onClick={handleQuickReBook}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 text-white font-bold text-xs shadow-md shadow-purple-500/25 flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>1-Tap Re-Book Usual</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Step Indicator (Only when not confirmed) */}
         {step < 5 && (
           <div className="bg-slate-900/60 border border-slate-800/80 p-3.5 rounded-2xl">
@@ -866,6 +1025,37 @@ function SalonBookingContent() {
                 className="text-xs text-slate-400 hover:text-pink-400 underline"
               >
                 Book another appointment
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* iOS iPhone Add to Home Screen Modal */}
+        {isIosPromptOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
+              <div className="w-12 h-12 rounded-2xl bg-pink-500/20 text-pink-400 mx-auto flex items-center justify-center">
+                <Smartphone className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white">Install on iPhone Home Screen</h3>
+                <p className="text-xs text-slate-400 mt-1">2 quick taps to add {tenantInfo.name} to your home screen:</p>
+              </div>
+              <div className="p-3.5 bg-slate-950 rounded-2xl text-xs text-left space-y-2.5 text-slate-300 border border-slate-800">
+                <div className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[11px] font-bold text-pink-400 shrink-0 mt-0.5">1</span>
+                  <span>Tap the <strong>Share</strong> button <Share className="w-3.5 h-3.5 inline mx-1 text-pink-400" /> at the bottom of Safari.</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[11px] font-bold text-pink-400 shrink-0 mt-0.5">2</span>
+                  <span>Scroll down and tap <strong>'Add to Home Screen' 📲</strong>.</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsIosPromptOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-pink-600 text-white font-bold text-xs"
+              >
+                Got It
               </button>
             </div>
           </div>
