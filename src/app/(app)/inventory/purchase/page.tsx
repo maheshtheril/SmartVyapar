@@ -2171,11 +2171,9 @@ export default function PurchaseInwardPage() {
                             <th className="py-2.5 px-2 w-28">Expiry</th>
                           </>
                         )}
-                        {isElectronics && (
-                          <th className="py-2.5 px-2 min-w-[170px] text-center bg-blue-950 text-blue-200 border-x border-blue-900">
-                            Device IMEI / Serial #
-                          </th>
-                        )}
+                        <th className="py-2.5 px-2 min-w-[170px] text-center bg-blue-950 text-blue-200 border-x border-blue-900">
+                          Device IMEI / Serial #
+                        </th>
                         <th className="py-2.5 px-2 w-16 text-center">Qty</th>
                         <th className="py-2.5 px-2 w-18 text-center">Unit</th>
                         <th className="py-2.5 px-2 w-24 text-right">Cost (₹)</th>
@@ -2439,33 +2437,31 @@ export default function PurchaseInwardPage() {
                             )}
 
                             {/* Electronics & Mobile Phones: IMEI / Serial No */}
-                            {isElectronics && (
-                              <td className="py-2 px-2 align-middle">
-                                {row.imeiList && row.imeiList.length > 0 ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => openImeiModal(idx)}
-                                    className="w-full flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 font-mono text-[11px] font-bold transition shadow-xs"
-                                    title="Click to view or edit scanned IMEIs"
-                                  >
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                      {row.imeiList.length} IMEIs
-                                    </span>
-                                    <span className="text-[10px] text-blue-600 font-sans font-medium underline">Edit</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => openImeiModal(idx)}
-                                    className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-blue-400 bg-blue-50/50 hover:bg-blue-100/70 text-blue-700 font-bold text-[11px] transition"
-                                  >
-                                    <Barcode className="w-3.5 h-3.5 text-blue-600" />
-                                    <span>+ Scan IMEIs</span>
-                                  </button>
-                                )}
-                              </td>
-                            )}
+                            <td className="py-2 px-2 align-middle">
+                              {row.imeiList && row.imeiList.length > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openImeiModal(idx)}
+                                  className="w-full flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 font-mono text-[11px] font-bold transition shadow-xs"
+                                  title="Click to view or edit scanned IMEIs"
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    {row.imeiList.length} IMEIs
+                                  </span>
+                                  <span className="text-[10px] text-blue-600 font-sans font-medium underline">Edit</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => openImeiModal(idx)}
+                                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-blue-400 bg-blue-50/50 hover:bg-blue-100/70 text-blue-700 font-bold text-[11px] transition"
+                                >
+                                  <Barcode className="w-3.5 h-3.5 text-blue-600" />
+                                  <span>+ Scan IMEIs</span>
+                                </button>
+                              )}
+                            </td>
 
                             {/* 6. Quantity */}
                             <td className="py-2 px-2 align-middle">
@@ -3567,11 +3563,9 @@ export default function PurchaseInwardPage() {
                             <th className="py-2.5 px-2 w-28">Expiry</th>
                           </>
                         )}
-                        {isElectronics && (
-                          <th className="py-2.5 px-2 min-w-[160px] text-center bg-blue-950 text-blue-200 border-x border-blue-900">
-                            Device IMEI / Serial #
-                          </th>
-                        )}
+                        <th className="py-2.5 px-2 min-w-[160px] text-center bg-blue-950 text-blue-200 border-x border-blue-900">
+                          Device IMEI / Serial #
+                        </th>
                         <th className="py-2.5 px-2 w-16 text-center">Qty</th>
                         <th className="py-2.5 px-2 w-18 text-center">Unit</th>
                         <th className="py-2.5 px-2 w-24 text-right">Cost (₹)</th>
@@ -3776,13 +3770,11 @@ export default function PurchaseInwardPage() {
                                 </td>
                               </>
                             )}
-                            {isElectronics && (
-                              <td className="py-2 px-2 align-middle text-center">
-                                <span className="inline-flex items-center px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-mono font-bold">
-                                  📱 {row.imeiList ? `${JSON.parse(row.imeiList || '[]').length || 0} IMEIs` : 'Serialized'}
-                                </span>
-                              </td>
-                            )}
+                            <td className="py-2 px-2 align-middle text-center">
+                              <span className="inline-flex items-center px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-mono font-bold">
+                                📱 {row.imeiList ? `${JSON.parse(row.imeiList || '[]').length || 0} IMEIs` : 'Serialized'}
+                              </span>
+                            </td>
                             <td className="py-2 px-2 align-middle text-center">
                               <input type="number" min="0.001" step="any" value={row.quantity === undefined || row.quantity === null ? 1 : row.quantity} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'quantity', e.target.value)}
                                 data-vfield={`edit-row-${idx}-qty`}

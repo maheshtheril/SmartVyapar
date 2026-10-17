@@ -243,10 +243,10 @@ export async function POST(req: NextRequest) {
       }
     } else if (industry === "ELECTRONICS") {
       const electronicsItems = [
-        { name: "Apple iPhone 16 Pro 128GB (Natural Titanium)", barcode: "195949000101", sellingPrice: 119900, purchasePrice: 104000, mrp: 119900, gstRate: 18.0, currentStock: 8, hsnCode: "851713", baseUnit: "PCS", category: "Smartphones", brand: "Apple" },
-        { name: "Samsung Galaxy S24 Ultra 256GB (Titanium Gray)", barcode: "880609500102", sellingPrice: 129999, purchasePrice: 112000, mrp: 134999, gstRate: 18.0, currentStock: 6, hsnCode: "851713", baseUnit: "PCS", category: "Smartphones", brand: "Samsung" },
-        { name: "Sony WH-1000XM5 Wireless ANC Headphones", barcode: "454873600103", sellingPrice: 28990, purchasePrice: 22500, mrp: 34990, gstRate: 18.0, currentStock: 12, hsnCode: "851830", baseUnit: "PCS", category: "Audio", brand: "Sony" },
-        { name: "Dell Inspiron 15 Core i5 16GB/512GB SSD", barcode: "884116000104", sellingPrice: 56990, purchasePrice: 47500, mrp: 62000, gstRate: 18.0, currentStock: 10, hsnCode: "847130", baseUnit: "PCS", category: "Laptops", brand: "Dell" },
+        { name: "Apple iPhone 16 Pro 128GB (Natural Titanium)", barcode: "195949000101", sellingPrice: 119900, purchasePrice: 104000, mrp: 119900, gstRate: 18.0, currentStock: 8, hsnCode: "851713", baseUnit: "PCS", category: "Smartphones", brand: "Apple", hasSerialTracking: true },
+        { name: "Samsung Galaxy S24 Ultra 256GB (Titanium Gray)", barcode: "880609500102", sellingPrice: 129999, purchasePrice: 112000, mrp: 134999, gstRate: 18.0, currentStock: 6, hsnCode: "851713", baseUnit: "PCS", category: "Smartphones", brand: "Samsung", hasSerialTracking: true },
+        { name: "Sony WH-1000XM5 Wireless ANC Headphones", barcode: "454873600103", sellingPrice: 28990, purchasePrice: 22500, mrp: 34990, gstRate: 18.0, currentStock: 12, hsnCode: "851830", baseUnit: "PCS", category: "Audio", brand: "Sony", hasSerialTracking: true },
+        { name: "Dell Inspiron 15 Core i5 16GB/512GB SSD", barcode: "884116000104", sellingPrice: 56990, purchasePrice: 47500, mrp: 62000, gstRate: 18.0, currentStock: 10, hsnCode: "847130", baseUnit: "PCS", category: "Laptops", brand: "Dell", hasSerialTracking: true },
       ];
 
       for (const e of electronicsItems) {

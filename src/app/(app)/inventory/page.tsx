@@ -1339,13 +1339,17 @@ function getDefaultGstRate(type?: string): string {
                           { code: "9983", name: "Services" },
                           { code: "2106", name: "Food Prep" },
                           { code: "3004", name: "Medicines" },
+                          { code: "8517", name: "Smartphones / Mobiles" },
                           { code: "8471", name: "IT Hardware" },
                         ]
                     ).map((hsn) => (
                       <button
                         key={hsn.code}
                         type="button"
-                        onClick={() => setHsnCode(hsn.code)}
+                        onClick={() => {
+                          setHsnCode(hsn.code);
+                          if (hsn.code === "8517") setHasSerialTracking(true);
+                        }}
                         className={`rounded-md px-1.5 py-0.5 font-bold transition ${
                           hsnCode === hsn.code
                             ? isPharma ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'
@@ -1355,6 +1359,37 @@ function getDefaultGstRate(type?: string): string {
                         {hsn.code} ({hsn.name})
                       </button>
                     ))}
+                  </div>
+
+                  {/* 📱 15-Digit Dual-IMEI & Serial Number Tracking Toggle (Smartphones & Electronics) */}
+                  <div className={`mt-3.5 p-3.5 rounded-xl border transition-all ${
+                    hasSerialTracking 
+                      ? 'bg-blue-50/90 border-blue-300 ring-2 ring-blue-500/20 shadow-xs' 
+                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                  }`}>
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={hasSerialTracking}
+                        onChange={(e) => setHasSerialTracking(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                            📱 Track by 15-Digit IMEI & Serial Number
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            hasSerialTracking ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {hasSerialTracking ? 'ENABLED (Mobiles / Gadgets)' : 'Optional'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">
+                          Enable for mobile phones, tablets, and serialized electronics. Automatically activates Dual-IMEI (IMEI 1 & IMEI 2) scanning on Purchase Inward (GRN) and prints IMEI on customer invoices for manufacturer warranty tracking.
+                        </p>
+                      </div>
+                    </label>
                   </div>
                 </div>
               )}
@@ -1667,53 +1702,35 @@ function getDefaultGstRate(type?: string): string {
                     </div>
                   </div>
 
-                  {/* Serial / IMEI Tracking (Electronics & Mobile Phones) */}
-                  {isElectronics ? (
-                    <div className="rounded-2xl border p-4 bg-blue-50/80 border-blue-200">
-                      <div className="flex items-start space-x-3">
-                        <input
-                          type="checkbox"
-                          id="serial-tracking-checkbox"
-                          checked={hasSerialTracking}
-                          onChange={(e) => setHasSerialTracking(e.target.checked)}
-                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label htmlFor="serial-tracking-checkbox" className="cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs font-bold text-slate-900">
-                              Enable Serial Number & Dual-IMEI Tracking
-                            </p>
-                            <span className="text-[9px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
-                              Mobile & Electronics
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                            Each physical phone requires 15-digit IMEI scanning upon GRN purchase inward and is printed on tax invoices for manufacturer warranty tracking.
+                  {/* Serial / IMEI Tracking (Mobile Phones & Electronics) */}
+                  <div className={`rounded-2xl border p-4 transition ${
+                    hasSerialTracking ? 'bg-blue-50/80 border-blue-300 ring-2 ring-blue-500/20' : 'bg-slate-50/70 border-slate-200'
+                  }`}>
+                    <div className="flex items-start space-x-3">
+                      <input
+                        type="checkbox"
+                        id="serial-tracking-checkbox"
+                        checked={hasSerialTracking}
+                        onChange={(e) => setHasSerialTracking(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <label htmlFor="serial-tracking-checkbox" className="cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-slate-900">
+                            📱 Enable 15-Digit Dual-IMEI & Serial Number Tracking
                           </p>
-                        </label>
-                      </div>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            hasSerialTracking ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
+                          }`}>
+                            Smartphones & Electronics
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                          Each physical unit requires 15-digit IMEI scanning upon GRN purchase inward (IMEI 1 & IMEI 2) and prints on tax invoices for manufacturer warranty tracking.
+                        </p>
+                      </label>
                     </div>
-                  ) : (
-                    <div className="rounded-2xl border p-4 border-slate-200 bg-slate-50/70">
-                      <div className="flex items-start space-x-3">
-                        <input
-                          type="checkbox"
-                          id="serial-tracking-checkbox"
-                          checked={hasSerialTracking}
-                          onChange={(e) => setHasSerialTracking(e.target.checked)}
-                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <label htmlFor="serial-tracking-checkbox" className="cursor-pointer">
-                          <p className="text-xs font-bold text-slate-800">
-                            Enable Serial Number / Unique Identifier Tracking
-                          </p>
-                          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                            For electronics, hardware appliances, and serialized high-value assets.
-                          </p>
-                        </label>
-                      </div>
-                    </div>
-                  )}
+                  </div>
 
                   {/* Batch Tracking Checkbox (Hidden for pure electronics / mobile shops) */}
                   {!isElectronics && (
