@@ -53,32 +53,6 @@ export default function DashboardPage() {
     loadDashboardData();
   }, []);
 
-  const [showDemoModal, setShowDemoModal] = useState(false);
-  const [seedingDemo, setSeedingDemo] = useState(false);
-
-  const handleSeedDemo = async (industry: string) => {
-    setSeedingDemo(true);
-    try {
-      const res = await fetch('/api/demo/seed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ industry }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setShowDemoModal(false);
-        // Reload to update sidebar and dashboard data
-        window.location.reload();
-      } else {
-        alert(data.error || 'Failed to seed demo data');
-      }
-    } catch (err) {
-      console.error('Error seeding demo data:', err);
-    } finally {
-      setSeedingDemo(false);
-    }
-  };
-
   return (
     <div className="space-y-8">
       {/* Top Welcome & Quick Actions */}
@@ -89,15 +63,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto">
-          <button
-            onClick={() => setShowDemoModal(true)}
-            className="rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 px-3.5 py-2.5 text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs"
-            title="Load realistic sample data for instant demos"
-          >
-            <span className="text-sm">⚡</span>
-            <span>Load Demo Data</span>
-          </button>
-
           <Link
             href="/billing/new"
             className="flex-1 sm:flex-initial rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition flex items-center justify-center space-x-1.5"
@@ -117,107 +82,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 1-Click Demo Data Modal */}
-      {showDemoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">⚡</span>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900">1-Click Enterprise Demo Seeder</h3>
-                  <p className="text-[11px] text-slate-500">Select an industry to instantly populate realistic sample products, batches, and records.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowDemoModal(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              {[
-                {
-                  id: 'APPAREL',
-                  title: 'Textiles & Apparel Store',
-                  emoji: '👗',
-                  desc: 'Raymond Cotton Shirts, Levi’s 511 Denims, Kanchipuram Silk Sarees, and unstitched fabric meters.',
-                  badge: 'Matrix & Fabric',
-                  badgeColor: 'bg-violet-100 text-violet-800',
-                },
-                {
-                  id: 'ELECTRONICS',
-                  title: 'Electronics & Mobile Store',
-                  emoji: '📱',
-                  desc: 'Apple iPhone 16 Pro, Samsung S24 Ultra, Sony ANC Headphones, Dell Laptops with 15-digit serials.',
-                  badge: 'IMEI & Warranty',
-                  badgeColor: 'bg-cyan-100 text-cyan-800',
-                },
-                {
-                  id: 'SALON_SPA',
-                  title: 'Salon, Spa & Wellness Center',
-                  emoji: '💇',
-                  desc: 'Director Haircuts, Keratin Spas, Hydra-Facials with therapist commission & Moroccanoil retail.',
-                  badge: 'Appointments & Comm.',
-                  badgeColor: 'bg-pink-100 text-pink-800',
-                },
-                {
-                  id: 'PHARMACY',
-                  title: 'Pharmacy & Healthcare',
-                  emoji: '💊',
-                  desc: 'Dolo 650, Augmentin 625, Azithral (Schedule H/H1), doctors, and 30-day near-expiry batches.',
-                  badge: 'Rx & Schedules',
-                  badgeColor: 'bg-emerald-100 text-emerald-800',
-                },
-                {
-                  id: 'RESTAURANT',
-                  title: 'Restaurant & Cafe',
-                  emoji: '🍽️',
-                  desc: 'Biryani, Butter Chicken, Naan, 5 dining tables, KOTs, and takeaway counter.',
-                  badge: 'F&B Ready',
-                  badgeColor: 'bg-amber-100 text-amber-800',
-                },
-                {
-                  id: 'RETAIL',
-                  title: 'Supermarket & Retail',
-                  emoji: '🛒',
-                  desc: 'Basmati Rice, Sunflower Oil, Amul Butter, Britannia Cookies with EAN/Code128 barcodes.',
-                  badge: 'High Speed POS',
-                  badgeColor: 'bg-indigo-100 text-indigo-800',
-                },
-              ].map((ind) => (
-                <button
-                  key={ind.id}
-                  disabled={seedingDemo}
-                  onClick={() => handleSeedDemo(ind.id)}
-                  className="flex items-start justify-between p-4 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 transition text-left group"
-                >
-                  <div className="flex items-start space-x-3">
-                    <span className="text-2xl p-2 bg-slate-100 rounded-xl group-hover:bg-white">{ind.emoji}</span>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-bold text-slate-900 text-sm">{ind.title}</span>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${ind.badgeColor}`}>
-                          {ind.badge}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">{ind.desc}</p>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {seedingDemo && (
-              <div className="text-center py-2 text-xs font-bold text-indigo-600 animate-pulse">
-                Seeding realistic enterprise catalog and database records...
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* 4 Core Financial KPI Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
