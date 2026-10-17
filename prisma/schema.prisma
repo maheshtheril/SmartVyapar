@@ -78,7 +78,7 @@ model Tenant {
   financialYearStartMonth Int              @default(4) // 4 = April, 1 = January
   autoRoundOff            Boolean          @default(true) // Round off bill to nearest integer
   logoUrl                 String?
-  businessType            String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES", "PHARMACY"
+  businessType            String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES", "PHARMACY", "DISTRIBUTION", "APPAREL", "ELECTRONICS", "SALON_SPA"
   pharmacyDrugLicense20B  String? // Retail Allopathic Drug License Form 20B
   pharmacyDrugLicense21B  String? // Retail Drug License Form 21B
   restaurantPlan          String           @default("NONE") // "NONE" | "STARTER" | "PRO" | "CHAIN" — Restaurant-specific add-on tier
@@ -133,6 +133,7 @@ model Tenant {
   SalesOrder            SalesOrder[]
   PriceList             PriceList[]
   memberships           TenantMembership[]
+  deviceUnits           DeviceUnit[]
 
   @@map("tenants")
 }
@@ -211,7 +212,9 @@ model Product {
   dosageForm          String? // e.g. "TABLET", "SYRUP", "INJECTION", "CAPSULE", "OINTMENT"
 
   hasBatchTracking Boolean   @default(false)
+  hasSerialTracking Boolean  @default(false) // Serial / Dual-IMEI tracking for Electronics & Mobile phones
   batches          Batch[]
+  deviceUnits      DeviceUnit[]
   kotItems         KotItem[]
 
   tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -672,11 +675,13 @@ model InvoiceItem {
   igstAmount       Decimal @default(0.0) @db.Decimal(10, 2)
   batchId          String?
   batchNumber      String?
+  imeiNumber       String? // Scanned 15-digit IMEI for mobile phones & electronics
   lineTotal        Decimal @db.Decimal(10, 2)
 
-  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  batch   Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  invoice    Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product    Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  batch      Batch?      @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  deviceUnit DeviceUnit?
 
   @@map("invoice_items")
 }
@@ -742,9 +747,10 @@ model PurchaseBill {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  items      PurchaseBillItem[]
-  debitNotes DebitNote[]
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items       PurchaseBillItem[]
+  debitNotes  DebitNote[]
+  deviceUnits DeviceUnit[]
 
   @@unique([tenantId, supplierName, billNumber])
   @@index([tenantId])
@@ -759,6 +765,7 @@ model PurchaseBillItem {
   batchNumber     String?
   mfgDate         DateTime?
   expiryDate      DateTime?
+  imeiList        String?   @db.Text // JSON or comma-separated scanned IMEIs for mobile phones
   hsnCode         String?
   unit            String    @default("PCS") // Unit billed by vendor (e.g. BOX, CTN, PCS, KG)
   quantity        Decimal   @db.Decimal(12, 3) // Quantity billed by vendor (e.g. 5 Boxes)
@@ -939,6 +946,46 @@ model Batch {
   @@index([tenantId, productId])
   @@index([tenantId, expiryDate])
   @@map("batches")
+}
+
+// ----------------------------------------------------
+// 9B. ELECTRONICS & MOBILE PHONE SERIALIZED UNITS (IMEI)
+// ----------------------------------------------------
+enum DeviceStatus {
+  IN_STOCK
+  SOLD
+  RETURNED
+  DEFECTIVE
+  TRANSFERRED
+}
+
+model DeviceUnit {
+  id             String       @id @default(uuid())
+  tenantId       String
+  productId      String
+  imei1          String       // Primary 15-digit IMEI or Serial Number
+  imei2          String?      // Secondary IMEI (for Dual-SIM phones)
+  serialNumber   String?      // Hardware Serial Number
+  color          String?
+  status         DeviceStatus @default(IN_STOCK)
+  purchaseBillId String?
+  invoiceItemId  String?      @unique
+  warrantyMonths Int          @default(12)
+  soldAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  purchaseBill   PurchaseBill? @relation(fields: [purchaseBillId], references: [id], onDelete: SetNull)
+  invoiceItem    InvoiceItem?  @relation(fields: [invoiceItemId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, imei1])
+  @@index([tenantId, productId])
+  @@index([tenantId, imei1])
+  @@index([tenantId, imei2])
+  @@index([tenantId, status])
+  @@map("device_units")
 }
 
 // ----------------------------------------------------

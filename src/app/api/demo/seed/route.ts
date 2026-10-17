@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
     const tenantId = session.tenantId;
 
     const body = await req.json().catch(() => ({}));
-    const industry: "RETAIL" | "RESTAURANT" | "PHARMACY" | "AUTOMOBILE" = 
-      ["RETAIL", "RESTAURANT", "PHARMACY", "AUTOMOBILE"].includes(body.industry?.toUpperCase())
+    const industry = 
+      ["RETAIL", "RESTAURANT", "PHARMACY", "AUTOMOBILE", "APPAREL", "ELECTRONICS", "SALON_SPA"].includes(body.industry?.toUpperCase())
         ? body.industry.toUpperCase()
         : "PHARMACY";
 
@@ -224,6 +224,52 @@ export async function POST(req: NextRequest) {
             ...d,
           },
           update: { currentStock: d.currentStock },
+        });
+      }
+    } else if (industry === "APPAREL") {
+      const apparelItems = [
+        { name: "Raymond Slim Fit Cotton Shirt (Size 40, Sky Blue)", barcode: "890200100101", sellingPrice: 1499, purchasePrice: 850, mrp: 1699, gstRate: 12.0, currentStock: 30, hsnCode: "620520", baseUnit: "PCS", category: "Formal Shirts", brand: "Raymond" },
+        { name: "Levi's 511 Slim Jeans (Size 32, Dark Indigo)", barcode: "890200100102", sellingPrice: 2499, purchasePrice: 1450, mrp: 2799, gstRate: 12.0, currentStock: 25, hsnCode: "620342", baseUnit: "PCS", category: "Denim Jeans", brand: "Levi's" },
+        { name: "Pure Kanchipuram Silk Saree (Crimson Gold)", barcode: "890200100103", sellingPrice: 6500, purchasePrice: 4200, mrp: 7500, gstRate: 5.0, currentStock: 15, hsnCode: "500720", baseUnit: "PCS", category: "Ethnic Sarees", brand: "Heritage Silk" },
+        { name: "Linen Suiting Fabric (Unstitched)", barcode: "890200100104", sellingPrice: 850, purchasePrice: 520, mrp: 950, gstRate: 5.0, currentStock: 120, hsnCode: "530919", baseUnit: "MTR", category: "Cut Pieces", brand: "Linen Club" },
+      ];
+
+      for (const a of apparelItems) {
+        await prisma.product.upsert({
+          where: { tenantId_barcode: { tenantId, barcode: a.barcode } },
+          create: { tenantId, sku: `APP-${a.barcode.slice(-4)}`, ...a },
+          update: { currentStock: a.currentStock },
+        });
+      }
+    } else if (industry === "ELECTRONICS") {
+      const electronicsItems = [
+        { name: "Apple iPhone 16 Pro 128GB (Natural Titanium)", barcode: "195949000101", sellingPrice: 119900, purchasePrice: 104000, mrp: 119900, gstRate: 18.0, currentStock: 8, hsnCode: "851713", baseUnit: "PCS", category: "Smartphones", brand: "Apple" },
+        { name: "Samsung Galaxy S24 Ultra 256GB (Titanium Gray)", barcode: "880609500102", sellingPrice: 129999, purchasePrice: 112000, mrp: 134999, gstRate: 18.0, currentStock: 6, hsnCode: "851713", baseUnit: "PCS", category: "Smartphones", brand: "Samsung" },
+        { name: "Sony WH-1000XM5 Wireless ANC Headphones", barcode: "454873600103", sellingPrice: 28990, purchasePrice: 22500, mrp: 34990, gstRate: 18.0, currentStock: 12, hsnCode: "851830", baseUnit: "PCS", category: "Audio", brand: "Sony" },
+        { name: "Dell Inspiron 15 Core i5 16GB/512GB SSD", barcode: "884116000104", sellingPrice: 56990, purchasePrice: 47500, mrp: 62000, gstRate: 18.0, currentStock: 10, hsnCode: "847130", baseUnit: "PCS", category: "Laptops", brand: "Dell" },
+      ];
+
+      for (const e of electronicsItems) {
+        await prisma.product.upsert({
+          where: { tenantId_barcode: { tenantId, barcode: e.barcode } },
+          create: { tenantId, sku: `ELEC-${e.barcode.slice(-4)}`, ...e },
+          update: { currentStock: e.currentStock },
+        });
+      }
+    } else if (industry === "SALON_SPA") {
+      const salonServices = [
+        { name: "Signature Haircut & Beard Styling (Director Stylist)", sellingPrice: 650, purchasePrice: 0, mrp: 700, gstRate: 18.0, currentStock: 999, hsnCode: "999721", baseUnit: "SERVICE", category: "Hair Styling" },
+        { name: "L'Oreal Keratin Hair Spa Treatment", sellingPrice: 1800, purchasePrice: 450, mrp: 2200, gstRate: 18.0, currentStock: 999, hsnCode: "999721", baseUnit: "SERVICE", category: "Hair Treatments" },
+        { name: "Bridal Radiance Hydra-Facial Therapy (90 mins)", sellingPrice: 3200, purchasePrice: 600, mrp: 3800, gstRate: 18.0, currentStock: 999, hsnCode: "999722", baseUnit: "SERVICE", category: "Skin & Spa" },
+        { name: "Moroccanoil Treatment Original 100ml (Retail)", barcode: "729001150105", sellingPrice: 3150, purchasePrice: 2400, mrp: 3300, gstRate: 18.0, currentStock: 20, hsnCode: "330590", baseUnit: "PCS", category: "Retail Products" },
+      ];
+
+      for (const s of salonServices) {
+        const sku = `SALON-${s.name.slice(0, 4).toUpperCase().replace(/[^A-Z]/g, "")}`;
+        await prisma.product.upsert({
+          where: { tenantId_sku: { tenantId, sku } },
+          create: { tenantId, sku, ...s },
+          update: { currentStock: s.currentStock },
         });
       }
     } else {

@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
           imageUrl: data.imageUrl || null,
           productType: data.productType || "RETAIL_ITEM",
           hasBatchTracking: !!data.hasBatchTracking,
+          hasSerialTracking: !!data.hasSerialTracking,
           baseUnit: data.baseUnit,
           hasAltUnit: data.hasAltUnit,
           altUnit: data.hasAltUnit ? data.altUnit : null,

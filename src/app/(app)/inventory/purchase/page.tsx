@@ -95,6 +95,7 @@ interface PurchaseItemRow {
   batchNumber: string;
   mfgDate: string;
   expiryDate: string;
+  imeiList?: string[];
 }
 
 interface SupplierOption {
@@ -128,6 +129,78 @@ export default function PurchaseInwardPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [tenant, setTenant] = useState<any>(null);
+
+  // Industry-specific visibility flags
+  const businessType = tenant?.businessType || 'RETAIL';
+  const isElectronics = businessType === 'ELECTRONICS' || businessType === 'MOBILE';
+  const isAutomobile = businessType === 'AUTOMOBILE';
+  const isPharma = businessType === 'PHARMACEUTICAL' || businessType === 'PHARMACY';
+
+  // Device Serial / IMEI Management Modal State
+  const [imeiModalRowIdx, setImeiModalRowIdx] = useState<number | null>(null);
+  const [imeiInputVal, setImeiInputVal] = useState<string>('');
+  const [imeiWorkingList, setImeiWorkingList] = useState<string[]>([]);
+  const [imeiModalError, setImeiModalError] = useState<string | null>(null);
+  const [bulkImeiText, setBulkImeiText] = useState<string>('');
+  const [showBulkPaste, setShowBulkPaste] = useState<boolean>(false);
+  const imeiInputRef = useRef<HTMLInputElement>(null);
+
+  const openImeiModal = (rowIdx: number) => {
+    setImeiModalRowIdx(rowIdx);
+    const currentList = items[rowIdx]?.imeiList || [];
+    setImeiWorkingList([...currentList]);
+    setImeiInputVal('');
+    setBulkImeiText('');
+    setShowBulkPaste(false);
+    setImeiModalError(null);
+    setTimeout(() => {
+      imeiInputRef.current?.focus();
+    }, 120);
+  };
+
+  const addImeiToWorkingList = () => {
+    const cleaned = imeiInputVal.trim();
+    if (!cleaned) return;
+    if (imeiWorkingList.includes(cleaned)) {
+      setImeiModalError(`IMEI / Serial "${cleaned}" has already been entered.`);
+      return;
+    }
+    setImeiWorkingList(prev => [...prev, cleaned]);
+    setImeiInputVal('');
+    setImeiModalError(null);
+    setTimeout(() => {
+      imeiInputRef.current?.focus();
+    }, 50);
+  };
+
+  const removeImeiFromWorkingList = (index: number) => {
+    setImeiWorkingList(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleBulkImeiAdd = () => {
+    const split = bulkImeiText.split(/[\n,; \t]+/).map(s => s.trim()).filter(Boolean);
+    if (split.length === 0) return;
+    const newItems = split.filter(code => !imeiWorkingList.includes(code));
+    setImeiWorkingList(prev => [...prev, ...newItems]);
+    setBulkImeiText('');
+    setShowBulkPaste(false);
+    setImeiModalError(null);
+  };
+
+  const saveImeiModal = () => {
+    if (imeiModalRowIdx === null) return;
+    setItems(prev => {
+      const copy = [...prev];
+      const target = { ...copy[imeiModalRowIdx] };
+      target.imeiList = imeiWorkingList;
+      if (imeiWorkingList.length > 0) {
+        target.quantity = imeiWorkingList.length;
+      }
+      copy[imeiModalRowIdx] = target;
+      return copy;
+    });
+    setImeiModalRowIdx(null);
+  };
 
   // Suppliers directory & searchable combobox state
   const [registeredSuppliers, setRegisteredSuppliers] = useState<SupplierOption[]>(DEFAULT_SUPPLIERS);
@@ -1186,6 +1259,7 @@ export default function PurchaseInwardPage() {
           batchNumber: it.batchNumber || undefined,
           mfgDate: it.mfgDate || undefined,
           expiryDate: it.expiryDate || undefined,
+          imeiList: it.imeiList && it.imeiList.length > 0 ? it.imeiList : undefined,
         })),
       };
 
@@ -2088,11 +2162,20 @@ export default function PurchaseInwardPage() {
                       <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[11px] border-b border-slate-950">
                         <th className="py-2.5 px-2 w-8 text-center text-slate-400">#</th>
                         <th className="py-2.5 px-3 min-w-[220px]">Supplier Invoice Name</th>
-                          <th className="py-2.5 px-3 min-w-[200px]">POS Display Name</th>
-                          <th className="py-2.5 px-2 w-24">Part / OEM #</th>
+                        <th className="py-2.5 px-3 min-w-[200px]">POS Display Name</th>
+                        {isAutomobile && <th className="py-2.5 px-2 w-24">Part / OEM #</th>}
                         <th className="py-2.5 px-2 w-20 text-center">HSN</th>
-                        <th className="py-2.5 px-2 w-24">Batch #</th>
-                        <th className="py-2.5 px-2 w-28">Expiry</th>
+                        {!isElectronics && (
+                          <>
+                            <th className="py-2.5 px-2 w-24">Batch #</th>
+                            <th className="py-2.5 px-2 w-28">Expiry</th>
+                          </>
+                        )}
+                        {isElectronics && (
+                          <th className="py-2.5 px-2 min-w-[170px] text-center bg-blue-950 text-blue-200 border-x border-blue-900">
+                            Device IMEI / Serial #
+                          </th>
+                        )}
                         <th className="py-2.5 px-2 w-16 text-center">Qty</th>
                         <th className="py-2.5 px-2 w-18 text-center">Unit</th>
                         <th className="py-2.5 px-2 w-24 text-right">Cost (₹)</th>
@@ -2308,16 +2391,18 @@ export default function PurchaseInwardPage() {
                                   />
                                 </td>
 
-                              {/* Part Number Column */}
-                              <td className="py-2 px-1 align-middle">
-                                <input
-                                  type="text"
-                                  placeholder="OEM #"
-                                  value={row.partNumber || ''}
-                                  onChange={(e) => updateItem(idx, 'partNumber', e.target.value)}
-                                  className="w-full border border-slate-300 rounded px-2 py-1.5 text-[11px] font-mono focus:ring-2 focus:ring-blue-500 bg-white"
-                                />
-                              </td>
+                              {/* Part Number Column - AUTOMOBILE ONLY */}
+                              {isAutomobile && (
+                                <td className="py-2 px-1 align-middle">
+                                  <input
+                                    type="text"
+                                    placeholder="OEM #"
+                                    value={row.partNumber || ''}
+                                    onChange={(e) => updateItem(idx, 'partNumber', e.target.value)}
+                                    className="w-full border border-slate-300 rounded px-2 py-1.5 text-[11px] font-mono focus:ring-2 focus:ring-blue-500 bg-white"
+                                  />
+                                </td>
+                              )}
 
                             {/* 3. HSN Code */}
                             <td className="py-2 px-2 align-middle">
@@ -2330,26 +2415,57 @@ export default function PurchaseInwardPage() {
                               />
                             </td>
 
-                            {/* 4. Batch Number */}
-                            <td className="py-2 px-2 align-middle">
-                              <input
-                                type="text"
-                                placeholder="CAS-2026"
-                                value={row.batchNumber}
-                                onChange={(e) => updateItem(idx, 'batchNumber', e.target.value)}
-                                className="w-full uppercase border border-slate-300 rounded px-2 py-1.5 text-xs font-mono font-bold"
-                              />
-                            </td>
+                            {/* 4 & 5. Batch & Expiry - HIDDEN FOR ELECTRONICS */}
+                            {!isElectronics && (
+                              <>
+                                <td className="py-2 px-2 align-middle">
+                                  <input
+                                    type="text"
+                                    placeholder="CAS-2026"
+                                    value={row.batchNumber}
+                                    onChange={(e) => updateItem(idx, 'batchNumber', e.target.value)}
+                                    className="w-full uppercase border border-slate-300 rounded px-2 py-1.5 text-xs font-mono font-bold"
+                                  />
+                                </td>
+                                <td className="py-2 px-2 align-middle">
+                                  <input
+                                    type="date"
+                                    value={row.expiryDate}
+                                    onChange={(e) => updateItem(idx, 'expiryDate', e.target.value)}
+                                    className="w-full border border-slate-300 rounded px-1.5 py-1.5 text-xs text-slate-700 font-sans"
+                                  />
+                                </td>
+                              </>
+                            )}
 
-                            {/* 5. Expiry Date */}
-                            <td className="py-2 px-2 align-middle">
-                              <input
-                                type="date"
-                                value={row.expiryDate}
-                                onChange={(e) => updateItem(idx, 'expiryDate', e.target.value)}
-                                className="w-full border border-slate-300 rounded px-1.5 py-1.5 text-xs text-slate-700 font-sans"
-                              />
-                            </td>
+                            {/* Electronics & Mobile Phones: IMEI / Serial No */}
+                            {isElectronics && (
+                              <td className="py-2 px-2 align-middle">
+                                {row.imeiList && row.imeiList.length > 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openImeiModal(idx)}
+                                    className="w-full flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 font-mono text-[11px] font-bold transition shadow-xs"
+                                    title="Click to view or edit scanned IMEIs"
+                                  >
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                      {row.imeiList.length} IMEIs
+                                    </span>
+                                    <span className="text-[10px] text-blue-600 font-sans font-medium underline">Edit</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => openImeiModal(idx)}
+                                    className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-blue-400 bg-blue-50/50 hover:bg-blue-100/70 text-blue-700 font-bold text-[11px] transition"
+                                  >
+                                    <Barcode className="w-3.5 h-3.5 text-blue-600" />
+                                    <span>+ Scan IMEIs</span>
+                                  </button>
+                                )}
+                              </td>
+                            )}
 
                             {/* 6. Quantity */}
                             <td className="py-2 px-2 align-middle">
@@ -3441,10 +3557,21 @@ export default function PurchaseInwardPage() {
                     <thead className="sticky top-0 z-10">
                       <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[11px] border-b border-slate-950">
                         <th className="py-2.5 px-2 w-8 text-center text-slate-400">#</th>
-                        <th className="py-2.5 px-3 min-w-[220px]">Supplier Invoice Name</th><th className="py-2.5 px-3 min-w-[200px]">POS Display Name</th><th className="py-2.5 px-2 w-24">Part / OEM #</th>
+                        <th className="py-2.5 px-3 min-w-[220px]">Supplier Invoice Name</th>
+                        <th className="py-2.5 px-3 min-w-[200px]">POS Display Name</th>
+                        {isAutomobile && <th className="py-2.5 px-2 w-24">Part / OEM #</th>}
                         <th className="py-2.5 px-2 w-20 text-center">HSN</th>
-                        <th className="py-2.5 px-2 w-24">Batch #</th>
-                        <th className="py-2.5 px-2 w-28">Expiry</th>
+                        {!isElectronics && (
+                          <>
+                            <th className="py-2.5 px-2 w-24">Batch #</th>
+                            <th className="py-2.5 px-2 w-28">Expiry</th>
+                          </>
+                        )}
+                        {isElectronics && (
+                          <th className="py-2.5 px-2 min-w-[160px] text-center bg-blue-950 text-blue-200 border-x border-blue-900">
+                            Device IMEI / Serial #
+                          </th>
+                        )}
                         <th className="py-2.5 px-2 w-16 text-center">Qty</th>
                         <th className="py-2.5 px-2 w-18 text-center">Unit</th>
                         <th className="py-2.5 px-2 w-24 text-right">Cost (₹)</th>
@@ -3622,19 +3749,40 @@ export default function PurchaseInwardPage() {
                                   </div>,
                                   document.body
                                 )}
-</td><td className="py-2 px-3 align-middle relative"><div className="relative"><input type="text" value={row.suggestedDisplayName || row.product?.displayName || row.product?.name || ''} onChange={(e) => updateEditItem(idx, 'suggestedDisplayName', e.target.value)} className="w-full uppercase font-bold text-indigo-700 border border-indigo-200 rounded px-2 py-1.5 text-xs bg-indigo-50 focus:bg-white" /></div></td><td className="py-2 px-2 align-middle"><input type="text" value={row.partNumber || row.product?.partNumber || ''} onChange={(e) => updateEditItem(idx, 'partNumber', e.target.value)} className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold uppercase" /></td>
+</td>
+                              <td className="py-2 px-3 align-middle relative">
+                                <div className="relative">
+                                  <input type="text" value={row.suggestedDisplayName || row.product?.displayName || row.product?.name || ''} onChange={(e) => updateEditItem(idx, 'suggestedDisplayName', e.target.value)} className="w-full uppercase font-bold text-indigo-700 border border-indigo-200 rounded px-2 py-1.5 text-xs bg-indigo-50 focus:bg-white" />
+                                </div>
+                              </td>
+                              {isAutomobile && (
+                                <td className="py-2 px-2 align-middle">
+                                  <input type="text" value={row.partNumber || row.product?.partNumber || ''} onChange={(e) => updateEditItem(idx, 'partNumber', e.target.value)} className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono font-bold uppercase" />
+                                </td>
+                              )}
                             <td className="py-2 px-2 align-middle">
                               <input type="text" value={row.hsnCode || ''} onChange={e => updateEditItem(idx, 'hsnCode', e.target.value)}
                                 className="w-full text-center border border-slate-300 rounded px-1.5 py-1.5 text-xs font-mono" />
                             </td>
-                            <td className="py-2 px-2 align-middle">
-                              <input type="text" value={row.batchNumber || ''} onChange={e => updateEditItem(idx, 'batchNumber', e.target.value)}
-                                className="w-full uppercase border border-slate-300 rounded px-2 py-1.5 text-xs font-mono font-bold" />
-                            </td>
-                            <td className="py-2 px-2 align-middle">
-                              <input type="date" value={row.expiryDate?.substring(0, 10) || ''} onChange={e => updateEditItem(idx, 'expiryDate', e.target.value)}
-                                className="w-full border border-slate-300 rounded px-1.5 py-1.5 text-xs" />
-                            </td>
+                            {!isElectronics && (
+                              <>
+                                <td className="py-2 px-2 align-middle">
+                                  <input type="text" value={row.batchNumber || ''} onChange={e => updateEditItem(idx, 'batchNumber', e.target.value)}
+                                    className="w-full uppercase border border-slate-300 rounded px-2 py-1.5 text-xs font-mono font-bold" />
+                                </td>
+                                <td className="py-2 px-2 align-middle">
+                                  <input type="date" value={row.expiryDate?.substring(0, 10) || ''} onChange={e => updateEditItem(idx, 'expiryDate', e.target.value)}
+                                    className="w-full border border-slate-300 rounded px-1.5 py-1.5 text-xs" />
+                                </td>
+                              </>
+                            )}
+                            {isElectronics && (
+                              <td className="py-2 px-2 align-middle text-center">
+                                <span className="inline-flex items-center px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-mono font-bold">
+                                  📱 {row.imeiList ? `${JSON.parse(row.imeiList || '[]').length || 0} IMEIs` : 'Serialized'}
+                                </span>
+                              </td>
+                            )}
                             <td className="py-2 px-2 align-middle text-center">
                               <input type="number" min="0.001" step="any" value={row.quantity === undefined || row.quantity === null ? 1 : row.quantity} onFocus={e => e.target.select()} onChange={e => updateEditItem(idx, 'quantity', e.target.value)}
                                 data-vfield={`edit-row-${idx}-qty`}
@@ -3817,6 +3965,190 @@ export default function PurchaseInwardPage() {
       })()}
 
 
+
+      {/* ------------------------------------------------------------------------- */}
+      {/* DEVICE SERIAL & DUAL-IMEI SCANNER MODAL (ELECTRONICS / MOBILE) */}
+      {/* ------------------------------------------------------------------------- */}
+      {imeiModalRowIdx !== null && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-white/10 rounded-xl">
+                  <Barcode className="w-5 h-5 text-blue-300" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black tracking-wide flex items-center gap-2">
+                    Device Serial & Dual-IMEI Inward
+                    <span className="text-[10px] uppercase font-bold bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-full border border-blue-400/30">
+                      Mobile / Electronics
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-blue-200/80 truncate max-w-sm mt-0.5 font-medium">
+                    {items[imeiModalRowIdx]?.productName || 'Selected Item'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImeiModalRowIdx(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 overflow-y-auto space-y-4 flex-1">
+              {/* Barcode Quick Scanner Input */}
+              <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-2">
+                <label className="block text-xs font-bold text-blue-900">
+                  Scan 15-Digit IMEI / Serial Number (Barcode Scanner Ready)
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      ref={imeiInputRef}
+                      type="text"
+                      placeholder="Point barcode scanner here or type IMEI..."
+                      value={imeiInputVal}
+                      onChange={(e) => setImeiInputVal(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addImeiToWorkingList();
+                        }
+                      }}
+                      className="w-full bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addImeiToWorkingList}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shrink-0 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" /> Add
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                  <span>Press <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[10px] text-slate-700">Enter</kbd> to add continuous scans</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkPaste(!showBulkPaste)}
+                    className="text-blue-600 hover:text-blue-800 font-bold underline"
+                  >
+                    {showBulkPaste ? 'Hide Bulk Paste' : 'Bulk Paste IMEIs'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Bulk Paste Area (Collapsible) */}
+              {showBulkPaste && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Paste multiple IMEIs (separated by newline, comma, or spaces)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="860123456789012&#10;860123456789013&#10;860123456789014"
+                    value={bulkImeiText}
+                    onChange={(e) => setBulkImeiText(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleBulkImeiAdd}
+                      disabled={!bulkImeiText.trim()}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition"
+                    >
+                      Import All
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {imeiModalError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-700 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                  <span>{imeiModalError}</span>
+                </div>
+              )}
+
+              {/* Scanned List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span>Scanned Units ({imeiWorkingList.length})</span>
+                  {imeiWorkingList.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setImeiWorkingList([])}
+                      className="text-rose-600 hover:text-rose-800 text-[11px] font-semibold"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+
+                {imeiWorkingList.length === 0 ? (
+                  <div className="p-6 text-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
+                    No IMEI numbers scanned yet. Scan or type above to add.
+                  </div>
+                ) : (
+                  <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-white shadow-inner">
+                    {imeiWorkingList.map((code, cIdx) => (
+                      <div key={cIdx} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50 transition text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 text-slate-400 font-mono text-[10px]">#{cIdx + 1}</span>
+                          <span className="font-mono font-bold text-slate-800">{code}</span>
+                          {code.length === 15 && (
+                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
+                              Valid 15-digit
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeImeiFromWorkingList(cIdx)}
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                          title="Remove unit"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <span className="text-xs text-slate-500">
+                Line Quantity will update to <strong className="text-slate-800">{imeiWorkingList.length || 1}</strong>
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setImeiModalRowIdx(null)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-white transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveImeiModal}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md shadow-blue-200 transition flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" /> Save {imeiWorkingList.length} Units
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

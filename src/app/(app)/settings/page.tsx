@@ -800,9 +800,12 @@ function SettingsContent() {
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {[
-                    { id: 'RETAIL', label: 'Retail & POS', desc: 'Electricals, Supermarket, Garments, Electronics', emoji: '🛒' },
+                    { id: 'RETAIL', label: 'Retail & POS', desc: 'Supermarket, Provisions, General Merchandise', emoji: '🛒' },
+                    { id: 'APPAREL', label: 'Textiles & Apparel', desc: 'Size-Color variant grid, fabric meters & barcode stickers', emoji: '👗' },
+                    { id: 'ELECTRONICS', label: 'Electronics & Mobiles', desc: 'IMEI/Serial number tracking, warranty lookup & gadgets', emoji: '📱' },
                     { id: 'PHARMACY', label: 'Pharmacy & Healthcare', desc: 'Schedule H/H1 Register, Doctor Master & Expiry Monitor', emoji: '💊' },
                     { id: 'RESTAURANT', label: 'Restaurant & Cafe', desc: 'Dining Tables, KOT, Bakery & Takeaway', emoji: '🍽️' },
+                    { id: 'SALON_SPA', label: 'Salon, Spa & Wellness', desc: 'Stylist commissions, service appointments & beauty wellness', emoji: '💇' },
                     { id: 'DISTRIBUTION', label: 'FMCG & Distribution', desc: 'Territory management, wholesale beats, distribution', emoji: '🚚' },
                     { id: 'AUTOMOBILE', label: 'Automobile Workshop', desc: 'Vehicle Job-Cards, Spare Parts & Labor', emoji: '🚗' },
                     { id: 'SERVICES', label: 'Services & Repair', desc: 'Consulting, Repair Services & Freelance', emoji: '💼' },

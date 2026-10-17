@@ -34,6 +34,27 @@ const INDUSTRY_PRO_EXTRAS: Record<string, string[]> = {
     "Price Lists & Customer-Specific Pricing",
     "Delivery Challans (GST Rule 55)",
   ],
+  APPAREL: [
+    "Size-Color-Fit Grid Matrix (S/M/L/XL x Colors)",
+    "Parent-Child Barcode Label Generator",
+    "Fabric Running Meter vs Readymade Cut Deductions",
+    "Seasonal Fashion Collections & Brand Masters",
+    "Tailoring Measurements & Alteration Notes",
+  ],
+  ELECTRONICS: [
+    "Dual IMEI & Serial Number Tracking (Purchase to Sale)",
+    "15-Digit IMEI Barcode Scanner with Instant Warranty Lookup",
+    "Brand Consumer Finance / EMI Schemes (Bajaj/Pine Labs)",
+    "Old Device Trade-In / Exchange Valuation Vouchers",
+    "Extended Warranty & Service AMC Tracker",
+  ],
+  SALON_SPA: [
+    "Stylist & Therapist Commission Splitting Rules",
+    "Client Appointment Booking & Multi-Chair Calendar",
+    "Prepaid Wellness Packages & Wallet Deductions",
+    "Backbar Consumables Auto-Depletion per Service",
+    "Customer Service History & Preferred Stylist Notes",
+  ],
   DISTRIBUTION: [
     "Region → Zone → Territory → Beat Hierarchy",
     "Field Sales Mobile App",
@@ -94,10 +115,13 @@ const RESTAURANT_CHAIN_FEATURES = [
 // ─── Industry tabs ────────────────────────────────────────────────────────────
 
 const INDUSTRIES = [
-  { id: "RETAIL",       label: "Retail & POS",        emoji: "🛒" },
+  { id: "RETAIL",       label: "Retail & POS",         emoji: "🛒" },
+  { id: "APPAREL",      label: "Textiles & Apparel",   emoji: "👗" },
+  { id: "ELECTRONICS",  label: "Electronics & Mobiles",emoji: "📱" },
   { id: "PHARMACY",     label: "Pharmacy & Medical",   emoji: "💊" },
   { id: "RESTAURANT",   label: "Restaurant & F&B",     emoji: "🍽️" },
-  { id: "DISTRIBUTION", label: "FMCG & Distribution", emoji: "🚚" },
+  { id: "SALON_SPA",    label: "Salon, Spa & Wellness",emoji: "💇" },
+  { id: "DISTRIBUTION", label: "FMCG & Distribution",  emoji: "🚚" },
   { id: "AUTOMOBILE",   label: "Automobile & Garage",  emoji: "🚗" },
   { id: "SERVICES",     label: "Services & Billing",   emoji: "💼" },
 ];

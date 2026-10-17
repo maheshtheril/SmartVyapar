@@ -17,6 +17,7 @@ export const CreateProductSchema = z
     imageUrl: z.string().trim().optional().nullable(),
     productType: z.enum(["RETAIL_ITEM", "RAW_MATERIAL", "FINISHED_GOOD"]).default("RETAIL_ITEM").optional(),
     hasBatchTracking: z.boolean().default(false).optional(),
+    hasSerialTracking: z.boolean().default(false).optional(),
     baseUnit: z.string().trim().default("PCS"),
     hasAltUnit: z.boolean().default(false),
     altUnit: z.string().trim().optional().nullable(),

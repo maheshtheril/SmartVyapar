@@ -40,11 +40,6 @@ async function main() {
   `);
   console.log("Raw SQL updated tenants:", rawTenant);
 
-  const zionaUsers = await prisma.user.findMany({
-    where: { email: { contains: "@zionapos.com" } },
-    select: { email: true, name: true, role: true },
-  });
-  console.log("ZionaPOS users:", zionaUsers);
 }
 
 main()

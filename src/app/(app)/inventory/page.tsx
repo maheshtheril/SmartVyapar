@@ -70,6 +70,9 @@ function getDefaultHsn(type?: string): string {
     case "RESTAURANT": return "2106"; // Food preparation / Prepared Dish
     case "AUTOMOBILE": return "8708"; // Motor vehicle parts & accessories
     case "PHARMACEUTICAL": return "3004"; // Medicaments
+    case "APPAREL": return "6203"; // Men's or boys' suits, ensembles, jackets, trousers
+    case "ELECTRONICS": return "8517"; // Mobile phones, wireless equipment & electronics
+    case "SALON_SPA": return "9997"; // Washing, cleaning & beauty services (SAC)
     case "SERVICES": return "9983"; // IT & Professional Services
     case "DISTRIBUTION":
     case "RETAIL":
@@ -80,7 +83,10 @@ function getDefaultHsn(type?: string): string {
 function getDefaultGstRate(type?: string): string {
   switch (type) {
     case "RESTAURANT": return "5"; // 5% GST standard for restaurant food & dining
+    case "APPAREL": return "12"; // 12% standard apparel rate
     case "PHARMACEUTICAL": return "12"; // 12% on standard medicines
+    case "ELECTRONICS": return "18"; // 18% consumer electronics & IT goods
+    case "SALON_SPA": return "18"; // 18% standard beauty & personal care SAC
     case "AUTOMOBILE": return "18"; // 18% standard auto parts
     case "SERVICES": return "18"; // 18% standard SAC services
     case "DISTRIBUTION":
@@ -114,6 +120,7 @@ function getDefaultGstRate(type?: string): string {
   const [compatibleModels, setCompatibleModels] = useState("");
   const [foodCategory, setFoodCategory] = useState(""); // restaurant: food course category
   const [hasBatchTracking, setHasBatchTracking] = useState(false);
+  const [hasSerialTracking, setHasSerialTracking] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -126,7 +133,8 @@ function getDefaultGstRate(type?: string): string {
   const businessType = tenant?.businessType || "RETAIL";
   const isRestaurant = businessType === "RESTAURANT";
   const isAutomobile = businessType === "AUTOMOBILE";
-  const isPharma = businessType === "PHARMACEUTICAL";
+  const isPharma = businessType === "PHARMACEUTICAL" || businessType === "PHARMACY";
+  const isElectronics = businessType === "ELECTRONICS" || businessType === "MOBILE";
 
   // Handle local image file upload & conversion to Data URL
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,12 +174,22 @@ function getDefaultGstRate(type?: string): string {
         if (bType === "RESTAURANT") {
           setProductType("FINISHED_GOOD");
           setBaseUnit("PORTION");
-        } else if (bType === "PHARMACEUTICAL") {
+        } else if (bType === "PHARMACEUTICAL" || bType === "PHARMACY") {
           setBaseUnit("TAB");
           setHasAltUnit(true);
           setAltUnit("STRIP");
           setConversionFactor("10");
           setHasBatchTracking(true);
+        } else if (bType === "SALON_SPA") {
+          setBaseUnit("SERVICE");
+        } else if (bType === "APPAREL") {
+          setBaseUnit("PCS");
+          setHasAltUnit(true);
+          setAltUnit("MTR");
+          setConversionFactor("1");
+        } else if (bType === "ELECTRONICS") {
+          setBaseUnit("PCS");
+          setHasSerialTracking(true);
         }
       }
       const data = await res.json();
@@ -203,18 +221,23 @@ function getDefaultGstRate(type?: string): string {
     setProductType(isRestaurant ? "FINISHED_GOOD" : "RETAIL_ITEM");
     setHsnCode(getDefaultHsn(businessType));
     setGstRate(getDefaultGstRate(businessType));
-    setBaseUnit(isRestaurant ? "PORTION" : isPharma ? "TAB" : "PCS");
+    setBaseUnit(
+      businessType === "RESTAURANT" ? "PORTION" :
+      (businessType === "PHARMACEUTICAL" || businessType === "PHARMACY") ? "TAB" :
+      businessType === "SALON_SPA" ? "SERVICE" : "PCS"
+    );
     setSku("");
     setBarcode("");
     setPurchasePrice("");
     setSellingPrice("");
     setMrp("");
-    setHasAltUnit(isPharma ? true : false);
-    setAltUnit(isPharma ? "STRIP" : "");
-    setConversionFactor("10");
+    setHasAltUnit(isPharma || businessType === "APPAREL");
+    setAltUnit(isPharma ? "STRIP" : businessType === "APPAREL" ? "MTR" : "");
+    setConversionFactor(businessType === "APPAREL" ? "1" : "10");
     setInitialStock("0");
     setMinStockAlert("5");
     setHasBatchTracking(isPharma ? true : false);
+    setHasSerialTracking(isElectronics ? true : false);
     setImageUrl("");
     setImagePreview(null);
     setFormError(null);
@@ -292,6 +315,7 @@ function getDefaultGstRate(type?: string): string {
     setInitialStock(item.currentStock ? String(item.currentStock) : "0");
     setMinStockAlert(item.minStockAlert ? String(item.minStockAlert) : "5");
     setHasBatchTracking(item.hasBatchTracking || false);
+    setHasSerialTracking(item.hasSerialTracking || false);
     setImageUrl(item.imageUrl || "");
     setImagePreview(item.imageUrl || null);
     setActiveTab("GENERAL");
@@ -360,6 +384,7 @@ function getDefaultGstRate(type?: string): string {
           initialStock: Number(initialStock || 0),
           minStockAlert: Number(minStockAlert || 5),
           hasBatchTracking,
+          hasSerialTracking,
           imageUrl: imageUrl.trim() || undefined,
         }),
       });
@@ -650,6 +675,9 @@ function getDefaultGstRate(type?: string): string {
                             <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
                               {item.sku && <span>SKU: {item.sku}</span>}
                               {item.barcode && <span>• Barcode: {item.barcode}</span>}
+                              {item.hasSerialTracking && (
+                                <span className="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[9px]">IMEI / SERIAL</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1639,35 +1667,85 @@ function getDefaultGstRate(type?: string): string {
                     </div>
                   </div>
 
-                  {/* Batch Tracking Checkbox */}
-                  <div className={`rounded-2xl border p-4 ${isPharma ? 'bg-emerald-50/70 border-emerald-200' : 'border-slate-200 bg-slate-50/70'}`}>
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        id="batch-tracking-checkbox"
-                        checked={hasBatchTracking}
-                        onChange={(e) => setHasBatchTracking(e.target.checked)}
-                        className={`mt-0.5 h-4 w-4 rounded border-slate-300 ${isPharma ? 'text-emerald-600 focus:ring-emerald-500' : 'text-indigo-600 focus:ring-indigo-500'}`}
-                      />
-                      <label htmlFor="batch-tracking-checkbox" className="cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-bold text-slate-800">
-                            Enable Batch & Expiry Date Tracking (FIFO / FEFO)
-                          </p>
-                          {isPharma && (
-                            <span className="text-[9px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
-                              CDSCO / Drugs Act Mandate
+                  {/* Serial / IMEI Tracking (Electronics & Mobile Phones) */}
+                  {isElectronics ? (
+                    <div className="rounded-2xl border p-4 bg-blue-50/80 border-blue-200">
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="checkbox"
+                          id="serial-tracking-checkbox"
+                          checked={hasSerialTracking}
+                          onChange={(e) => setHasSerialTracking(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <label htmlFor="serial-tracking-checkbox" className="cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-bold text-slate-900">
+                              Enable Serial Number & Dual-IMEI Tracking
+                            </p>
+                            <span className="text-[9px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              Mobile & Electronics
                             </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                          {isPharma
-                            ? "Strictly enforced for pharmaceuticals. Inward purchases require Batch Number, Mfg Date, and Expiry Date. POS uses FEFO (First Expired, First Out) to prevent dispensing expired drugs."
-                            : "Recommended for pharmaceuticals, perishable goods, chemicals, and cosmetics. Requires entering Batch Number, Mfd Date, and Exp Date during GRN purchase inward."}
-                        </p>
-                      </label>
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                            Each physical phone requires 15-digit IMEI scanning upon GRN purchase inward and is printed on tax invoices for manufacturer warranty tracking.
+                          </p>
+                        </label>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="rounded-2xl border p-4 border-slate-200 bg-slate-50/70">
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="checkbox"
+                          id="serial-tracking-checkbox"
+                          checked={hasSerialTracking}
+                          onChange={(e) => setHasSerialTracking(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="serial-tracking-checkbox" className="cursor-pointer">
+                          <p className="text-xs font-bold text-slate-800">
+                            Enable Serial Number / Unique Identifier Tracking
+                          </p>
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                            For electronics, hardware appliances, and serialized high-value assets.
+                          </p>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Batch Tracking Checkbox (Hidden for pure electronics / mobile shops) */}
+                  {!isElectronics && (
+                    <div className={`rounded-2xl border p-4 ${isPharma ? 'bg-emerald-50/70 border-emerald-200' : 'border-slate-200 bg-slate-50/70'}`}>
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="checkbox"
+                          id="batch-tracking-checkbox"
+                          checked={hasBatchTracking}
+                          onChange={(e) => setHasBatchTracking(e.target.checked)}
+                          className={`mt-0.5 h-4 w-4 rounded border-slate-300 ${isPharma ? 'text-emerald-600 focus:ring-emerald-500' : 'text-indigo-600 focus:ring-indigo-500'}`}
+                        />
+                        <label htmlFor="batch-tracking-checkbox" className="cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-bold text-slate-800">
+                              Enable Batch & Expiry Date Tracking (FIFO / FEFO)
+                            </p>
+                            {isPharma && (
+                              <span className="text-[9px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                CDSCO / Drugs Act Mandate
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                            {isPharma
+                              ? "Strictly enforced for pharmaceuticals. Inward purchases require Batch Number, Mfg Date, and Expiry Date. POS uses FEFO (First Expired, First Out) to prevent dispensing expired drugs."
+                              : "Recommended for pharmaceuticals, perishable goods, chemicals, and cosmetics. Requires entering Batch Number, Mfd Date, and Exp Date during GRN purchase inward."}
+                          </p>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
