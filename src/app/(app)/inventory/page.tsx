@@ -134,7 +134,7 @@ function getDefaultGstRate(type?: string): string {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   // Derived from tenant & active HSN — controls industry-specific UI
-  const businessType = tenant?.businessType || "RETAIL";
+  const businessType = (tenant?.businessType || "RETAIL").toUpperCase();
   const isRestaurant = businessType === "RESTAURANT";
   const isAutomobile = businessType === "AUTOMOBILE";
   const isPharma = businessType === "PHARMACEUTICAL" || businessType === "PHARMACY";
@@ -202,9 +202,11 @@ function getDefaultGstRate(type?: string): string {
           setHasAltUnit(true);
           setAltUnit("MTR");
           setConversionFactor("1");
-        } else if (bType === "ELECTRONICS") {
+        } else if (bType === "ELECTRONICS" || bType === "MOBILE") {
           setBaseUnit("PCS");
           setHasSerialTracking(true);
+        } else {
+          setHasSerialTracking(false);
         }
       }
       const data = await res.json();
@@ -334,7 +336,7 @@ function getDefaultGstRate(type?: string): string {
     setInitialStock(item.currentStock ? String(item.currentStock) : "0");
     setMinStockAlert(item.minStockAlert ? String(item.minStockAlert) : "5");
     setHasBatchTracking(item.hasBatchTracking || false);
-    setHasSerialTracking(item.hasSerialTracking || false);
+    setHasSerialTracking(isElectronics ? (item.hasSerialTracking || false) : false);
     setImageUrl(item.imageUrl || "");
     setImagePreview(item.imageUrl || null);
     setActiveTab("GENERAL");
@@ -1007,7 +1009,7 @@ function getDefaultGstRate(type?: string): string {
                         placeholder={
                           isApparel
                             ? "e.g. Raymond Slim Fit Cotton Shirt, Levi's 511 Denim, Kanchipuram Silk Saree"
-                            : hasSerialTracking || isElectronics
+                            : isElectronics
                             ? "e.g. Apple iPhone 16 Pro 128GB, Samsung Galaxy S24 Ultra, OnePlus 12"
                             : isRestaurant
                             ? "e.g. Malabar Chicken Biryani, Filter Coffee"
@@ -1031,7 +1033,7 @@ function getDefaultGstRate(type?: string): string {
                         placeholder={
                           isApparel
                             ? "e.g. Ray Cotton Shirt - 40 / Sky Blue"
-                            : hasSerialTracking || isElectronics
+                            : isElectronics
                             ? "e.g. iPhone 16 Pro 128GB"
                             : isRestaurant
                             ? "Short name on KOT / Bill (e.g. Chic Biryani)"
@@ -1054,7 +1056,7 @@ function getDefaultGstRate(type?: string): string {
                         placeholder={
                           isApparel
                             ? "e.g. Formal Shirts, Denim Jeans, Sarees, Trousers, Kurtas"
-                            : hasSerialTracking || isElectronics
+                            : isElectronics
                             ? "e.g. Smartphones, Tablets, Audio & Headsets, Laptops"
                             : isRestaurant
                             ? "e.g. Starters, Main Course, Hot Beverages, Breads"
@@ -1081,7 +1083,7 @@ function getDefaultGstRate(type?: string): string {
                             <option value="Fabrics & Cut Pieces" />
                             <option value="Footwear & Chappals" />
                           </>
-                        ) : hasSerialTracking || isElectronics ? (
+                        ) : isElectronics ? (
                           <>
                             <option value="Smartphones" />
                             <option value="Feature Phones" />
@@ -1121,7 +1123,7 @@ function getDefaultGstRate(type?: string): string {
                         placeholder={
                           isApparel
                             ? "e.g. Raymond, Levi's, Allen Solly, Peter England, Manyavar"
-                            : hasSerialTracking || isElectronics
+                            : isElectronics
                             ? "e.g. Apple, Samsung, OnePlus, Xiaomi, Vivo, Realme, Sony"
                             : isPharma
                             ? "e.g. Cipla, Sun Pharma, Abbott, Mankind, GSK"
@@ -1149,7 +1151,7 @@ function getDefaultGstRate(type?: string): string {
                             <option value="Paragon" />
                             <option value="Bata" />
                           </>
-                        ) : hasSerialTracking || isElectronics ? (
+                        ) : isElectronics ? (
                           <>
                             <option value="Apple" />
                             <option value="Samsung" />
@@ -1354,7 +1356,7 @@ function getDefaultGstRate(type?: string): string {
                       <input
                         type="text"
                         placeholder={
-                          hasSerialTracking || isElectronics
+                          isElectronics
                             ? "e.g. IPH-16P-128 or SAM-S24U"
                             : isRestaurant
                             ? "e.g. DISH-BIRYANI-01"
@@ -1464,9 +1466,9 @@ function getDefaultGstRate(type?: string): string {
                         type="button"
                         onClick={() => {
                           setHsnCode(hsn.code);
-                          if (hsn.code === "8517") {
+                          if (hsn.code === "8517" && isElectronics) {
                             setHasSerialTracking(true);
-                          } else if (hsn.code.startsWith("6") || hsn.code.startsWith("5")) {
+                          } else if (!isElectronics) {
                             setHasSerialTracking(false);
                           }
                         }}
@@ -1617,8 +1619,8 @@ function getDefaultGstRate(type?: string): string {
                     </div>
                   )}
 
-                  {/* 📱 15-Digit Dual-IMEI & Serial Number Tracking Toggle (ONLY for Mobiles & Electronics, NEVER for Apparel/Food/Pharma) */}
-                  {!isApparel && !isRestaurant && !isPharma && (
+                  {/* 📱 15-Digit Dual-IMEI & Serial Number Tracking Toggle (STRICTLY for Mobiles & Electronics ONLY) */}
+                  {isElectronics && (
                     <div className={`mt-3.5 p-3.5 rounded-xl border transition-all ${
                       hasSerialTracking 
                         ? 'bg-blue-50/90 border-blue-300 ring-2 ring-blue-500/20 shadow-xs' 
@@ -1960,8 +1962,8 @@ function getDefaultGstRate(type?: string): string {
                     </div>
                   </div>
 
-                  {/* Serial / IMEI Tracking (Mobile Phones & Electronics ONLY — hidden for Apparel & Food) */}
-                  {!isApparel && !isRestaurant && !isPharma && (
+                  {/* Serial / IMEI Tracking (STRICTLY for Mobile Phones & Electronics ONLY) */}
+                  {isElectronics && (
                     <div className={`rounded-2xl border p-4 transition ${
                       hasSerialTracking ? 'bg-blue-50/80 border-blue-300 ring-2 ring-blue-500/20' : 'bg-slate-50/70 border-slate-200'
                     }`}>
