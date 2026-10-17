@@ -33,6 +33,10 @@ import {
   ExternalLink,
   MessageCircle,
   HeartHandshake,
+  QrCode,
+  Printer,
+  Copy,
+  Share2,
 } from 'lucide-react';
 
 export type AppointmentStatus =
@@ -225,6 +229,8 @@ export default function SalonAppointmentsPage() {
 
   const [tenantSlug, setTenantSlug] = useState<string>('');
   const [tenantName, setTenantName] = useState<string>('');
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [copiedLinkState, setCopiedLinkState] = useState<boolean>(false);
 
   // Fetch appointments for selected date
   const loadAppointments = useCallback(async () => {
@@ -597,20 +603,12 @@ export default function SalonAppointmentsPage() {
 
           {/* Public Zero-Wait Customer Booking Link */}
           <button
-            onClick={() => {
-              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.zionapos.store';
-              const targetSlug = tenantSlug || 'demo-salon';
-              const url = `${origin}/book/${targetSlug}`;
-              navigator.clipboard?.writeText(url);
-              alert(
-                `✨ ${tenantName || 'Your Salon'} Self-Booking Link Copied! ✨\n\nDirect Link for your Customers:\n${url}\n\nWhen your customers open this link, they see ONLY your stylists, your services, and book directly into your chair schedule!`
-              );
-            }}
+            onClick={() => setIsShareModalOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs md:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all"
-            title="Copy your salon's dedicated self-booking link for clients"
+            title="View, copy & share your salon's dedicated self-booking link & QR standee"
           >
-            <ExternalLink className="w-4 h-4" />
-            <span>Customer Booking Link</span>
+            <QrCode className="w-4 h-4" />
+            <span>Share Booking Link & QR</span>
           </button>
 
           {/* Quick Walk-In Button */}
@@ -1868,6 +1866,179 @@ export default function SalonAppointmentsPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL 4: SHARE YOUR UNIQUE SALON BOOKING LINK & TABLETOP QR STANDEE */}
+      {isShareModalOpen && (() => {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.zionapos.store';
+        const targetSlug = tenantSlug || 'demo-salon';
+        const dedicatedUrl = `${origin}/book/${targetSlug}`;
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(dedicatedUrl)}`;
+        const whatsappShareText = `✨ *Book Your Next Haircut & Spa from Home!* ✨\n\nSkip the waiting lobby at *${tenantName || 'Our Salon'}*! Pick your favorite stylist and chair directly on your phone with zero lobby wait:\n\n🔗 ${dedicatedUrl}\n\nWe look forward to pampering you! 💇‍♀️💅`;
+        const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappShareText)}`;
+
+        const printStandee = () => {
+          const w = window.open('', '_blank');
+          if (!w) return;
+          w.document.write(`
+            <html>
+              <head>
+                <title>QR Standee - ${tenantName || 'Salon'}</title>
+                <style>
+                  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; padding: 40px; margin: 0; background: #fff; }
+                  .standee { border: 3px solid #ec4899; border-radius: 28px; padding: 40px 24px; max-width: 380px; margin: 0 auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+                  h1 { font-size: 24px; color: #1e293b; margin: 0 0 6px; font-weight: 800; }
+                  p.sub { font-size: 13px; color: #64748b; margin: 0 0 24px; }
+                  .qr-box { background: #fdf2f8; padding: 16px; border-radius: 20px; display: inline-block; border: 1px solid #fbcfe8; }
+                  .qr-box img { width: 220px; height: 220px; border-radius: 12px; display: block; }
+                  .pill { background: #db2777; color: white; font-weight: 700; font-size: 12px; padding: 6px 16px; border-radius: 9999px; display: inline-block; margin-top: 20px; }
+                  .url { font-size: 11px; color: #94a3b8; margin-top: 18px; word-break: break-all; }
+                </style>
+              </head>
+              <body>
+                <div class="standee">
+                  <h1>${tenantName || 'Aura Luxury Salon'}</h1>
+                  <p class="sub">Scan with Phone Camera to Book Your Chair<br/><strong>⚡ 0-Minute Lobby Wait</strong></p>
+                  <div class="qr-box">
+                    <img src="${qrCodeUrl}" alt="Scan to Book" />
+                  </div>
+                  <div><span class="pill">RESERVE TECHNICIAN ONLINE</span></div>
+                  <div class="url">${dedicatedUrl}</div>
+                </div>
+                <script>
+                  window.onload = function() { window.print(); };
+                </script>
+              </body>
+            </html>
+          `);
+          w.document.close();
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 md:p-7 space-y-5 my-6 max-h-[92vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300 flex items-center justify-center">
+                    <QrCode className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      Your Salon's Dedicated Booking Link
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Share with customers so they book from home into your schedule
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsShareModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Unique Link Box */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Your Dedicated Customer Booking URL:</span>
+                  <span className="text-[11px] text-pink-600 font-semibold">Tenant Slug: {targetSlug}</span>
+                </label>
+                <div className="flex items-center gap-2 p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                  <span className="font-mono text-slate-800 dark:text-slate-200 flex-1 truncate select-all">
+                    {dedicatedUrl}
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(dedicatedUrl);
+                      setCopiedLinkState(true);
+                      setTimeout(() => setCopiedLinkState(false), 2500);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1 transition-all ${
+                      copiedLinkState
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 shadow-sm'
+                    }`}
+                  >
+                    {copiedLinkState ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedLinkState ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                  <a
+                    href={dedicatedUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-1.5 text-slate-500 hover:text-pink-600 rounded-lg hover:bg-white dark:hover:bg-slate-700"
+                    title="Preview public portal"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Tabletop QR Standee Card */}
+              <div className="p-4 bg-gradient-to-tr from-pink-500/10 via-purple-500/5 to-amber-500/10 border border-pink-200 dark:border-pink-900/40 rounded-2xl flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+                <div className="p-2.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
+                  <img src={qrCodeUrl} alt="QR Code" className="w-28 h-28 rounded-xl object-contain" />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Counter Standee & Reception QR
+                  </h4>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Place this QR on your reception counter or mirrors so walk-in guests or repeat visitors can scan with their phone camera to book future appointments in 10 seconds!
+                  </p>
+                  <button
+                    onClick={printStandee}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs shadow-sm transition-all"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print Tabletop Standee</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 1-Click WhatsApp & Social Sharing Options */}
+              <div className="space-y-2 pt-1">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  Quick Share to Customers:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <a
+                    href={whatsappShareUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Send on WhatsApp</span>
+                  </a>
+
+                  <button
+                    onClick={() => {
+                      const igBio = `✂️ Book Zero-Wait Chair: ${dedicatedUrl}`;
+                      navigator.clipboard?.writeText(igBio);
+                      alert('Copied Instagram Bio snippet to clipboard:\n\n' + igBio);
+                    }}
+                    className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Copy for Instagram Bio</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-right">
+                <button
+                  onClick={() => setIsShareModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
