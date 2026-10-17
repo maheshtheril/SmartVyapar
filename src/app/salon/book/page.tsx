@@ -24,6 +24,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
+import { useParams, useSearchParams } from 'next/navigation';
+
 interface Stylist {
   name: string;
   role: string;
@@ -64,6 +66,10 @@ interface ConfirmedBooking {
 }
 
 export default function PublicSalonBookingPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const slugFromRoute = (params?.slug as string) || (searchParams?.get('slug') as string) || '';
+
   const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -111,7 +117,8 @@ export default function PublicSalonBookingPage() {
       setLoading(true);
       try {
         const stylistParam = selectedStylist ? encodeURIComponent(selectedStylist.name) : '';
-        const res = await fetch(`/api/public/salon/slots?date=${selectedDate}&stylist=${stylistParam}`);
+        const slugQuery = slugFromRoute ? `&slug=${encodeURIComponent(slugFromRoute)}` : '';
+        const res = await fetch(`/api/public/salon/slots?date=${selectedDate}&stylist=${stylistParam}${slugQuery}`);
         const data = await res.json();
         if (data.success) {
           if (data.tenant) {
@@ -224,6 +231,7 @@ export default function PublicSalonBookingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          slug: slugFromRoute || tenantInfo.slug || undefined,
           clientName: clientName.trim(),
           clientPhone: clientPhone.trim(),
           scheduledDate: selectedDate,

@@ -223,6 +223,9 @@ export default function SalonAppointmentsPage() {
   // Active Consultation Modal for inspection
   const [viewConsultationAppt, setViewConsultationAppt] = useState<Appointment | null>(null);
 
+  const [tenantSlug, setTenantSlug] = useState<string>('');
+  const [tenantName, setTenantName] = useState<string>('');
+
   // Fetch appointments for selected date
   const loadAppointments = useCallback(async () => {
     setLoading(true);
@@ -232,6 +235,8 @@ export default function SalonAppointmentsPage() {
       if (data.success) {
         setAppointments(data.appointments || []);
         setWalkInQueue(data.walkInQueue || []);
+        if (data.tenantSlug) setTenantSlug(data.tenantSlug);
+        if (data.tenantName) setTenantName(data.tenantName);
         if (data.metrics) setMetrics(data.metrics);
         if (Array.isArray(data.stylistLeaderboard)) setStylistStats(data.stylistLeaderboard);
         if (Array.isArray(data.staffMembers)) setStaffMembers(data.staffMembers);
@@ -593,12 +598,16 @@ export default function SalonAppointmentsPage() {
           {/* Public Zero-Wait Customer Booking Link */}
           <button
             onClick={() => {
-              const url = typeof window !== 'undefined' ? `${window.location.origin}/salon/book` : 'https://www.zionapos.store/salon/book';
+              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.zionapos.store';
+              const targetSlug = tenantSlug || 'demo-salon';
+              const url = `${origin}/book/${targetSlug}`;
               navigator.clipboard?.writeText(url);
-              alert('Customer Self-Booking link copied to clipboard!\n\nShare this link with your customers via WhatsApp or Instagram so they can choose their stylist and book slots from home:\n' + url);
+              alert(
+                `✨ ${tenantName || 'Your Salon'} Self-Booking Link Copied! ✨\n\nDirect Link for your Customers:\n${url}\n\nWhen your customers open this link, they see ONLY your stylists, your services, and book directly into your chair schedule!`
+              );
             }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs md:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all"
-            title="Copy public self-booking link for clients to book from home"
+            title="Copy your salon's dedicated self-booking link for clients"
           >
             <ExternalLink className="w-4 h-4" />
             <span>Customer Booking Link</span>

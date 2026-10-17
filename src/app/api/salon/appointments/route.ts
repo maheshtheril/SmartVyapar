@@ -159,9 +159,16 @@ export async function GET(req: NextRequest) {
       (a) => a.isWalkIn && (a.status === "WAITING" || a.status === "CHECKED_IN" || a.status === "IN_SERVICE")
     );
 
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, businessName: true, slug: true, phone: true },
+    });
+
     return NextResponse.json({
       success: true,
       date: dateParam,
+      tenantSlug: tenant?.slug || '',
+      tenantName: tenant?.businessName || '',
       appointments,
       walkInQueue,
       metrics: {
