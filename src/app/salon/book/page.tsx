@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import {
   Scissors,
   Sparkles,
@@ -65,7 +65,7 @@ interface ConfirmedBooking {
   tenantAddress: string;
 }
 
-export default function PublicSalonBookingPage() {
+function SalonBookingContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const slugFromRoute = (params?.slug as string) || (searchParams?.get('slug') as string) || '';
@@ -882,3 +882,19 @@ export default function PublicSalonBookingPage() {
     </div>
   );
 }
+
+export default function PublicSalonBookingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-300 gap-3">
+          <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-semibold text-pink-400">Loading Zero-Wait Salon Portal...</p>
+        </div>
+      }
+    >
+      <SalonBookingContent />
+    </Suspense>
+  );
+}
+
