@@ -18,6 +18,10 @@ const PUBLIC_PATHS = [
   "/contact",
   "/pricing",
   "/display",
+  "/order",
+  "/book",
+  "/salon/book",
+  "/api/public",
   "/api/whatsapp/webhook",
   "/api/admin/backup",
 ];

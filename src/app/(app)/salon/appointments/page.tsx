@@ -590,6 +590,20 @@ export default function SalonAppointmentsPage() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-pink-500' : ''}`} />
           </button>
 
+          {/* Public Zero-Wait Customer Booking Link */}
+          <button
+            onClick={() => {
+              const url = typeof window !== 'undefined' ? `${window.location.origin}/salon/book` : 'https://www.zionapos.store/salon/book';
+              navigator.clipboard?.writeText(url);
+              alert('Customer Self-Booking link copied to clipboard!\n\nShare this link with your customers via WhatsApp or Instagram so they can choose their stylist and book slots from home:\n' + url);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs md:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all"
+            title="Copy public self-booking link for clients to book from home"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span>Customer Booking Link</span>
+          </button>
+
           {/* Quick Walk-In Button */}
           <button
             onClick={() => setIsWalkInModalOpen(true)}
