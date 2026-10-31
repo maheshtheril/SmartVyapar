@@ -54,6 +54,9 @@ import {
   Tv,
   Scissors,
   FlaskConical,
+  Smartphone,
+  Barcode,
+  ArrowLeftRight,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -96,6 +99,9 @@ const ICON_MAP: Record<string, any> = {
   Zap,
   Wrench,
   Calendar,
+  Smartphone,
+  Barcode,
+  ArrowLeftRight,
 };
 
 const EXPANDED_STORAGE_KEY = 'sv_sidebar_expanded';
@@ -245,6 +251,7 @@ export default function Sidebar() {
             if (bType === "SALON_SPA" || pName.startsWith('/salon')) nextExp.salon = true;
             if (bType === "RESTAURANT" || pName.startsWith('/restaurant')) nextExp.restaurant = true;
             if (bType === "AUTOMOBILE" || pName.startsWith('/garage')) nextExp.garage = true;
+            if (bType === "ELECTRONICS" || pName.startsWith('/electronics')) nextExp.electronics = true;
             if (Object.keys(nextExp).length > 0) {
               setExpandedGroups((prev) => {
                 const merged = { ...prev, ...nextExp };

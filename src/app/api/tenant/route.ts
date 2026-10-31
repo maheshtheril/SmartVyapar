@@ -435,6 +435,44 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Industry-Specific Module: Show Mobiles & Electronics at TOP PRIORITY for ELECTRONICS
+    if (tenant.businessType === "ELECTRONICS") {
+      menuTree.unshift({
+        id: "electronics",
+        name: "Mobiles & Electronics",
+        icon: "Smartphone",
+        badge: "Dual-IMEI",
+        badgeColor: "indigo",
+        children: [
+          {
+            id: "elec-command",
+            name: "Electronics Command Center",
+            href: "/electronics",
+            icon: "LayoutDashboard",
+            highlight: true,
+          },
+          {
+            id: "elec-serials",
+            name: "15-Digit IMEI & Serial Registry",
+            href: "/electronics",
+            icon: "Barcode",
+          },
+          {
+            id: "elec-tradein",
+            name: "Old Phone Trade-In & Buyback",
+            href: "/electronics",
+            icon: "ArrowLeftRight",
+          },
+          {
+            id: "elec-pos",
+            name: "Fast Serial POS Dispatch",
+            href: "/pos",
+            icon: "Receipt",
+          },
+        ],
+      });
+    }
+
     // Industry-Specific Module: Only show Pharmacy & Healthcare for PHARMACY businesses
     if (tenant.businessType === "PHARMACY") {
       menuTree.splice(2, 0, {

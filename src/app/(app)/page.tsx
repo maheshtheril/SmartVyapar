@@ -58,6 +58,10 @@ export default function DashboardPage() {
           router.replace("/garage");
           return;
         }
+        if (bType === "ELECTRONICS") {
+          router.replace("/electronics");
+          return;
+        }
       }
 
       const res = await fetch("/api/dashboard");

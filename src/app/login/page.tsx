@@ -271,6 +271,12 @@ function LoginForm() {
         email.toLowerCase().includes("garage.")
       ) {
         router.push("/garage");
+      } else if (
+        data.user?.businessType === "ELECTRONICS" ||
+        data.user?.tenantSlug === "demo-electronics" ||
+        email.toLowerCase().includes("electronics.")
+      ) {
+        router.push("/electronics");
       } else {
         router.push("/");
       }
