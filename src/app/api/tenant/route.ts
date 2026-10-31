@@ -435,6 +435,44 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Industry-Specific Module: Show Textiles & Apparel at TOP PRIORITY for APPAREL
+    if (tenant.businessType === "APPAREL") {
+      menuTree.unshift({
+        id: "apparel",
+        name: "Textiles & Apparel",
+        icon: "Scissors",
+        badge: "Size-Color",
+        badgeColor: "indigo",
+        children: [
+          {
+            id: "apparel-command",
+            name: "Apparel Command Center",
+            href: "/apparel",
+            icon: "LayoutDashboard",
+            highlight: true,
+          },
+          {
+            id: "apparel-matrix",
+            name: "2D Size × Color Matrix",
+            href: "/apparel",
+            icon: "Grid",
+          },
+          {
+            id: "apparel-fabrics",
+            name: "Fabric Cuts & Rolls (Meters)",
+            href: "/apparel",
+            icon: "Scissors",
+          },
+          {
+            id: "apparel-pos",
+            name: "Fast Fashion POS",
+            href: "/pos",
+            icon: "Receipt",
+          },
+        ],
+      });
+    }
+
     // Industry-Specific Module: Show Mobiles & Electronics at TOP PRIORITY for ELECTRONICS
     if (tenant.businessType === "ELECTRONICS") {
       menuTree.unshift({

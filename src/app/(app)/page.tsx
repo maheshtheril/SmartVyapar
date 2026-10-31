@@ -62,6 +62,10 @@ export default function DashboardPage() {
           router.replace("/electronics");
           return;
         }
+        if (bType === "APPAREL") {
+          router.replace("/apparel");
+          return;
+        }
       }
 
       const res = await fetch("/api/dashboard");

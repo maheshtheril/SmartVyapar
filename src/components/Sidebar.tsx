@@ -252,6 +252,7 @@ export default function Sidebar() {
             if (bType === "RESTAURANT" || pName.startsWith('/restaurant')) nextExp.restaurant = true;
             if (bType === "AUTOMOBILE" || pName.startsWith('/garage')) nextExp.garage = true;
             if (bType === "ELECTRONICS" || pName.startsWith('/electronics')) nextExp.electronics = true;
+            if (bType === "APPAREL" || pName.startsWith('/apparel')) nextExp.apparel = true;
             if (Object.keys(nextExp).length > 0) {
               setExpandedGroups((prev) => {
                 const merged = { ...prev, ...nextExp };

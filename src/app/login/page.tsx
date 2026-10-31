@@ -277,6 +277,12 @@ function LoginForm() {
         email.toLowerCase().includes("electronics.")
       ) {
         router.push("/electronics");
+      } else if (
+        data.user?.businessType === "APPAREL" ||
+        data.user?.tenantSlug === "demo-apparel" ||
+        email.toLowerCase().includes("apparel.")
+      ) {
+        router.push("/apparel");
       } else {
         router.push("/");
       }
