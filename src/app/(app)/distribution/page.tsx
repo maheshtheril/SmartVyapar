@@ -98,7 +98,7 @@ export default function DistributionCommandCenterPage() {
               Wholesale & Distribution Command Center
             </h1>
             <p className="text-slate-300 text-sm mt-1 max-w-2xl">
-              Beat route order processing, Delivery Challans (GST Rule 55), dual-unit packaging (PCS &amp; Master Case), and market credit khata aging.
+              Beat route order processing, Delivery Challans (GST Rule 55), dual-unit packaging (PCS &amp; Master Case), and Accounts Receivable (AR) credit aging.
             </p>
           </div>
 
@@ -162,7 +162,7 @@ export default function DistributionCommandCenterPage() {
             </span>
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            Across {customers.length} retail credit debtors
+            Across {customers.length} retail trade accounts
           </div>
         </div>
 
@@ -260,8 +260,8 @@ export default function DistributionCommandCenterPage() {
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-900">Credit Khata Aging</div>
-              <div className="text-[10px] text-slate-500">Retailer Debtors</div>
+              <div className="text-xs font-bold text-slate-900">Receivables &amp; Aging (AR)</div>
+              <div className="text-[10px] text-slate-500">Retailer Credit Aging</div>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all" />
@@ -301,7 +301,7 @@ export default function DistributionCommandCenterPage() {
           }`}
         >
           <Users className="w-4 h-4" />
-          Retailer Khata Debtors ({customers.length})
+          Receivables &amp; Debtors ({customers.length})
         </button>
         <button
           onClick={() => setActiveTab('warehouses')}
@@ -501,13 +501,13 @@ export default function DistributionCommandCenterPage() {
         </div>
       )}
 
-      {/* TAB 3: B2B RETAILER DEBTORS & CREDIT KHATA */}
+      {/* TAB 3: B2B RETAILER RECEIVABLES & CREDIT LEDGER */}
       {activeTab === 'debtors' && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Retailer Credit Ledger &amp; Khata Debtors</h3>
-              <p className="text-xs text-slate-500">Track outstanding payments, credit limits, and collection status across retail kiranas.</p>
+              <h3 className="text-sm font-bold text-slate-900">B2B Retailer Receivables &amp; Credit Ledger</h3>
+              <p className="text-xs text-slate-500">Track outstanding dues, authorized credit limits, and payment collection aging across retail accounts.</p>
             </div>
             <Link
               href="/customers/aging"
@@ -656,7 +656,7 @@ export default function DistributionCommandCenterPage() {
                     <span className={`text-[11px] font-semibold ${
                       inv.paymentStatus === 'PAID' ? 'text-emerald-600' : 'text-amber-600'
                     }`}>
-                      {inv.paymentStatus === 'PAID' ? 'Paid in Full' : 'Khata Credit (Unpaid)'}
+                      {inv.paymentStatus === 'PAID' ? 'Paid in Full' : 'Credit Sale (Unpaid)'}
                     </span>
                   </div>
                 </div>

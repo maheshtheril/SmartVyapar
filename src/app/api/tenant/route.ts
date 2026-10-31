@@ -553,7 +553,7 @@ export async function GET(req: NextRequest) {
           },
           {
             id: "dist-aging",
-            name: "Retailer Khata Aging",
+            name: "Accounts Receivable & Aging",
             href: "/customers/aging",
             icon: "Clock",
           },

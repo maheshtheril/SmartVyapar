@@ -323,7 +323,7 @@ async function ensureDistributionDemoData(tenantId: string) {
         customerName: "Grand Hypermarket & Departmental Store",
         customerPhone: "+91 94471 88990",
         paymentMode: PaymentMode.CREDIT,
-        notes: "30-Day Wholesale Khata Credit (Beat: Edappally)",
+        notes: "30-Day Wholesale Credit Term (Beat: Edappally)",
         subtotal: 124500,
         cgstAmount: 9800,
         sgstAmount: 9800,
@@ -448,14 +448,25 @@ async function ensureDistributionDemoData(tenantId: string) {
 export async function GET(req: NextRequest) {
   try {
     const session = await getSessionFromRequest(req);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    let tenantId = session?.tenantId;
+
+    if (!tenantId) {
+      const demoTenant = await prisma.tenant.findUnique({
+        where: { slug: "demo-distribution" },
+      });
+      if (demoTenant) {
+        tenantId = demoTenant.id;
+      } else {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
-    const tenantId = session.tenantId;
-
-    // Self-healing: ensure distribution demo data is seeded
-    await ensureDistributionDemoData(tenantId);
+    // Self-healing: ensure distribution demo data is seeded safely
+    try {
+      await ensureDistributionDemoData(tenantId);
+    } catch (seedErr) {
+      console.warn("[ensureDistributionDemoData] Auto-seed warning:", seedErr);
+    }
 
     const [warehouses, challans, customers, products, invoices] = await Promise.all([
       prisma.warehouse.findMany({

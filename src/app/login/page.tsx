@@ -84,7 +84,7 @@ const DEMO_ACCOUNTS: Record<string, DemoAccount> = {
     email: "distribution.demo@zaayasoft.com",
     password: "ZionaPOS@2026",
     icon: "📦",
-    tagline: "Inter-Depot Transfers, Dual Units (PCS/BOX), Tiered Rates & Khata Ledger",
+    tagline: "Inter-Depot Transfers, Dual Units (PCS/BOX), Tiered Rates & Accounts Receivable",
   },
   services: {
     id: "services",
