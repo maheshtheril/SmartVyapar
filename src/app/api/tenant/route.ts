@@ -511,6 +511,62 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Industry-Specific Module: Show Wholesale & Distribution at TOP PRIORITY for DISTRIBUTION
+    if (tenant.businessType === "DISTRIBUTION") {
+      menuTree.unshift({
+        id: "distribution",
+        name: "Wholesale & Distribution",
+        icon: "Truck",
+        badge: "B2B FMCG",
+        badgeColor: "indigo",
+        children: [
+          {
+            id: "dist-cmd",
+            name: "Distribution Command Center",
+            href: "/distribution",
+            icon: "LayoutDashboard",
+            highlight: true,
+          },
+          {
+            id: "dist-challans",
+            name: "Delivery Challans (Rule 55)",
+            href: "/inventory/challans",
+            icon: "FileText",
+          },
+          {
+            id: "dist-sales",
+            name: "Van & Field Sales Orders",
+            href: "/field-sales",
+            icon: "Truck",
+          },
+          {
+            id: "dist-prices",
+            name: "Tiered Price Lists",
+            href: "/inventory/price-lists",
+            icon: "Layers",
+          },
+          {
+            id: "dist-transfers",
+            name: "Inter-Depot Stock Transfers",
+            href: "/inventory/transfers",
+            icon: "RotateCcw",
+          },
+          {
+            id: "dist-aging",
+            name: "Retailer Khata Aging",
+            href: "/customers/aging",
+            icon: "Clock",
+          },
+          {
+            id: "dist-pos",
+            name: "Wholesale Dispatch POS",
+            href: "/pos",
+            icon: "Receipt",
+          },
+        ],
+      });
+    }
+
     // Industry-Specific Module: Only show Pharmacy & Healthcare for PHARMACY businesses
     if (tenant.businessType === "PHARMACY") {
       menuTree.splice(2, 0, {

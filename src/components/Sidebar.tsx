@@ -201,6 +201,7 @@ export default function Sidebar() {
         '/pharmacy': 'pharmacy',
         '/salon': 'salon',
         '/lab': 'laboratory',
+        '/distribution': 'distribution',
       };
       let targetGroup: string | null = null;
       for (const [prefix, groupId] of Object.entries(groupMap)) {
@@ -253,6 +254,7 @@ export default function Sidebar() {
             if (bType === "AUTOMOBILE" || pName.startsWith('/garage')) nextExp.garage = true;
             if (bType === "ELECTRONICS" || pName.startsWith('/electronics')) nextExp.electronics = true;
             if (bType === "APPAREL" || pName.startsWith('/apparel')) nextExp.apparel = true;
+            if (bType === "DISTRIBUTION" || pName.startsWith('/distribution')) nextExp.distribution = true;
             if (Object.keys(nextExp).length > 0) {
               setExpandedGroups((prev) => {
                 const merged = { ...prev, ...nextExp };

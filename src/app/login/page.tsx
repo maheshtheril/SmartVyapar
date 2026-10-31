@@ -283,6 +283,12 @@ function LoginForm() {
         email.toLowerCase().includes("apparel.")
       ) {
         router.push("/apparel");
+      } else if (
+        data.user?.businessType === "DISTRIBUTION" ||
+        data.user?.tenantSlug === "demo-distribution" ||
+        email.toLowerCase().includes("distribution.")
+      ) {
+        router.push("/distribution");
       } else {
         router.push("/");
       }
