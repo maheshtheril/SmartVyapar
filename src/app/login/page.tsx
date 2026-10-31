@@ -16,6 +16,9 @@ import {
   ChevronDown,
   ExternalLink,
   ShieldCheck,
+  Briefcase,
+  Layers,
+  ArrowRight,
 } from "lucide-react";
 
 interface DemoAccount {
@@ -125,35 +128,37 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [activeDemoKey, setActiveDemoKey] = useState<string>("lab");
+  const [showDemoSelector, setShowDemoSelector] = useState(false);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [activeDemoKey, setActiveDemoKey] = useState<string>("lab");
-  const [showDemoSelector, setShowDemoSelector] = useState(false);
 
-  // Initialize from URL param (e.g. ?demo=lab or ?vertical=lab)
+  // Initialize from URL param (e.g. ?demo=lab or ?vertical=retail)
   useEffect(() => {
     const demoParam =
       searchParams.get("demo") ||
       searchParams.get("vertical") ||
-      searchParams.get("industry") ||
-      "lab";
+      searchParams.get("industry");
 
-    const key = demoParam.toLowerCase();
-    if (DEMO_ACCOUNTS[key]) {
-      setActiveDemoKey(key);
-      const acc = DEMO_ACCOUNTS[key];
+    if (demoParam) {
+      const key = demoParam.toLowerCase();
+      const targetKey = DEMO_ACCOUNTS[key] ? key : "lab";
+      setActiveDemoKey(targetKey);
+      setIsDemoMode(true);
+      const acc = DEMO_ACCOUNTS[targetKey];
       setEmail(acc.email);
       setPassword(acc.password);
     } else {
-      setActiveDemoKey("lab");
-      const acc = DEMO_ACCOUNTS["lab"];
-      setEmail(acc.email);
-      setPassword(acc.password);
+      // Regular login mode for live business customers across all industries
+      setIsDemoMode(false);
+      setEmail("");
+      setPassword("");
     }
   }, [searchParams]);
 
@@ -162,9 +167,27 @@ function LoginForm() {
   function handleSelectDemo(key: string) {
     setActiveDemoKey(key);
     setShowDemoSelector(false);
+    setIsDemoMode(true);
     const acc = DEMO_ACCOUNTS[key];
     setEmail(acc.email);
     setPassword(acc.password);
+    setError("");
+  }
+
+  function handleSwitchToStandardLogin() {
+    setIsDemoMode(false);
+    setEmail("");
+    setPassword("");
+    setError("");
+  }
+
+  function handleActivateDemoMode(key = "lab") {
+    setActiveDemoKey(key);
+    setIsDemoMode(true);
+    const acc = DEMO_ACCOUNTS[key];
+    setEmail(acc.email);
+    setPassword(acc.password);
+    setError("");
   }
 
   async function copyToClipboard(text: string, fieldName: "username" | "password") {
@@ -172,7 +195,6 @@ function LoginForm() {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
-        // Fallback for older browsers
         const textarea = document.createElement("textarea");
         textarea.value = text;
         document.body.appendChild(textarea);
@@ -181,7 +203,7 @@ function LoginForm() {
         document.body.removeChild(textarea);
       }
 
-      // Also ensure field is synced to form
+      // Sync field to input
       if (fieldName === "username") {
         setEmail(text);
       } else {
@@ -189,7 +211,7 @@ function LoginForm() {
       }
 
       setCopiedField(fieldName);
-      setTimeout(() => setCopiedField(null), 2200);
+      setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -217,17 +239,17 @@ function LoginForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Login failed. Please check credentials.");
+        setError(data.error || "Login failed. Please verify your credentials.");
         return;
       }
 
-      // Redirect to industry-specific landing or requested page
+      // Universal dynamic redirect based on user's actual tenant vertical
       const from = searchParams.get("from");
       if (from) {
         router.push(from);
       } else if (
-        activeDemoKey === "lab" || 
-        data.user?.tenantSlug === "demo-lab" || 
+        data.user?.businessType === "DIAGNOSTIC_LAB" ||
+        data.user?.tenantSlug === "demo-lab" ||
         email.toLowerCase().includes("lab.")
       ) {
         router.push("/lab");
@@ -253,7 +275,7 @@ function LoginForm() {
           Ziona <span className="text-indigo-600">POS</span>
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Cloud ERP & Multi-Industry Billing Platform • by{" "}
+          Cloud ERP & Multi-Industry Business Platform • by{" "}
           <a
             href="https://zaayasoft.com"
             target="_blank"
@@ -265,162 +287,184 @@ function LoginForm() {
         </p>
       </div>
 
-      {/* DEMO CREDENTIALS INTERACTIVE HELPER CARD */}
-      <div className="mb-4 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/90 via-white to-emerald-50/60 p-4 shadow-sm backdrop-blur-sm transition">
-        {/* Card Header & Industry Switcher */}
-        <div className="flex items-center justify-between pb-2 border-b border-indigo-100">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl" role="img" aria-label="vertical icon">
-              {currentDemo.icon}
-            </span>
-            <div>
-              <div className="flex items-center space-x-1.5">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white uppercase tracking-wider">
-                  Live Demo
-                </span>
-                <span className="text-xs font-bold text-slate-900 line-clamp-1">
-                  {currentDemo.name}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">{currentDemo.industry}</p>
-            </div>
-          </div>
+      {/* Mode Switcher Tabs */}
+      <div className="mb-4 grid grid-cols-2 rounded-xl bg-slate-200/80 p-1 text-xs font-bold text-slate-600">
+        <button
+          type="button"
+          onClick={handleSwitchToStandardLogin}
+          className={`flex items-center justify-center space-x-1.5 rounded-lg py-2 transition ${
+            !isDemoMode
+              ? "bg-white text-slate-900 shadow-sm"
+              : "hover:text-slate-900"
+          }`}
+        >
+          <Building2 className="h-3.5 w-3.5 text-indigo-600" />
+          <span>Business Sign In</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => handleActivateDemoMode(activeDemoKey)}
+          className={`flex items-center justify-center space-x-1.5 rounded-lg py-2 transition ${
+            isDemoMode
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "hover:text-slate-900"
+          }`}
+        >
+          <Sparkles className={`h-3.5 w-3.5 ${isDemoMode ? "text-amber-300" : "text-indigo-600"}`} />
+          <span>Explore Live Demos</span>
+        </button>
+      </div>
 
-          <button
-            type="button"
-            onClick={() => setShowDemoSelector((p) => !p)}
-            className="flex items-center space-x-1 text-[11px] font-bold text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 px-2 py-1 rounded-lg shadow-2xs transition"
-          >
-            <span>Change</span>
-            <ChevronDown className={`h-3 w-3 transition-transform ${showDemoSelector ? "rotate-180" : ""}`} />
-          </button>
-        </div>
-
-        {/* Dropdown Industry Selector */}
-        {showDemoSelector && (
-          <div className="mt-2.5 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-md space-y-1">
-            <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Select Vertical Demo Environment:
-            </p>
-            {Object.values(DEMO_ACCOUNTS).map((acc) => (
-              <button
-                key={acc.id}
-                type="button"
-                onClick={() => handleSelectDemo(acc.id)}
-                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition ${
-                  activeDemoKey === acc.id
-                    ? "bg-indigo-600 text-white font-bold"
-                    : "text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                <span className="flex items-center space-x-1.5 truncate">
-                  <span>{acc.icon}</span>
-                  <span className="truncate">{acc.name}</span>
-                </span>
-                <span className="text-[10px] opacity-75 shrink-0 ml-2">{acc.industry}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Tagline / Key feature teaser */}
-        <p className="text-[11px] text-slate-600 mt-2 mb-3 leading-relaxed">
-          {currentDemo.tagline}
-        </p>
-
-        {/* Credentials Copy Buttons Box */}
-        <div className="space-y-2 bg-white/80 rounded-xl p-2.5 border border-indigo-100/80">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-            <span>Tap credential to copy &amp; fill:</span>
-            {copiedField && (
-              <span className="inline-flex items-center text-emerald-600 font-bold normal-case text-[11px] animate-pulse">
-                <Check className="h-3 w-3 mr-1" />
-                {copiedField === "autofill"
-                  ? "Both credentials loaded!"
-                  : `Copied ${copiedField}!`}
+      {/* DEMO CREDENTIALS INTERACTIVE HELPER CARD (Only in Demo Mode) */}
+      {isDemoMode && (
+        <div className="mb-4 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/95 via-white to-emerald-50/70 p-4 shadow-sm backdrop-blur-sm transition">
+          {/* Card Header & Industry Switcher */}
+          <div className="flex items-center justify-between pb-2 border-b border-indigo-100">
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl" role="img" aria-label="vertical icon">
+                {currentDemo.icon}
               </span>
-            )}
+              <div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white uppercase tracking-wider">
+                    Live Demo
+                  </span>
+                  <span className="text-xs font-bold text-slate-900 line-clamp-1">
+                    {currentDemo.name}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">{currentDemo.industry}</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowDemoSelector((p) => !p)}
+              className="flex items-center space-x-1 text-[11px] font-bold text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 px-2.5 py-1 rounded-lg shadow-2xs transition"
+            >
+              <span>Change</span>
+              <ChevronDown className={`h-3 w-3 transition-transform ${showDemoSelector ? "rotate-180" : ""}`} />
+            </button>
+          </div>
+
+          {/* Dropdown Industry Selector */}
+          {showDemoSelector && (
+            <div className="mt-2.5 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-md space-y-1">
+              <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Select Industry Demo Environment:
+              </p>
+              {Object.values(DEMO_ACCOUNTS).map((acc) => (
+                <button
+                  key={acc.id}
+                  type="button"
+                  onClick={() => handleSelectDemo(acc.id)}
+                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition ${
+                    activeDemoKey === acc.id
+                      ? "bg-indigo-600 text-white font-bold"
+                      : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  <span className="flex items-center space-x-2 truncate">
+                    <span>{acc.icon}</span>
+                    <span className="truncate">{acc.name}</span>
+                  </span>
+                  <span className="text-[10px] opacity-75 shrink-0 ml-2">{acc.industry}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Industry Tagline / Features */}
+          <p className="text-[11px] text-slate-600 mt-2.5 mb-3 leading-relaxed bg-white/80 rounded-lg p-2 border border-indigo-50 font-normal">
+            {currentDemo.tagline}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {/* Username / Email Copy Pill */}
-            <button
-              type="button"
-              onClick={() => copyToClipboard(currentDemo.email, "username")}
-              className={`group flex items-center justify-between px-2.5 py-2 rounded-lg border text-left transition cursor-pointer ${
-                copiedField === "username"
-                  ? "border-emerald-500 bg-emerald-50"
-                  : "border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300"
-              }`}
-              title="Click to copy username"
-            >
-              <div className="truncate pr-1">
-                <span className="block text-[10px] font-semibold text-slate-400 uppercase">
-                  Username (Email)
-                </span>
-                <span className="block text-[11.5px] font-mono font-bold text-slate-800 truncate">
-                  {currentDemo.email}
-                </span>
-              </div>
-              <div className="shrink-0 p-1 rounded-md text-slate-500 group-hover:text-indigo-600">
-                {copiedField === "username" ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-600" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </div>
-            </button>
-
-            {/* Password Copy Pill */}
-            <button
-              type="button"
-              onClick={() => copyToClipboard(currentDemo.password, "password")}
-              className={`group flex items-center justify-between px-2.5 py-2 rounded-lg border text-left transition cursor-pointer ${
-                copiedField === "password"
-                  ? "border-emerald-500 bg-emerald-50"
-                  : "border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300"
-              }`}
-              title="Click to copy password"
-            >
-              <div className="truncate pr-1">
-                <span className="block text-[10px] font-semibold text-slate-400 uppercase">
-                  Master Password
-                </span>
-                <span className="block text-[11.5px] font-mono font-bold text-emerald-700 truncate">
-                  {currentDemo.password}
-                </span>
-              </div>
-              <div className="shrink-0 p-1 rounded-md text-slate-500 group-hover:text-emerald-600">
-                {copiedField === "password" ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-600" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </div>
-            </button>
-          </div>
-
-          {/* Quick Auto-fill Action Bar */}
-          <div className="pt-1 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={handleAutoFill}
-              className="inline-flex items-center text-[11px] font-bold text-indigo-700 hover:text-indigo-900 transition"
-            >
-              <Sparkles className="h-3 w-3 mr-1 text-indigo-500" />
-              Pre-fill Login Form
-            </button>
-
-            <span className="text-[10px] text-slate-400 flex items-center">
-              <ShieldCheck className="h-3 w-3 mr-0.5 text-emerald-600" />
-              Role: OWNER (Full Quota)
+          {/* Tap-To-Copy Credentials Row */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Tap Credential to Copy & Fill:
             </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* Username Card */}
+              <button
+                type="button"
+                onClick={() => copyToClipboard(currentDemo.email, "username")}
+                className="group relative flex items-center justify-between p-2 rounded-xl bg-white border border-indigo-100 hover:border-indigo-400 hover:shadow-xs transition text-left"
+              >
+                <div className="min-w-0 pr-2">
+                  <span className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Username (Email)
+                  </span>
+                  <span className="block text-xs font-bold text-slate-800 truncate">
+                    {currentDemo.email}
+                  </span>
+                </div>
+                <div className="shrink-0 p-1 rounded-md bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition">
+                  {copiedField === "username" ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </div>
+              </button>
+
+              {/* Password Card */}
+              <button
+                type="button"
+                onClick={() => copyToClipboard(currentDemo.password, "password")}
+                className="group relative flex items-center justify-between p-2 rounded-xl bg-white border border-indigo-100 hover:border-indigo-400 hover:shadow-xs transition text-left"
+              >
+                <div className="min-w-0 pr-2">
+                  <span className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Master Password
+                  </span>
+                  <span className="block text-xs font-bold text-slate-800 font-mono tracking-tight">
+                    {currentDemo.password}
+                  </span>
+                </div>
+                <div className="shrink-0 p-1 rounded-md bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition">
+                  {copiedField === "password" ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </div>
+              </button>
+            </div>
+
+            {/* Quick Auto-fill Action Bar */}
+            <div className="pt-2 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={handleAutoFill}
+                className="inline-flex items-center text-[11px] font-bold text-indigo-700 hover:text-indigo-900 transition"
+              >
+                <Sparkles className="h-3 w-3 mr-1 text-indigo-500" />
+                Pre-fill Login Form
+              </button>
+
+              <span className="text-[10px] text-slate-400 flex items-center">
+                <ShieldCheck className="h-3 w-3 mr-0.5 text-emerald-600" />
+                Role: OWNER (Full Access)
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Login Card */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">
+            {isDemoMode ? `Sign In to ${currentDemo.name}` : "Sign In to Your Business Workspace"}
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {isDemoMode
+              ? `Authorized testing environment for ${currentDemo.industry}`
+              : "Enter your registered credentials to access your store, lab, clinic, or workshop"}
+          </p>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Email Input */}
           <div>
@@ -428,7 +472,7 @@ function LoginForm() {
               <label className="block text-xs font-semibold text-slate-700">
                 Email / Username
               </label>
-              {email && email === currentDemo.email && (
+              {isDemoMode && email === currentDemo.email && (
                 <span className="text-[10px] font-bold text-emerald-600 flex items-center">
                   <Check className="h-2.5 w-2.5 mr-0.5" /> Demo Loaded
                 </span>
@@ -441,7 +485,7 @@ function LoginForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="lab.demo@zaayasoft.com"
+                placeholder={isDemoMode ? currentDemo.email : "user@yourbusiness.com"}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition"
                 autoComplete="email"
               />
@@ -469,8 +513,8 @@ function LoginForm() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-2.5 text-xs font-mono font-medium text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition"
+                placeholder="••••••••••••"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-2.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition"
                 autoComplete="current-password"
               />
               <button
@@ -500,17 +544,39 @@ function LoginForm() {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Entering Demo Environment...</span>
+                <span>Signing In...</span>
               </>
-            ) : (
+            ) : isDemoMode ? (
               <span>Sign In to {currentDemo.name.split(" ")[0]} Demo</span>
+            ) : (
+              <span>Sign In to Workspace</span>
             )}
           </button>
         </form>
 
+        {/* Bottom Helper / Switcher when in standard mode */}
+        {!isDemoMode && (
+          <div className="rounded-xl bg-indigo-50/60 border border-indigo-100 p-3 flex items-center justify-between text-xs">
+            <div className="flex items-center space-x-2">
+              <span className="text-base">🧪🛒🍽️</span>
+              <div>
+                <p className="font-bold text-slate-800">Looking for an Industry Demo?</p>
+                <p className="text-[11px] text-slate-500">Test Lab, Supermarket, Pharmacy, Garage & more</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleActivateDemoMode("lab")}
+              className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white border border-indigo-200 px-2.5 py-1 rounded-lg shadow-2xs hover:bg-indigo-50 transition shrink-0"
+            >
+              Explore Demos
+            </button>
+          </div>
+        )}
+
         <div className="text-center pt-3 border-t border-slate-100">
           <p className="text-xs text-slate-500">
-            Need a dedicated account?{" "}
+            Need a dedicated account for your business?{" "}
             <Link href="/register" className="font-bold text-indigo-600 hover:text-indigo-800">
               Register business
             </Link>
@@ -530,7 +596,7 @@ function LoginForm() {
           >
             ZaayaSoft
           </a>{" "}
-          • Demo App:{" "}
+          • Live Web App:{" "}
           <span className="text-slate-600 font-medium">zionapos.store</span>
         </p>
         <div className="flex items-center justify-center space-x-3 text-[10px] text-slate-400">
@@ -562,7 +628,7 @@ export default function LoginPage() {
         fallback={
           <div className="text-center text-xs text-slate-400 flex items-center justify-center space-x-2">
             <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
-            <span>Loading demo environment...</span>
+            <span>Loading workspace...</span>
           </div>
         }
       >

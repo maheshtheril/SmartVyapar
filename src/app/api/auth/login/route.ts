@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
         role: user.role,
         tenantSlug: user.tenant.slug,
         businessName: user.tenant.businessName,
+        businessType: user.tenant.businessType,
       },
     });
 
