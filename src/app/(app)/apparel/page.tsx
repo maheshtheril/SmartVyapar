@@ -37,7 +37,9 @@ export default function ApparelCommandCenterPage() {
 
   // Navigation & Tabs
   const [activeTab, setActiveTab] = useState<'matrix' | 'catalog' | 'fabrics' | 'invoices'>('matrix');
-  const [selectedBrand, setSelectedBrand] = useState<'Raymond' | "Levi's">('Raymond');
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<string>('');
   const [matrixData, setMatrixData] = useState<any>(null);
   const [matrixLoading, setMatrixLoading] = useState(false);
 
@@ -67,6 +69,17 @@ export default function ApparelCommandCenterPage() {
         setStats(data.stats);
         setProducts(data.products || []);
         setRecentInvoices(data.recentInvoices || []);
+        if (Array.isArray(data.availableBrands)) {
+          setAvailableBrands(data.availableBrands);
+          if (!selectedBrand || !data.availableBrands.includes(selectedBrand)) {
+            const initialBrand = data.availableBrands[0] || '';
+            setSelectedBrand(initialBrand);
+            if (initialBrand) loadMatrix(initialBrand);
+          }
+        }
+        if (Array.isArray(data.availableCategories)) {
+          setAvailableCategories(data.availableCategories);
+        }
         const fabrics = data.products?.filter((p: any) => p.baseUnit === 'MTR');
         if (fabrics?.length && !calcFabricId) {
           setCalcFabricId(fabrics[0].id);
@@ -83,7 +96,8 @@ export default function ApparelCommandCenterPage() {
   const loadMatrix = async (brand: string) => {
     setMatrixLoading(true);
     try {
-      const res = await fetch(`/api/apparel/matrix?brand=${encodeURIComponent(brand)}`);
+      const url = brand ? `/api/apparel/matrix?brand=${encodeURIComponent(brand)}` : '/api/apparel/matrix';
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setMatrixData(data);
@@ -100,7 +114,9 @@ export default function ApparelCommandCenterPage() {
   }, [categoryFilter]);
 
   useEffect(() => {
-    loadMatrix(selectedBrand);
+    if (selectedBrand) {
+      loadMatrix(selectedBrand);
+    }
   }, [selectedBrand]);
 
   const copyToClipboard = (text: string, label: string) => {
@@ -294,28 +310,29 @@ export default function ApparelCommandCenterPage() {
               <p className="text-xs text-slate-500">View real-time stock levels for every size and color combination in one single view.</p>
             </div>
 
-            {/* Brand Switcher */}
-            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
-              <button
-                onClick={() => setSelectedBrand('Raymond')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedBrand === 'Raymond'
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                👔 Raymond (Formal Shirts)
-              </button>
-              <button
-                onClick={() => setSelectedBrand("Levi's")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedBrand === "Levi's"
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                👖 Levi's (Denim Jeans)
-              </button>
+            {/* Dynamic Brand / Collection Switcher */}
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full">
+              {availableBrands.map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setSelectedBrand(b)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    selectedBrand === b
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                  }`}
+                >
+                  🏷️ {b}
+                </button>
+              ))}
+              {availableBrands.length === 0 && (
+                <button
+                  onClick={() => setSelectedBrand('')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-xs"
+                >
+                  All Garment Styles
+                </button>
+              )}
             </div>
           </div>
 
@@ -415,7 +432,7 @@ export default function ApparelCommandCenterPage() {
           {/* Filters & Search */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200">
             <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-              {['ALL', 'Formal Shirts', 'Denim Jeans', 'Ethnic Sarees', 'Unstitched Fabric'].map((cat) => (
+              {['ALL', ...(availableCategories.length ? availableCategories : ['Formal Shirts', 'Denim Jeans', 'Ethnic Sarees', 'Unstitched Fabric'])].map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
