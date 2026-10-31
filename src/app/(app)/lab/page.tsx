@@ -164,6 +164,9 @@ export default function LabDashboardPage() {
         setTestSearchQuery('');
         setSelectedDepartment('ALL');
         loadData();
+        if (data.order) {
+          setBarcodeModalOrder(data.order);
+        }
       } else {
         alert(data.error || 'Failed to create order');
       }
