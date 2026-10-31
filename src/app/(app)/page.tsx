@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   PlusCircle, 
   Receipt, 
@@ -31,9 +32,19 @@ export default function DashboardPage() {
     totalProductsCount: 0,
   });
 
+  const router = useRouter();
+
   const loadDashboardData = async () => {
     setLoading(true);
     try {
+      // Auto-redirect specialized industry verticals (e.g. Diagnostic Lab)
+      const tenantRes = await fetch("/api/tenant");
+      const tenantData = await tenantRes.json();
+      if (tenantData.success && tenantData.tenant?.businessType === "DIAGNOSTIC_LAB") {
+        router.replace("/lab");
+        return;
+      }
+
       const res = await fetch("/api/dashboard");
       const data = await res.json();
 

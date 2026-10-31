@@ -53,11 +53,13 @@ import {
   Calendar,
   Tv,
   Scissors,
+  FlaskConical,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
   Scissors,
+  FlaskConical,
   Receipt,
   Tv,
   PlusCircle,
@@ -192,6 +194,7 @@ export default function Sidebar() {
         '/garage': 'garage',
         '/pharmacy': 'pharmacy',
         '/salon': 'salon',
+        '/lab': 'laboratory',
       };
       let targetGroup: string | null = null;
       for (const [prefix, groupId] of Object.entries(groupMap)) {
@@ -235,6 +238,13 @@ export default function Sidebar() {
           }
           if (Array.isArray(data.menuTree)) {
             setTreeGroups(data.menuTree);
+            if (data.tenant?.businessType === "DIAGNOSTIC_LAB" || window.location.pathname.startsWith('/lab')) {
+              setExpandedGroups((prev) => {
+                const next = { ...prev, laboratory: true };
+                savePersistedExpanded(next);
+                return next;
+              });
+            }
           }
         }
       } catch (err) {

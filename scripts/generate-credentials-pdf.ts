@@ -32,10 +32,10 @@ async function generatePdf() {
   const page1 = pdfDoc.addPage([841.89, 595.28]);
   const { width: p1Width, height: p1Height } = page1.getSize();
 
-  let y = p1Height - 32;
+  let y = p1Height - 30;
 
   // Title & Subtitle
-  page1.drawText("ZionaPOS Cloud ERP -- Multi-Industry Demo Environments", {
+  page1.drawText("ZionaPOS Cloud ERP -- Multi-Industry Enterprise Demo Environments", {
     x: 35,
     y,
     size: 18,
@@ -43,8 +43,8 @@ async function generatePdf() {
     color: primaryDark,
   });
 
-  y -= 15;
-  page1.drawText("Master Test Tenant Credentials & Complete Feature Directory (9 Production Verticals Ready-to-Test)", {
+  y -= 14;
+  page1.drawText("Developed by ZaayaSoft (https://zaayasoft.com)  |  Official Live Demo Portal: https://www.zionapos.store", {
     x: 35,
     y,
     size: 9.5,
@@ -52,7 +52,7 @@ async function generatePdf() {
     color: textMuted,
   });
 
-  y -= 26;
+  y -= 24;
 
   // Master Password & Portal Access Banner
   page1.drawRectangle({
@@ -65,7 +65,7 @@ async function generatePdf() {
     borderWidth: 1.2,
   });
 
-  page1.drawText("DEFAULT MASTER PASSWORD FOR ALL 9 ACCOUNTS:", {
+  page1.drawText("UNIVERSAL DEMO MASTER PASSWORD (ALL 10 ACCOUNTS):", {
     x: 48,
     y: y - 12,
     size: 9,
@@ -74,22 +74,22 @@ async function generatePdf() {
   });
 
   page1.drawText("ZionaPOS@2026", {
-    x: 325,
+    x: 365,
     y: y - 13,
     size: 12,
     font: fontBold,
     color: pwdGreen,
   });
 
-  page1.drawText("(Super-Admin / OWNER Role with unlimited quotas & all features enabled)", {
-    x: 435,
+  page1.drawText("(Super-Admin / OWNER Role • Pre-seeded Master Data • All Modules Unlocked)", {
+    x: 475,
     y: y - 12,
     size: 8,
     font: fontOblique,
     color: textMuted,
   });
 
-  page1.drawText("Live Production URL: https://www.zionapos.store/login  |  Local Dev: http://localhost:3005/login", {
+  page1.drawText("Live Demo Login Portal: https://www.zionapos.store/login  |  Sales & Support: sales@zaayasoft.com", {
     x: 48,
     y: y - 22,
     size: 8,
@@ -97,9 +97,9 @@ async function generatePdf() {
     color: accentBlue,
   });
 
-  y -= 40;
+  y -= 38;
 
-  // Table Configuration
+  // Table Configuration for 10 Rows
   const colWidths = [18, 110, 125, 115, 125, 85, 193];
   const headers = [
     "#",
@@ -111,8 +111,8 @@ async function generatePdf() {
     "Key Industry Features & Capabilities",
   ];
   const tableX = 35;
-  const headerHeight = 22;
-  const rowHeight = 35;
+  const headerHeight = 20;
+  const rowHeight = 31.5;
 
   // Draw Header Row
   page1.drawRectangle({
@@ -129,7 +129,7 @@ async function generatePdf() {
   for (let i = 0; i < headers.length; i++) {
     page1.drawText(headers[i], {
       x: curX + 4,
-      y: y - 15,
+      y: y - 14,
       size: 8,
       font: fontBold,
       color: primaryDark,
@@ -147,15 +147,15 @@ async function generatePdf() {
 
   y -= headerHeight;
 
-  // 9 Accounts Data
+  // 10 Accounts Data (All @zaayasoft.com & zionapos.store)
   const accounts = [
     {
       num: "1",
       industry: "Retail & Supermarket",
       tenant: "SmartBazaar Retail Mart",
       slug: "demo-retail",
-      publicUrl: "zionapos.store/login",
-      email: "retail.demo@zionapos.com",
+      publicUrl: "zionapos.store/login?demo=retail",
+      email: "retail.demo@zaayasoft.com",
       password: "ZionaPOS@2026",
       features: "AI Purchase Bill OCR Scan, Scale EAN-13 barcodes, Dual Pole Display, Shift Cash Float.",
     },
@@ -165,7 +165,7 @@ async function generatePdf() {
       tenant: "The Spice Route Kitchen",
       slug: "demo-restaurant",
       publicUrl: "zionapos.store/order/demo-restaurant",
-      email: "restaurant.demo@zionapos.com",
+      email: "restaurant.demo@zaayasoft.com",
       password: "ZionaPOS@2026",
       features: "Contactless QR Table Ordering, Kitchen KOT Routing, Recipe BOM Depletion, Bill Split.",
     },
@@ -175,7 +175,7 @@ async function generatePdf() {
       tenant: "Apex Pro Motors Workshop",
       slug: "demo-garage",
       publicUrl: "zionapos.store/garage",
-      email: "garage.demo@zionapos.com",
+      email: "garage.demo@zaayasoft.com",
       password: "ZionaPOS@2026",
       features: "Vehicle Reg. Master, Digital Job Cards, Hybrid SAC 9987 Labour + HSN 8708 Spares, Gate Pass.",
     },
@@ -185,7 +185,7 @@ async function generatePdf() {
       tenant: "Horizon FMCG Distributors",
       slug: "demo-distribution",
       publicUrl: "zionapos.store/inventory/transfers",
-      email: "distribution.demo@zionapos.com",
+      email: "distribution.demo@zaayasoft.com",
       password: "ZionaPOS@2026",
       features: "AI Bill Inwarding, Multi-Depot Transfers, Dual Units (PCS/BOX), Tiered Wholesale Pricing.",
     },
@@ -195,7 +195,7 @@ async function generatePdf() {
       tenant: "CarePlus Healthcare Pharmacy",
       slug: "demo-pharma",
       publicUrl: "zionapos.store/pharmacy/register",
-      email: "pharma.demo@zionapos.com",
+      email: "pharma.demo@zaayasoft.com",
       password: "ZionaPOS@2026",
       features: "Batch Near-Expiry Alerts (30/60/90d), Schedule H/H1 Register, Doctor Master, 20B/21B.",
     },
@@ -205,7 +205,7 @@ async function generatePdf() {
       tenant: "Nexora Tech & Consulting",
       slug: "demo-services",
       publicUrl: "zionapos.store/customers/aging",
-      email: "services.demo@zionapos.com",
+      email: "services.demo@zaayasoft.com",
       password: "ZionaPOS@2026",
       features: "SAC 9983 Cloud Consulting, AMC Retainer Contracts, Khata Ledger, Inter-State IGST.",
     },
@@ -215,7 +215,7 @@ async function generatePdf() {
       tenant: "Vogue & Velvet Apparel",
       slug: "demo-apparel",
       publicUrl: "zionapos.store/inventory/variants",
-      email: "apparel.demo@zionapos.com",
+      email: "apparel.demo@zaayasoft.com",
       password: "ZionaPOS@2026",
       features: "2D Size-Color Matrix, Parent-Child Barcode Labels, Fabric Meter Cut Deductions, 12% GST.",
     },
@@ -225,7 +225,7 @@ async function generatePdf() {
       tenant: "ElectroPulse Digital Mart",
       slug: "demo-electronics",
       publicUrl: "zionapos.store/inventory",
-      email: "electronics.demo@zionapos.com",
+      email: "electronics.demo@zaayasoft.com",
       password: "ZionaPOS@2026",
       features: "Dual 15-Digit IMEI/Serial Tracking, Instant Warranty Lookup, Brand EMI Schemes, Trade-In.",
     },
@@ -235,9 +235,19 @@ async function generatePdf() {
       tenant: "Aura Luxury Salon & Spa",
       slug: "demo-salon",
       publicUrl: "zionapos.store/book/demo-salon",
-      email: "salon.demo@zionapos.com",
+      email: "salon.demo@zaayasoft.com",
       password: "ZionaPOS@2026",
       features: "Zero-Wait Customer Booking, Smartphone PWA 1-Tap Re-Book, Tabletop Standee QR, Commissions.",
+    },
+    {
+      num: "10",
+      industry: "Diagnostic Lab & LIMS",
+      tenant: "Apex Diagnostics & Pathology",
+      slug: "demo-lab",
+      publicUrl: "zionapos.store/login?demo=lab",
+      email: "lab.demo@zaayasoft.com",
+      password: "ZionaPOS@2026",
+      features: "Phlebotomy Accession Queue, Vacutainer Barcode Labels, Age/Gender Normal Ranges, Pathologist Sign-off, QR Report.",
     },
   ];
 
@@ -260,7 +270,7 @@ async function generatePdf() {
     // 0: #
     page1.drawText(row.num, {
       x: cellX + 5,
-      y: y - 21,
+      y: y - 19,
       size: 8,
       font: fontBold,
       color: primaryDark,
@@ -270,7 +280,7 @@ async function generatePdf() {
     // 1: Industry
     page1.drawText(row.industry, {
       x: cellX + 4,
-      y: y - 21,
+      y: y - 19,
       size: 7.5,
       font: fontBold,
       color: accentBlue,
@@ -280,7 +290,7 @@ async function generatePdf() {
     // 2: Tenant Name
     page1.drawText(row.tenant, {
       x: cellX + 4,
-      y: y - 21,
+      y: y - 19,
       size: 7.5,
       font: fontBold,
       color: textDark,
@@ -290,14 +300,14 @@ async function generatePdf() {
     // 3: Slug & Public Link
     page1.drawText(row.slug, {
       x: cellX + 4,
-      y: y - 15,
+      y: y - 13,
       size: 7,
       font: fontBold,
       color: primaryDark,
     });
     page1.drawText(row.publicUrl, {
       x: cellX + 4,
-      y: y - 26,
+      y: y - 24,
       size: 6,
       font: fontRegular,
       color: accentPurple,
@@ -307,7 +317,7 @@ async function generatePdf() {
     // 4: Email
     page1.drawText(row.email, {
       x: cellX + 4,
-      y: y - 21,
+      y: y - 19,
       size: 7,
       font: fontBold,
       color: primaryDark,
@@ -317,7 +327,7 @@ async function generatePdf() {
     // 5: Password
     page1.drawText(row.password, {
       x: cellX + 4,
-      y: y - 21,
+      y: y - 19,
       size: 7.5,
       font: fontBold,
       color: pwdGreen,
@@ -329,7 +339,7 @@ async function generatePdf() {
     let line1 = "";
     let line2 = "";
     for (const w of words) {
-      if ((line1 + " " + w).length < 48) {
+      if ((line1 + " " + w).length < 52) {
         line1 += (line1 ? " " : "") + w;
       } else {
         line2 += (line2 ? " " : "") + w;
@@ -338,7 +348,7 @@ async function generatePdf() {
 
     page1.drawText(line1, {
       x: cellX + 4,
-      y: y - 14,
+      y: y - 13,
       size: 6.5,
       font: fontRegular,
       color: textDark,
@@ -346,7 +356,7 @@ async function generatePdf() {
     if (line2) {
       page1.drawText(line2, {
         x: cellX + 4,
-        y: y - 25,
+        y: y - 23,
         size: 6.5,
         font: fontRegular,
         color: textMuted,
@@ -369,7 +379,7 @@ async function generatePdf() {
   }
 
   // Footer notes on Page 1
-  y -= 14;
+  y -= 12;
   page1.drawText("Platform Security Architecture: Fully isolated multi-tenant database. Catalog items, taxes, customers, and reports are strictly partitioned.", {
     x: 35,
     y,
@@ -377,8 +387,8 @@ async function generatePdf() {
     font: fontRegular,
     color: textMuted,
   });
-  y -= 11;
-  page1.drawText("Dynamic Zero-Wait Customer Booking Engine: Salon customers book via https://www.zionapos.store/book/demo-salon (No login required).", {
+  y -= 10;
+  page1.drawText("ZionaPOS Cloud ERP • A Product of ZaayaSoft (https://zaayasoft.com) • Live Demo: https://www.zionapos.store", {
     x: 35,
     y,
     size: 7.5,
@@ -402,7 +412,7 @@ async function generatePdf() {
     color: primaryDark,
   });
   y2 -= 15;
-  page2.drawText("Retail Supermarket, F&B Restaurant, and Automobile Garage & Workshop", {
+  page2.drawText("Retail Supermarkets, Restaurants/Cafes, and Automobile Garages", {
     x: 40,
     y: y2,
     size: 9.5,
@@ -413,36 +423,36 @@ async function generatePdf() {
 
   const part1Sections = [
     {
-      title: "1. Retail & Supermarket POS (retail.demo@zionapos.com)",
-      tag: "High-Speed Retail * Barcode Automation * Cash Float * AI Scan",
+      title: "1. Retail & Supermarket (retail.demo@zaayasoft.com)",
+      tag: "AI Bill Inwarding * Scale EAN-13 * Customer Pole Display * Cash Float Shifts",
       features: [
-        "[AI SCAN] Gemini AI Purchase Bill OCR: Photo/upload paper supplier bills to auto-extract items, rates, taxes & batches.",
-        "[BARCODE] High-Speed POS Checkout: Scan standard EAN-13 barcodes (e.g. '890103000001' Basmati Rice) with sub-second response.",
-        "[SCALE] Weighing Scale EAN-13 Decoding: Auto-parses price/weight embedded 13-digit barcodes for fresh produce & meat.",
-        "[DISPLAY] Dual Customer Pole Display: Live websocket streaming of line items & total to customer screen (/display).",
-        "[FLOAT] Shift Cash Drawer Float: Track shift opening cash, cash tender, refunds, and closing reconciliation (/billing/shifts).",
+        "[AI OCR] Multimodal Gemini Bill Scan: Upload supplier PDF/JPEG bill to auto-extract items, tax, and buy rates.",
+        "[SCALES] EAN-13 Weighing Scale Barcode Reader: Parse weight and price from 13-digit scale sticker barcodes automatically.",
+        "[DISPLAY] Dual-Screen Customer Pole Display: Broadcast real-time running basket totals & UPI QR on second monitor.",
+        "[CASH] Shift Float & Cash Drawer Reconciliations: Track opening float, mid-day cash dropouts, and blind Z-Report closing.",
+        "[OFFLINE] Resilient Offline Sync PWA: Keep ringing sales during internet disruptions; queue and sync on reconnection.",
       ],
     },
     {
-      title: "2. Restaurant & Cafe F&B (restaurant.demo@zionapos.com)",
-      tag: "Contactless QR * Table Matrix * Kitchen KOT * Recipe BOM Depletion",
+      title: "2. Restaurant, Cafe & Bakery (restaurant.demo@zaayasoft.com)",
+      tag: "QR Table Dine-In * Multi-Kitchen KOT * Recipe BOM Depletion * Bill Split",
       features: [
-        "[QR ORDER] Contactless Table Ordering: Guests scan table QR (zionapos.store/order/demo-restaurant/1) to place orders.",
-        "[FLOOR] Visual Table Matrix: Real-time visual floor status across Main Dining Hall, AC Family Room, and Rooftop Lounge.",
-        "[KOT] Kitchen Order Ticket Routing: Real-time order routing to kitchen stations with special preparation notes.",
-        "[BOM] Recipe BOM Auto-Depletion: Ordering Biryani automatically depletes raw chicken & basmati rice from kitchen stock.",
-        "[SETTLE] Bill Splitting & UPI Settle: Split bills evenly or by item; settle via dynamic UPI QR code on 80mm thermal slip.",
+        "[QR ORDER] Contactless Tabletop QR Ordering: Diners scan table QR to browse visual digital menu and order.",
+        "[KOT] Split Kitchen Order Tickets: Auto-route food items to Kitchen Printer and beverages to Bar Counter printer.",
+        "[RECIPE] Recipe Bill-of-Materials Depletion: Automatically deduct raw inventory (cheese, flour, oil) when dish is sold.",
+        "[SPLIT] Bill Splitting & Merging: Split bill equally by seat or itemize checks across multiple payment methods.",
+        "[DINE-IN] Floor Plan Matrix: Color-coded dining tables (Available, Seated, KOT Fired, Billed) with timer alerts.",
       ],
     },
     {
-      title: "3. Automobile Workshop & Garage (garage.demo@zionapos.com)",
-      tag: "Vehicle Registry * Digital Job Cards * Hybrid Labour/Spares * Gate Pass",
+      title: "3. Automobile & Garage Workshop (garage.demo@zaayasoft.com)",
+      tag: "Customer Vehicle Master * Digital Job Cards * Hybrid SAC/HSN * Gate Pass",
       features: [
-        "[VEHICLE] Vehicle Master Registry: Search by license plate (e.g. 'KL-07-CB-5544'), chassis number, mileage & fuel level.",
-        "[JOB CARD] Digital Multi-Stage Job Cards: Track service stages (Inspection -> In Progress -> Quality Check -> Ready).",
-        "[HYBRID] Hybrid GST Billing: Seamlessly combines SAC 9987 Labour Services (18%) + OEM Spare Parts HSN 8708 (28%).",
-        "[HISTORY] Vehicle Service History: Instant timeline view of previous visits, technician notes, and recommended jobs.",
-        "[GATE PASS] Gate Pass & Tax Invoice: Generate delivery gate passes with vehicle odometer and authorized signature.",
+        "[VEHICLES] Vehicle Master by License Plate: Track VIN, engine number, make, model, fuel type, and mileage history.",
+        "[JOB CARD] Digital Job Cards (/garage): Technicians record customer complaints, inspector remarks, and bay assignments.",
+        "[HYBRID] Combined Spares & Labour Billing: Single bill with SAC 9987 (18% GST labour) and HSN 8708 (28% GST spare parts).",
+        "[GATE PASS] Printed Gate Pass & Road Test Sign-off: Generate security gate-pass upon invoice settlement.",
+        "[SERVICE] Next Service Due Reminders: Automated odometer and calendar service reminder queue for oil change and tune-up.",
       ],
     },
   ];
@@ -474,7 +484,7 @@ async function generatePdf() {
       color: accentBlue,
     });
 
-    let itemY = y2 - 54;
+    let itemY = y2 - 52;
     for (const feat of s.features) {
       const words = feat.split(" ");
       let l1 = "";
@@ -490,29 +500,29 @@ async function generatePdf() {
       page2.drawText(l1, {
         x: 52,
         y: itemY,
-        size: 7.5,
+        size: 7.2,
         font: fontRegular,
         color: textDark,
       });
-      itemY -= 11;
+      itemY -= 10.5;
       if (l2) {
         page2.drawText(l2, {
           x: 65,
           y: itemY,
-          size: 7.5,
+          size: 7.2,
           font: fontRegular,
           color: textDark,
         });
-        itemY -= 12;
+        itemY -= 11.5;
       } else {
-        itemY -= 3;
+        itemY -= 2;
       }
     }
 
     y2 -= 225;
   }
 
-  page2.drawText("ZionaPOS Cloud ERP -- Multi-Tenant Multi-Industry Platform | Page 2 of 5", {
+  page2.drawText("ZionaPOS Cloud ERP • A Product of ZaayaSoft (https://zaayasoft.com) • Live Demo: https://www.zionapos.store | Page 2 of 6", {
     x: 40,
     y: 25,
     size: 7.5,
@@ -536,7 +546,7 @@ async function generatePdf() {
     color: primaryDark,
   });
   y3 -= 15;
-  page3.drawText("Wholesale FMCG, Pharmacy & Healthcare, and Professional Services", {
+  page3.drawText("Wholesale FMCG, Retail Pharmacy & Healthcare, and Professional Services", {
     x: 40,
     y: y3,
     size: 9.5,
@@ -547,36 +557,36 @@ async function generatePdf() {
 
   const part2Sections = [
     {
-      title: "4. Wholesale FMCG & Distribution (distribution.demo@zionapos.com)",
-      tag: "AI Inwarding * Multi-Warehouse * Dual Packaging * Price Lists",
+      title: "4. Wholesale, FMCG & Distribution (distribution.demo@zaayasoft.com)",
+      tag: "Depot Transfers * Dual Packaging Units (PCS/BOX) * Tiered Wholesale Rates * E-Way Bill",
       features: [
-        "[AI INWARD] AI Purchase Bill Inwarding: Bulk scan supplier invoices directly into Central Depot warehouse stock.",
-        "[TRANSFERS] Multi-Depot Stock Transfers: Inter-warehouse dispatch from Central Depot to Regional Vans with transit audit.",
-        "[DUAL UNIT] Dual Packaging Units: Bill in both Primary & Secondary units (e.g. 1 CASE = 12 BOTTLES) with ratio conversion.",
-        "[PRICE LIST] Multi-Tier Price Lists: Custom pricing tiers (Tier-1 Wholesale, Super-Stockist, Retail Trader discounts).",
-        "[TERRITORY] Route & Beat Planning: Assign customer khata ledgers to sales territories and field agent beats (/territories).",
+        "[TRANSFERS] Inter-Depot Stock Transfers: Rule 55 GST Delivery Challan generator with vehicle number and driver details.",
+        "[DUAL UNIT] Dual Packaging Conversions: Sell in Boxes or atomic Pieces with automated inventory multiplication.",
+        "[TIERED] Tiered Wholesale Price Lists: Set custom pricing structures for Super-Stockists, Wholesalers, and Retailers.",
+        "[E-WAY] E-Way Bill Rule 138 Compliance: Auto-calculate distance in KM and generate E-Way bill consignment data.",
+        "[LEDGER] Party Khata & Aging Breakdown: 30/60/90 days overdue aging report with WhatsApp payment links.",
       ],
     },
     {
-      title: "5. Pharmacy & Healthcare (pharma.demo@zionapos.com)",
-      tag: "Batch Expiry Quarantine * Schedule H/H1 Drugs * Doctor Master * 20B/21B",
+      title: "5. Pharmacy & Healthcare Store (pharma.demo@zaayasoft.com)",
+      tag: "Batch Expiry Monitor (30/60/90d) * Schedule H/H1 Register * Doctor Master * 20B/21B",
       features: [
-        "[EXPIRY] 30/60/90 Day Expiry Quarantine: Live dashboard alerts for near-expiry drugs; prevents billing expired batches.",
-        "[SCHEDULE] Schedule H & H1 Dispensing Register: Mandatory prescription audit log recording patient & doctor details.",
-        "[DOCTOR] Prescribing Doctor Master: Fast doctor registration autocomplete with state medical council registration numbers.",
-        "[LICENSES] Drug Licenses 20B & 21B: Automated statutory drug license number & batch details printed on tax invoices.",
-        "[UNIT] Strip-to-Tablet Fractional Dispensing: Accurately dispenses individual tablets from 10-tablet blister strips.",
+        "[EXPIRY] Near-Expiry Return Monitor: Proactive audit view highlighting batches expiring in 30, 60, or 90 days.",
+        "[SCHEDULE H] Statutory Schedule H & H1 Register: Govt audit log capturing Patient Name, Doctor Reg No, and Batch No.",
+        "[DOCTOR] Prescribing Doctor Directory: Auto-complete doctor names, medical registrations, and clinic addresses.",
+        "[LICENSES] Form 20B & 21B License Printing: Drug licenses stamped onto invoices for drug inspector compliance.",
+        "[RESTRICTED] Habit-Forming & Narcotic Safeguards: Mandatory prescription validation alerts before bill finalization.",
       ],
     },
     {
-      title: "6. Professional Services & AMC (services.demo@zionapos.com)",
-      tag: "SAC 9983 Billing * AMC Contracts * Corporate Khata * Inter-State IGST",
+      title: "6. Professional Services & Consulting (services.demo@zaayasoft.com)",
+      tag: "SAC 9983 Consulting * Milestone AMC Contracts * Khata Outstanding * Inter-State Tax",
       features: [
-        "[HOURLY] Hourly & Project Billing: Bill IT consulting, architecture, and legal services under SAC 9983 / SAC 9987.",
-        "[AMC] Annual Maintenance Contracts (AMC): Recurring contract billing with start/end validity dates and service quotas.",
-        "[KHATA] Corporate Client Khata Ledger: Complete credit ledger, credit limit controls, and 30/60/90 days aging report.",
-        "[IGST] Automated IGST vs CGST/SGST: Automatic interstate tax determination based on Client GSTIN & Place of Supply.",
-        "[GST TAX] GSTR-1 & Statutory Filing: Instant export of B2B and B2C sales summary ready for GST portal upload.",
+        "[SAC] Pure Service Billing SAC 9983/9984: Zero physical inventory constraints; purely service-based line items.",
+        "[AMC] Retainer & Milestone Contracts: Generate recurring quarterly / annual service retainer billing.",
+        "[KHATA] Client Receivables Ledger: Statement of accounts with downloadable customer statements in A4 PDF.",
+        "[IGST] Inter-State Tax Engine: Automatic IGST applied when client state code differs from service provider.",
+        "[TDS] Statutory TDS Declarations: Section 194J TDS notes printed on commercial tax invoices.",
       ],
     },
   ];
@@ -608,7 +618,7 @@ async function generatePdf() {
       color: accentBlue,
     });
 
-    let itemY = y3 - 54;
+    let itemY = y3 - 52;
     for (const feat of s.features) {
       const words = feat.split(" ");
       let l1 = "";
@@ -624,29 +634,29 @@ async function generatePdf() {
       page3.drawText(l1, {
         x: 52,
         y: itemY,
-        size: 7.5,
+        size: 7.2,
         font: fontRegular,
         color: textDark,
       });
-      itemY -= 11;
+      itemY -= 10.5;
       if (l2) {
         page3.drawText(l2, {
           x: 65,
           y: itemY,
-          size: 7.5,
+          size: 7.2,
           font: fontRegular,
           color: textDark,
         });
-        itemY -= 12;
+        itemY -= 11.5;
       } else {
-        itemY -= 3;
+        itemY -= 2;
       }
     }
 
     y3 -= 225;
   }
 
-  page3.drawText("ZionaPOS Cloud ERP -- Multi-Tenant Multi-Industry Platform | Page 3 of 5", {
+  page3.drawText("ZionaPOS Cloud ERP • A Product of ZaayaSoft (https://zaayasoft.com) • Live Demo: https://www.zionapos.store | Page 3 of 6", {
     x: 40,
     y: 25,
     size: 7.5,
@@ -681,7 +691,7 @@ async function generatePdf() {
 
   const part3Sections = [
     {
-      title: "7. Textiles & Apparel Store (apparel.demo@zionapos.com)",
+      title: "7. Textiles & Apparel Store (apparel.demo@zaayasoft.com)",
       tag: "2D Size-Color Matrix * Barcode Hang-Tags * Fabric Meter Cuts * 12% GST",
       features: [
         "[MATRIX] 2D Size-Color-Fit Matrix: Auto-generate SKU combinations across sizes (S/M/L/XL) & colors with 1 click.",
@@ -692,7 +702,7 @@ async function generatePdf() {
       ],
     },
     {
-      title: "8. Electronics & Mobile Store (electronics.demo@zionapos.com)",
+      title: "8. Electronics & Mobile Store (electronics.demo@zaayasoft.com)",
       tag: "Dual 15-Digit IMEI * Warranty History * Brand EMI * Trade-In Vouchers",
       features: [
         "[IMEI] Dual 15-Digit IMEI Tracking: Inward and bill phones with mandatory IMEI-1 & IMEI-2 serial capture.",
@@ -703,7 +713,7 @@ async function generatePdf() {
       ],
     },
     {
-      title: "9. Salon, Spa & Wellness Center (salon.demo@zionapos.com)",
+      title: "9. Salon, Spa & Wellness Center (salon.demo@zaayasoft.com)",
       tag: "Zero-Wait Self-Booking * Smartphone PWA Shortcut * Standee QR * Stylist Commissions",
       features: [
         "[SELF-BOOK] Zero-Wait Customer Booking Portal: Live slot calendar at /book/demo-salon (collision-free 30m slots).",
@@ -781,7 +791,7 @@ async function generatePdf() {
     y4 -= 225;
   }
 
-  page4.drawText("ZionaPOS Cloud ERP -- Multi-Tenant Multi-Industry Platform | Page 4 of 5", {
+  page4.drawText("ZionaPOS Cloud ERP • A Product of ZaayaSoft (https://zaayasoft.com) • Live Demo: https://www.zionapos.store | Page 4 of 6", {
     x: 40,
     y: 25,
     size: 7.5,
@@ -790,14 +800,14 @@ async function generatePdf() {
   });
 
   // =========================================================================
-  // PAGE 5: PLATFORM-WIDE HIGHLIGHTS & ARCHITECTURE (Portrait A4: 595.28 x 841.89)
+  // PAGE 5: VERTICAL 10 IN-DEPTH TESTING GUIDE (Portrait A4: 595.28 x 841.89)
   // =========================================================================
   const page5 = pdfDoc.addPage([595.28, 841.89]);
   const { width: p5Width, height: p5Height } = page5.getSize();
 
   let y5 = p5Height - 38;
 
-  page5.drawText("ZionaPOS Core Technologies & Enterprise Architecture", {
+  page5.drawText("Industry Feature Guide -- Part 4: Vertical 10", {
     x: 40,
     y: y5,
     size: 16,
@@ -805,14 +815,193 @@ async function generatePdf() {
     color: primaryDark,
   });
   y5 -= 15;
-  page5.drawText("Next-Gen AI, Statutory Compliance, Omnichannel Automation & Cloud Infrastructure", {
+  page5.drawText("Clinical Diagnostic Laboratory & Pathology Information System (LIMS)", {
     x: 40,
     y: y5,
     size: 9.5,
     font: fontRegular,
     color: textMuted,
   });
-  y5 -= 24;
+  y5 -= 22;
+
+  // Large Hero Card for Diagnostic Lab
+  page5.drawRectangle({
+    x: 38,
+    y: y5 - 410,
+    width: p5Width - 76,
+    height: 405,
+    color: cardBg,
+    borderColor: cardBorder,
+    borderWidth: 1.2,
+  });
+
+  page5.drawText("10. Clinical Diagnostic Laboratory & Pathology LIMS (lab.demo@zaayasoft.com)", {
+    x: 50,
+    y: y5 - 24,
+    size: 12,
+    font: fontBold,
+    color: primaryDark,
+  });
+
+  page5.drawText("Phlebotomy Queue * Vacutainer Tube Barcodes * Age/Gender Ranges * Auto-Formulas * NABL Reports", {
+    x: 50,
+    y: y5 - 40,
+    size: 8,
+    font: fontBold,
+    color: accentBlue,
+  });
+
+  const labFeatures = [
+    "[ACCESSION] Phlebotomy & Sample Accession Queue (/lab/queue): Real-time tracking of biological specimens through all lifecycle stages: SAMPLE_PENDING -> SAMPLE_COLLECTED -> IN_TESTING -> RESULTS_ENTERED -> VERIFIED.",
+    "[BARCODE] Thermal Vacutainer Barcode Label Generator: Generates unique specimen barcodes (e.g. SMP-849201) and prints 38mm x 25mm (2\"x1\") thermal stickers directly for EDTA/Serum blood collection tubes.",
+    "[DYNAMIC RANGES] Age- & Gender-Specific Biological Reference Intervals: NABL-compliant reference ranges dynamically adjust to Adult Male, Adult Female, Infant, or Child. Abnormal values are instantly flagged with bold color alerts.",
+    "[AUTO-CALC] Real-Time Parameter Calculation Formulas: Built-in clinical chemistry formulas automatically compute derived values as raw data is entered. Lipid Profile calculates LDL, VLDL & Ratio; LFT calculates Globulin & A/G Ratio.",
+    "[PANIC ALERTS] Statutory Critical Panic Value Red Warnings: Flashes high-priority visual alarms and logs critical patient warnings whenever critical life-threatening thresholds (e.g. Platelets < 50,000, Glucose > 350) are breached.",
+    "[DOCTOR SIGN-OFF] Pathologist Digital Authorization & Scanned Signature: Multi-tier review workflow where MD Pathologists review technologist findings, add clinical impressions, and authorize reports with a digital signature stamp.",
+    "[QR VERIFIED] Tamper-Proof Official A4 Diagnostic Test Report (/lab/report/[id]): Comprehensive medical test report complete with NABL accreditation header, tabular findings, clinical notes, doctor signature, and a verification QR code.",
+    "[CLINICIANS] Referring Clinicians Directory & Referral Volumes (/lab/doctors): Master catalog of local referring doctors, medical council registration numbers, clinics, and monthly patient referral volumes for incentive tracking.",
+  ];
+
+  let labItemY = y5 - 62;
+  for (const feat of labFeatures) {
+    const words = feat.split(" ");
+    let l1 = "";
+    let l2 = "";
+    for (const w of words) {
+      if ((l1 + " " + w).length < 88) {
+        l1 += (l1 ? " " : "") + w;
+      } else {
+        l2 += (l2 ? " " : "") + w;
+      }
+    }
+
+    page5.drawText(l1, {
+      x: 52,
+      y: labItemY,
+      size: 7.5,
+      font: fontRegular,
+      color: textDark,
+    });
+    labItemY -= 11.5;
+    if (l2) {
+      page5.drawText(l2, {
+        x: 65,
+        y: labItemY,
+        size: 7.5,
+        font: fontRegular,
+        color: textDark,
+      });
+      labItemY -= 13;
+    } else {
+      labItemY -= 3;
+    }
+  }
+
+  y5 -= 435;
+
+  // Bottom Box: Pre-configured Diagnostic Test Catalog Showcase
+  page5.drawRectangle({
+    x: 38,
+    y: y5 - 245,
+    width: p5Width - 76,
+    height: 240,
+    color: rgb(0.95, 0.97, 1.0),
+    borderColor: rgb(0.3, 0.5, 0.9),
+    borderWidth: 1,
+  });
+
+  page5.drawText("Pre-Configured Diagnostic Test Catalog & NABL Investigations", {
+    x: 50,
+    y: y5 - 20,
+    size: 11,
+    font: fontBold,
+    color: primaryDark,
+  });
+
+  page5.drawText("Apex Diagnostics is pre-seeded with 6 complete clinical test panels covering 32 distinct investigations:", {
+    x: 50,
+    y: y5 - 34,
+    size: 8,
+    font: fontRegular,
+    color: textMuted,
+  });
+
+  const catalogItems = [
+    "* Complete Blood Count (CBC with 5-Part Differential): Hemoglobin, WBC, RBC, PCV, Platelets (50k panic alert), MCV, Neutrophils, Lymphocytes, Eosinophils, Monocytes.",
+    "* Lipid Profile Panel (Heart Health): Total Cholesterol, HDL Good Cholesterol, Serum Triglycerides, LDL (Calculated Friedewald), VLDL, and Chol / HDL Ratio.",
+    "* Liver Function Test (LFT Panel): Total Bilirubin, Direct Bilirubin, SGOT (AST), SGPT (ALT), Alkaline Phosphatase, Total Protein, Albumin, Globulin (Calculated), A/G Ratio.",
+    "* Renal / Kidney Function Test (RFT / KFT): Blood Urea, Serum Creatinine (Male: 0.7-1.3, Female: 0.6-1.1), Serum Uric Acid, and Total Serum Calcium.",
+    "* Thyroid Profile Panel: Total Triiodothyronine (T3), Total Thyroxine (T4), and Ultrasensitive TSH (0.35 - 4.94 uIU/mL with critical panic alerts).",
+    "* Blood Glucose Investigations: Fasting Blood Sugar (FBS, 70-99 mg/dL) and Postprandial Blood Sugar (PPBS, <140 mg/dL) with pre-diabetes range checks.",
+  ];
+
+  let catY = y5 - 54;
+  for (const item of catalogItems) {
+    const words = item.split(" ");
+    let l1 = "";
+    let l2 = "";
+    for (const w of words) {
+      if ((l1 + " " + w).length < 88) {
+        l1 += (l1 ? " " : "") + w;
+      } else {
+        l2 += (l2 ? " " : "") + w;
+      }
+    }
+
+    page5.drawText(l1, {
+      x: 52,
+      y: catY,
+      size: 7.5,
+      font: fontRegular,
+      color: textDark,
+    });
+    catY -= 11.5;
+    if (l2) {
+      page5.drawText(l2, {
+        x: 65,
+        y: catY,
+        size: 7.5,
+        font: fontRegular,
+        color: textDark,
+      });
+      catY -= 13;
+    } else {
+      catY -= 3;
+    }
+  }
+
+  page5.drawText("ZionaPOS Cloud ERP • A Product of ZaayaSoft (https://zaayasoft.com) • Live Demo: https://www.zionapos.store | Page 5 of 6", {
+    x: 40,
+    y: 25,
+    size: 7.5,
+    font: fontOblique,
+    color: textMuted,
+  });
+
+  // =========================================================================
+  // PAGE 6: PLATFORM-WIDE HIGHLIGHTS & ARCHITECTURE (Portrait A4: 595.28 x 841.89)
+  // =========================================================================
+  const page6 = pdfDoc.addPage([595.28, 841.89]);
+  const { width: p6Width, height: p6Height } = page6.getSize();
+
+  let y6 = p6Height - 38;
+
+  page6.drawText("ZionaPOS Core Technologies & Enterprise Architecture", {
+    x: 40,
+    y: y6,
+    size: 16,
+    font: fontBold,
+    color: primaryDark,
+  });
+  y6 -= 15;
+  page6.drawText("Next-Gen AI, Statutory Compliance, Omnichannel Automation & Cloud Infrastructure", {
+    x: 40,
+    y: y6,
+    size: 9.5,
+    font: fontRegular,
+    color: textMuted,
+  });
+  y6 -= 24;
 
   const coreCards = [
     {
@@ -871,27 +1060,27 @@ async function generatePdf() {
   ];
 
   for (const card of coreCards) {
-    page5.drawRectangle({
+    page6.drawRectangle({
       x: 38,
-      y: y5 - 110,
-      width: p5Width - 76,
+      y: y6 - 110,
+      width: p6Width - 76,
       height: 105,
       color: card.color,
       borderColor: card.border,
       borderWidth: 1,
     });
 
-    page5.drawText(card.title, {
+    page6.drawText(card.title, {
       x: 48,
-      y: y5 - 18,
+      y: y6 - 18,
       size: 9.5,
       font: fontBold,
       color: primaryDark,
     });
 
-    let ptY = y5 - 34;
+    let ptY = y6 - 34;
     for (const pt of card.points) {
-      page5.drawText(pt, {
+      page6.drawText(pt, {
         x: 52,
         y: ptY,
         size: 7.2,
@@ -901,11 +1090,11 @@ async function generatePdf() {
       ptY -= 12.5;
     }
 
-    y5 -= 120;
+    y6 -= 120;
   }
 
-  // Footer notes on Page 5
-  page5.drawText("ZionaPOS Cloud ERP -- Built for India, Scaled for Global Retail & Services | Page 5 of 5", {
+  // Footer notes on Page 6
+  page6.drawText("ZionaPOS Cloud ERP • A Product of ZaayaSoft (https://zaayasoft.com) • Live Demo: https://www.zionapos.store | Page 6 of 6", {
     x: 40,
     y: 25,
     size: 7.5,
@@ -921,7 +1110,7 @@ async function generatePdf() {
   fs.writeFileSync(outPathRoot, pdfBytes);
   console.log(`Saved PDF to: ${outPathRoot}`);
 
-  // 2. Save to public directory (accessible directly via https://www.zionapos.store/ZionaPOS_Industry_Demo_Credentials.pdf)
+  // 2. Save to public directory
   const publicDir = path.join(process.cwd(), "public");
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });
@@ -931,9 +1120,9 @@ async function generatePdf() {
   console.log(`Saved PDF to: ${outPathPublic}`);
 
   // 3. Save to current artifact directory
-  const artifactDir = "C:\\Users\\dell\\.gemini\\antigravity\\brain\\8b96b443-8a8d-4cf4-ae2f-eb78ba7fe41d";
-  if (fs.existsSync(artifactDir)) {
-    const outPathArtifact = path.join(artifactDir, "ZionaPOS_Industry_Demo_Credentials.pdf");
+  const currentArtifactDir = "C:\\Users\\dell\\.gemini\\antigravity\\brain\\9c7fa1cb-a1c0-4538-8c1e-60dea886903f";
+  if (fs.existsSync(currentArtifactDir)) {
+    const outPathArtifact = path.join(currentArtifactDir, "ZionaPOS_Industry_Demo_Credentials.pdf");
     fs.writeFileSync(outPathArtifact, pdfBytes);
     console.log(`Saved PDF to: ${outPathArtifact}`);
   }
