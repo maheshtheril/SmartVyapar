@@ -283,52 +283,75 @@ export async function GET(req: NextRequest) {
       },
     ];
 
-    // Industry-Specific Module: Only show Garage & Service for AUTOMOBILE businesses
+    // Industry-Specific Module: Show Garage & Service at TOP PRIORITY for AUTOMOBILE
     if (tenant.businessType === "AUTOMOBILE") {
-      menuTree.push({
+      menuTree.unshift({
         id: "garage",
-        name: "Garage & Service",
+        name: "Garage & Automobile Workshop",
         icon: "Wrench",
+        badge: "Live Fleet",
+        badgeColor: "indigo",
         children: [
           {
             id: "job-cards",
-            name: "Active Job Cards",
+            name: "Active Job Cards & Repairs",
             href: "/garage",
-            icon: "ClipboardCheck"
-          }
+            icon: "ClipboardCheck",
+            highlight: true,
+          },
+          {
+            id: "new-job-card",
+            name: "+ New Vehicle Inward",
+            href: "/garage/new",
+            icon: "PlusCircle",
+          },
         ]
       });
     }
 
-    // Industry-Specific Module: Only show Salon, Spa & Wellness for SALON_SPA businesses
+    // Industry-Specific Module: Show Salon, Spa & Wellness at TOP PRIORITY for SALON_SPA
     if (tenant.businessType === "SALON_SPA") {
-      menuTree.splice(2, 0, {
+      menuTree.unshift({
         id: "salon",
-        name: "Salon & Wellness",
+        name: "Salon, Spa & Wellness",
         icon: "Scissors",
-        badge: "Live Slots",
+        badge: "Live Chairs",
         badgeColor: "emerald",
         children: [
           {
             id: "salon-appointments",
-            name: "Appointment & Chair Slots",
+            name: "Appointments & Chair Slots",
             href: "/salon/appointments",
             icon: "Calendar",
-            badge: "Live Slots",
+            badge: "Live Chairs",
             badgeColor: "emerald",
             highlight: true,
+          },
+          {
+            id: "salon-booking-portal",
+            name: "Public Booking Portal",
+            href: `/book/${tenant.slug}`,
+            icon: "Sparkles",
+            badge: "Online QR",
+            badgeColor: "indigo",
+          },
+          {
+            id: "salon-services",
+            name: "Salon Services & Rates",
+            href: "/inventory",
+            icon: "Tag",
           },
         ],
       });
     }
 
-    // Industry-Specific Module: Only show Food & Restaurant for RESTAURANT businesses
+    // Industry-Specific Module: Show Food & Restaurant at TOP PRIORITY for RESTAURANT
     if (tenant.businessType === "RESTAURANT") {
-      menuTree.splice(2, 0, {
+      menuTree.unshift({
         id: "restaurant",
         name: "Food & Restaurant",
         icon: "UtensilsCrossed",
-        badge: occupiedTablesCount > 0 ? `${occupiedTablesCount} Busy` : undefined,
+        badge: occupiedTablesCount > 0 ? `${occupiedTablesCount} Busy` : "Tables",
         badgeColor: "amber",
         children: [
           { 

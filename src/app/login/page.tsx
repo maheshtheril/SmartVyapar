@@ -253,6 +253,24 @@ function LoginForm() {
         email.toLowerCase().includes("lab.")
       ) {
         router.push("/lab");
+      } else if (
+        data.user?.businessType === "SALON_SPA" ||
+        data.user?.tenantSlug === "demo-salon" ||
+        email.toLowerCase().includes("salon.")
+      ) {
+        router.push("/salon/appointments");
+      } else if (
+        data.user?.businessType === "RESTAURANT" ||
+        data.user?.tenantSlug === "demo-restaurant" ||
+        email.toLowerCase().includes("restaurant.")
+      ) {
+        router.push("/restaurant");
+      } else if (
+        data.user?.businessType === "AUTOMOBILE" ||
+        data.user?.tenantSlug === "demo-garage" ||
+        email.toLowerCase().includes("garage.")
+      ) {
+        router.push("/garage");
       } else {
         router.push("/");
       }

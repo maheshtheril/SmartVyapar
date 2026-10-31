@@ -238,11 +238,18 @@ export default function Sidebar() {
           }
           if (Array.isArray(data.menuTree)) {
             setTreeGroups(data.menuTree);
-            if (data.tenant?.businessType === "DIAGNOSTIC_LAB" || window.location.pathname.startsWith('/lab')) {
+            const bType = data.tenant?.businessType;
+            const pName = window.location.pathname;
+            const nextExp: Record<string, boolean> = {};
+            if (bType === "DIAGNOSTIC_LAB" || pName.startsWith('/lab')) nextExp.laboratory = true;
+            if (bType === "SALON_SPA" || pName.startsWith('/salon')) nextExp.salon = true;
+            if (bType === "RESTAURANT" || pName.startsWith('/restaurant')) nextExp.restaurant = true;
+            if (bType === "AUTOMOBILE" || pName.startsWith('/garage')) nextExp.garage = true;
+            if (Object.keys(nextExp).length > 0) {
               setExpandedGroups((prev) => {
-                const next = { ...prev, laboratory: true };
-                savePersistedExpanded(next);
-                return next;
+                const merged = { ...prev, ...nextExp };
+                savePersistedExpanded(merged);
+                return merged;
               });
             }
           }

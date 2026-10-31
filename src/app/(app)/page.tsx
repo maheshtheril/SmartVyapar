@@ -37,12 +37,27 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Auto-redirect specialized industry verticals (e.g. Diagnostic Lab)
+      // Auto-redirect specialized industry verticals (e.g. Diagnostic Lab, Salon, Restaurant, Garage)
       const tenantRes = await fetch("/api/tenant");
       const tenantData = await tenantRes.json();
-      if (tenantData.success && tenantData.tenant?.businessType === "DIAGNOSTIC_LAB") {
-        router.replace("/lab");
-        return;
+      if (tenantData.success) {
+        const bType = tenantData.tenant?.businessType;
+        if (bType === "DIAGNOSTIC_LAB") {
+          router.replace("/lab");
+          return;
+        }
+        if (bType === "SALON_SPA") {
+          router.replace("/salon/appointments");
+          return;
+        }
+        if (bType === "RESTAURANT") {
+          router.replace("/restaurant");
+          return;
+        }
+        if (bType === "AUTOMOBILE") {
+          router.replace("/garage");
+          return;
+        }
       }
 
       const res = await fetch("/api/dashboard");
