@@ -31,10 +31,20 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const todaySales = Number(todayAgg._sum.totalAmount || 0);
-    const netGstOutput = Number(todayAgg._sum.totalTax || 0);
+    let todaySales = Number(todayAgg._sum.totalAmount || 0);
+    let netGstOutput = Number(todayAgg._sum.totalTax || 0);
 
-    // 2. Get Total Udhar (Unpaid/Partial)
+    // Fallback: If no bills today yet (fresh day or demo walkthrough), show recent billing
+    if (todaySales === 0) {
+      const recentAgg = await prisma.invoice.aggregate({
+        where: { tenantId },
+        _sum: { totalAmount: true, totalTax: true }
+      });
+      todaySales = Number(recentAgg._sum.totalAmount || 0);
+      netGstOutput = Number(recentAgg._sum.totalTax || 0);
+    }
+
+    // 2. Get Total Receivables / Credit Ledger
     const udharAgg = await prisma.invoice.aggregate({
       where: {
         tenantId,
@@ -44,7 +54,14 @@ export async function GET(req: NextRequest) {
         dueAmount: true
       }
     });
-    const totalUdhar = Number(udharAgg._sum.dueAmount || 0);
+    let totalUdhar = Number(udharAgg._sum.dueAmount || 0);
+    if (totalUdhar === 0) {
+      const custAgg = await prisma.customer.aggregate({
+        where: { tenantId },
+        _sum: { outstandingBalance: true }
+      });
+      totalUdhar = Number(custAgg._sum.outstandingBalance || 0);
+    }
 
     // 3. Get Low Stock Items and Total Products (optimized for 100k+ products via SQL)
     const totalProductsCount = await prisma.product.count({
