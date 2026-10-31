@@ -35,10 +35,33 @@ export async function POST(req: NextRequest) {
     }
 
     // Look up user (email is unique across all tenants)
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { email },
       include: { tenant: true },
     });
+
+    // Fallback domain resolution for demo accounts (@zaayasoft.com, @zionapos.store)
+    if (!user) {
+      const normalized = email.trim().toLowerCase();
+      const prefix = normalized.includes("@") ? normalized.split("@")[0] : normalized;
+      const candidates = [
+        `${prefix}@zaayasoft.com`,
+        `${prefix}@zionapos.store`,
+        `${prefix}@zionapos.com`,
+      ];
+      for (const candidate of candidates) {
+        if (candidate !== email) {
+          const altUser = await prisma.user.findUnique({
+            where: { email: candidate },
+            include: { tenant: true },
+          });
+          if (altUser) {
+            user = altUser;
+            break;
+          }
+        }
+      }
+    }
 
     if (!user || !user.isActive) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });

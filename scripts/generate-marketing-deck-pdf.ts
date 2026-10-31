@@ -191,7 +191,7 @@ async function generateMarketingPdf() {
     "2. Multimodal Gemini AI OCR: Snap a photo of any purchase bill; items, prices, batches & taxes inward in 2 seconds.",
     "3. Zero-Wait Customer Booking Portal: Dedicated branded link (zionapos.store/book/[slug]) with PWA home screen install.",
     "4. Official WhatsApp 2-Way Bot: Automated customer balance inquiries (DUES), instant PDF bills, and UPI pay links.",
-    "5. 9 Turnkey Industry Verticals: Pre-configured workflows for Retail, Restaurant, Garage, Pharma, Apparel, Salon & more.",
+    "5. 10 Turnkey Industry Verticals: Pre-configured workflows for Retail, Restaurant, Garage, Pharma, Diagnostic Lab & more.",
   ];
 
   let ay = y - 18;

@@ -74,6 +74,11 @@ function SettingsContent() {
     businessType: 'RETAIL',
     pharmacyDrugLicense20B: '',
     pharmacyDrugLicense21B: '',
+    labAccreditationNo: '',
+    labPathologistName: '',
+    labPathologistRegNo: '',
+    labPathologistDegree: '',
+    labPathologistSignatureUrl: '',
     restaurantPlan: 'NONE',
     isComposition: false,
     allowNegativeStock: false,
@@ -213,6 +218,11 @@ function SettingsContent() {
           businessType: data.tenant.businessType || 'RETAIL',
           pharmacyDrugLicense20B: data.tenant.pharmacyDrugLicense20B || '',
           pharmacyDrugLicense21B: data.tenant.pharmacyDrugLicense21B || '',
+          labAccreditationNo: data.tenant.labAccreditationNo || '',
+          labPathologistName: data.tenant.labPathologistName || '',
+          labPathologistRegNo: data.tenant.labPathologistRegNo || '',
+          labPathologistDegree: data.tenant.labPathologistDegree || '',
+          labPathologistSignatureUrl: data.tenant.labPathologistSignatureUrl || '',
           restaurantPlan: data.tenant.restaurantPlan || 'NONE',
           isComposition: !!data.tenant.isComposition,
           allowNegativeStock: !!data.tenant.allowNegativeStock,
@@ -804,6 +814,7 @@ function SettingsContent() {
                     { id: 'APPAREL', label: 'Textiles & Apparel', desc: 'Size-Color variant grid, fabric meters & barcode stickers', emoji: '👗' },
                     { id: 'ELECTRONICS', label: 'Electronics & Mobiles', desc: 'IMEI/Serial number tracking, warranty lookup & gadgets', emoji: '📱' },
                     { id: 'PHARMACY', label: 'Pharmacy & Healthcare', desc: 'Schedule H/H1 Register, Doctor Master & Expiry Monitor', emoji: '💊' },
+                    { id: 'DIAGNOSTIC_LAB', label: 'Diagnostic Lab & Pathology', desc: 'Phlebotomy Queue, Age/Gender Normal Ranges, Pathologist Sign-off & Reports', emoji: '🔬' },
                     { id: 'RESTAURANT', label: 'Restaurant & Cafe', desc: 'Dining Tables, KOT, Bakery & Takeaway', emoji: '🍽️' },
                     { id: 'SALON_SPA', label: 'Salon, Spa & Wellness', desc: 'Stylist commissions, service appointments & beauty wellness', emoji: '💇' },
                     { id: 'DISTRIBUTION', label: 'FMCG & Distribution', desc: 'Territory management, wholesale beats, distribution', emoji: '🚚' },
@@ -868,6 +879,71 @@ function SettingsContent() {
                       />
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Diagnostic Laboratory & Pathology Accreditation — only shown when DIAGNOSTIC_LAB is selected */}
+              {profile.businessType === 'DIAGNOSTIC_LAB' && (
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">🔬</span>
+                    <label className="block text-xs font-bold text-indigo-900">
+                      Laboratory Accreditation & Authorized Pathologist Sign-Off Details
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Lab Accreditation / Clinical Establishment Reg No.
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. NABL-MED-2026-9481 | CEA Reg: KL-09"
+                        value={profile.labAccreditationNo}
+                        onChange={(e) => setProfile({ ...profile, labAccreditationNo: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Chief Pathologist / Biochemist Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Dr. Ananya Nair, MD"
+                        value={profile.labPathologistName}
+                        onChange={(e) => setProfile({ ...profile, labPathologistName: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Medical Council Registration No.
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. TCMC Reg. No. 49182 / MCI-9821"
+                        value={profile.labPathologistRegNo}
+                        onChange={(e) => setProfile({ ...profile, labPathologistRegNo: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Qualifications & Designation
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. MD, DCP (Consultant Clinical Pathologist)"
+                        value={profile.labPathologistDegree}
+                        onChange={(e) => setProfile({ ...profile, labPathologistDegree: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-xs"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 italic">
+                    These statutory credentials and doctor details are stamped directly onto official patient diagnostic PDF test reports.
+                  </p>
                 </div>
               )}
 

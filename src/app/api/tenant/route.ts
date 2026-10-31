@@ -47,7 +47,8 @@ export async function GET(req: NextRequest) {
       creditNotesCount,
       occupiedTablesCount,
       customersCount,
-      nearExpiryCount
+      nearExpiryCount,
+      pendingLabSamplesCount
     ] = await Promise.all([
       prisma.product.count({
         where: {
@@ -80,6 +81,12 @@ export async function GET(req: NextRequest) {
             lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           },
           currentStock: { gt: 0 },
+        },
+      }),
+      prisma.labOrder.count({
+        where: {
+          tenantId,
+          status: { in: ["SAMPLE_PENDING", "SAMPLE_COLLECTED", "IN_TESTING"] },
         },
       }),
     ]);
@@ -358,6 +365,53 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Industry-Specific Module: Show Diagnostic Lab & LIMS at TOP PRIORITY for DIAGNOSTIC_LAB
+    if (tenant.businessType === "DIAGNOSTIC_LAB") {
+      menuTree.unshift({
+        id: "laboratory",
+        name: "Diagnostic Lab & LIMS",
+        icon: "FlaskConical",
+        badge: pendingLabSamplesCount > 0 ? `${pendingLabSamplesCount} Pending` : "Live",
+        badgeColor: "rose",
+        children: [
+          {
+            id: "lab-dashboard",
+            name: "Lab Command Center",
+            href: "/lab",
+            icon: "LayoutDashboard",
+            highlight: true,
+          },
+          {
+            id: "lab-queue",
+            name: "Phlebotomy & Sample Queue",
+            href: "/lab/queue",
+            icon: "Clock",
+            badge: pendingLabSamplesCount > 0 ? `${pendingLabSamplesCount}` : undefined,
+            badgeColor: "rose",
+          },
+          {
+            id: "lab-results",
+            name: "Result Entry & Worklist",
+            href: "/lab/results",
+            icon: "FileCheck",
+            highlight: true,
+          },
+          {
+            id: "lab-tests",
+            name: "Test Catalog & Normal Ranges",
+            href: "/lab/tests",
+            icon: "Tag",
+          },
+          {
+            id: "lab-doctors",
+            name: "Referring Clinicians",
+            href: "/lab/doctors",
+            icon: "Users",
+          },
+        ],
+      });
+    }
+
     // Industry-Specific Module: Only show Pharmacy & Healthcare for PHARMACY businesses
     if (tenant.businessType === "PHARMACY") {
       menuTree.splice(2, 0, {
@@ -529,6 +583,11 @@ export async function GET(req: NextRequest) {
         businessType: tenant.businessType || "RETAIL",
         pharmacyDrugLicense20B: tenant.pharmacyDrugLicense20B || "",
         pharmacyDrugLicense21B: tenant.pharmacyDrugLicense21B || "",
+        labAccreditationNo: tenant.labAccreditationNo || "",
+        labPathologistName: tenant.labPathologistName || "",
+        labPathologistRegNo: tenant.labPathologistRegNo || "",
+        labPathologistDegree: tenant.labPathologistDegree || "",
+        labPathologistSignatureUrl: tenant.labPathologistSignatureUrl || "",
         isComposition: tenant.isComposition,
         allowNegativeStock: tenant.allowNegativeStock,
         taxInclusiveMode: tenant.taxInclusiveMode,
@@ -553,6 +612,7 @@ export async function GET(req: NextRequest) {
         occupiedTablesCount,
         customersCount,
         nearExpiryCount,
+        pendingLabSamplesCount,
       },
       menuTree,
     });
@@ -580,6 +640,11 @@ export async function PATCH(req: NextRequest) {
       businessType,
       pharmacyDrugLicense20B,
       pharmacyDrugLicense21B,
+      labAccreditationNo,
+      labPathologistName,
+      labPathologistRegNo,
+      labPathologistDegree,
+      labPathologistSignatureUrl,
       phone,
       email,
       address,
@@ -604,6 +669,11 @@ export async function PATCH(req: NextRequest) {
         ...(businessType !== undefined ? { businessType } : {}),
         ...(pharmacyDrugLicense20B !== undefined ? { pharmacyDrugLicense20B: pharmacyDrugLicense20B ? pharmacyDrugLicense20B.trim() : null } : {}),
         ...(pharmacyDrugLicense21B !== undefined ? { pharmacyDrugLicense21B: pharmacyDrugLicense21B ? pharmacyDrugLicense21B.trim() : null } : {}),
+        ...(labAccreditationNo !== undefined ? { labAccreditationNo: labAccreditationNo ? labAccreditationNo.trim() : null } : {}),
+        ...(labPathologistName !== undefined ? { labPathologistName: labPathologistName ? labPathologistName.trim() : null } : {}),
+        ...(labPathologistRegNo !== undefined ? { labPathologistRegNo: labPathologistRegNo ? labPathologistRegNo.trim() : null } : {}),
+        ...(labPathologistDegree !== undefined ? { labPathologistDegree: labPathologistDegree ? labPathologistDegree.trim() : null } : {}),
+        ...(labPathologistSignatureUrl !== undefined ? { labPathologistSignatureUrl: labPathologistSignatureUrl ? labPathologistSignatureUrl.trim() : null } : {}),
         ...(businessType === "DISTRIBUTION" ? { enableTerritory: true } : {}),
         ...(restaurantPlan !== undefined ? { restaurantPlan } : {}),
         ...(phone !== undefined ? { phone: phone.trim() } : {}),

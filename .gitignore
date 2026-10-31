@@ -50,3 +50,5 @@ scratch/
 *.dump
 *.sql.gz
 .sentryclirc
+# Publish settings & credentials
+*.publishsettings

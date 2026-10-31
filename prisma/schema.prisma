@@ -78,10 +78,17 @@ model Tenant {
   financialYearStartMonth Int              @default(4) // 4 = April, 1 = January
   autoRoundOff            Boolean          @default(true) // Round off bill to nearest integer
   logoUrl                 String?
-  businessType            String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES", "PHARMACY", "DISTRIBUTION", "APPAREL", "ELECTRONICS", "SALON_SPA"
+  businessType            String           @default("RETAIL") // "RETAIL", "AUTOMOBILE", "RESTAURANT", "SERVICES", "PHARMACY", "DISTRIBUTION", "APPAREL", "ELECTRONICS", "SALON_SPA", "DIAGNOSTIC_LAB"
   pharmacyDrugLicense20B  String? // Retail Allopathic Drug License Form 20B
   pharmacyDrugLicense21B  String? // Retail Drug License Form 21B
   restaurantPlan          String           @default("NONE") // "NONE" | "STARTER" | "PRO" | "CHAIN" — Restaurant-specific add-on tier
+  
+  // Diagnostic Laboratory & Pathology Accreditation
+  labAccreditationNo         String? // e.g. "NABL Cert No. M-1234" or State Reg
+  labPathologistName         String? // Default Pathologist / Biochemist
+  labPathologistRegNo        String? // Medical Council Registration No
+  labPathologistDegree       String? // e.g. "MD (Pathology), DCP"
+  labPathologistSignatureUrl String? // Scanned digital signature PNG URL
   subscriptionTier        SubscriptionTier @default(FREE)
   subscriptionStatus      String           @default("ACTIVE") // "ACTIVE", "CANCELLED", "EXPIRED", "TRIALING"
   planBillingCycle        String           @default("MONTHLY") // "MONTHLY", "ANNUAL"
@@ -135,6 +142,8 @@ model Tenant {
   PriceList             PriceList[]
   memberships           TenantMembership[]
   deviceUnits           DeviceUnit[]
+  labTests              LabTest[]
+  labOrders             LabOrder[]
 
   @@map("tenants")
 }
@@ -217,6 +226,8 @@ model Product {
   batches          Batch[]
   deviceUnits      DeviceUnit[]
   kotItems         KotItem[]
+  isLabTest        Boolean   @default(false)
+  labTest          LabTest?
 
   tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   stockLogs            StockLog[]
@@ -390,6 +401,9 @@ model Customer {
   loyaltyTransactions LoyaltyTransaction[]
   vehicles            CustomerVehicle[]
   serviceReminders    ServiceReminder[]
+  age                 Int?
+  gender              String?              @default("MALE")
+  labOrders           LabOrder[]
   Region              Region?              @relation(fields: [regionId], references: [id])
   regionId            String?
   Zone                Zone?                @relation(fields: [zoneId], references: [id])
@@ -651,6 +665,7 @@ model Invoice {
   creditNotes         CreditNote[]
   loyaltyTransactions LoyaltyTransaction[]
   JobCard             JobCard?
+  labOrders           LabOrder[]
 
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId, invoiceDate])
@@ -1947,10 +1962,174 @@ model Doctor {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  labOrders LabOrder[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
   @@map("doctors")
 }
 
+
+
+// ----------------------------------------------------
+// 22. DIAGNOSTIC LABORATORY & PATHOLOGY (LIMS) MODULE
+// ----------------------------------------------------
+
+model LabTest {
+  id           String   @id @default(uuid())
+  tenantId     String
+  code         String   // e.g. "CBC", "LFT", "RFT", "LIPID", "GLUCOSE_F", "THYROID"
+  name         String   // e.g. "Complete Blood Count (CBC)"
+  department   String   // "HEMATOLOGY", "BIOCHEMISTRY", "CLINICAL_PATHOLOGY", "SEROLOGY", "MICROBIOLOGY", "IMMUNOLOGY"
+  specimenType String   @default("EDTA Whole Blood") // "EDTA Whole Blood", "Serum", "Fluoride Plasma", "Urine Routine", "Stool", "Swab"
+  price        Decimal  @default(0.0) @db.Decimal(10, 2)
+  tatHours     Int?     @default(4) // Turnaround time in hours
+  method       String?  // e.g. "Automated Cell Counter (Impedance)", "Photometry", "ECLIA"
+  instructions String?  // e.g. "12 Hours Fasting Required", "Morning First Void Urine"
+  isPanel      Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  productId    String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product    Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+  parameters LabTestParameter[]
+  orderItems LabOrderItem[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, department])
+  @@map("lab_tests")
+}
+
+model LabTestParameter {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  testId             String
+  name               String   // e.g. "Hemoglobin (Hb)", "Total WBC Count"
+  code               String?  // e.g. "HB", "WBC", "PLATELETS"
+  unit               String?  // e.g. "g/dL", "cells/cu.mm", "mg/dL"
+  orderIndex         Int      @default(0)
+  inputType          String   @default("NUMERIC") // "NUMERIC", "TEXT", "OPTIONS"
+  optionsJson        Json?    // e.g. ["Negative", "Positive", "Reactive"]
+
+  // World-Standard Biological Reference Intervals (Age & Gender Aware)
+  maleMin            Decimal? @db.Decimal(10, 3)
+  maleMax            Decimal? @db.Decimal(10, 3)
+  femaleMin          Decimal? @db.Decimal(10, 3)
+  femaleMax          Decimal? @db.Decimal(10, 3)
+  childMin           Decimal? @db.Decimal(10, 3)
+  childMax           Decimal? @db.Decimal(10, 3)
+  generalMin         Decimal? @db.Decimal(10, 3)
+  generalMax         Decimal? @db.Decimal(10, 3)
+  referenceText      String?  // Display text, e.g. "13.0 - 17.0 g/dL"
+
+  // Critical Panic Alerts (NABL Standard)
+  criticalLow        Decimal? @db.Decimal(10, 3)
+  criticalHigh       Decimal? @db.Decimal(10, 3)
+
+  // Automated Formula Calculation (e.g. Friedewald: CHOL - HDL - (TRIG / 5))
+  calculationFormula String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  test    LabTest          @relation(fields: [testId], references: [id], onDelete: Cascade)
+  results LabOrderResult[]
+
+  @@index([testId, orderIndex])
+  @@map("lab_test_parameters")
+}
+
+model LabOrder {
+  id                      String    @id @default(uuid())
+  tenantId                String
+  orderNumber             String    // e.g. "LAB-2610-0001"
+  sampleBarcode           String    // e.g. "SMP-849201" - Printed onto vacutainer tube
+  customerId              String?
+  patientName             String
+  patientAge              Int?
+  patientAgeUnit          String    @default("YEARS") // "YEARS", "MONTHS", "DAYS"
+  patientGender           String    @default("MALE")  // "MALE", "FEMALE", "OTHER"
+  patientPhone            String?
+  patientEmail            String?
+  referringDoctorId       String?
+  referringDoctorName     String?
+  invoiceId               String?
+  
+  // Specimen Lifecycle Status
+  status                  String    @default("SAMPLE_PENDING") // "SAMPLE_PENDING", "SAMPLE_COLLECTED", "IN_TESTING", "RESULTS_ENTERED", "VERIFIED", "REJECTED"
+  sampleType              String?   // e.g. "EDTA Whole Blood", "Serum"
+  specimenRejectReason    String?   // Hemolyzed, Clotted, Insufficient Quantity
+
+  collectedAt             DateTime?
+  collectedBy             String?   // Phlebotomist name
+  receivedAt              DateTime? // Accessioning timestamp inside lab
+  testedAt                DateTime?
+  testedBy                String?   // Lab technician name
+  verifiedAt              DateTime?
+  verifiedBy              String?   // Pathologist / Biochemist name
+  pathologistSignatureUrl String?
+  pathologistRemarks      String?   // Clinical summary notes
+
+  hasCriticalAlert        Boolean   @default(false)
+  criticalAlertNotes      String?
+  clinicalHistory         String?
+  reportPdfUrl            String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer        Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  referringDoctor Doctor?          @relation(fields: [referringDoctorId], references: [id], onDelete: SetNull)
+  invoice         Invoice?         @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  items           LabOrderItem[]
+  results         LabOrderResult[]
+
+  @@unique([tenantId, orderNumber])
+  @@unique([tenantId, sampleBarcode])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("lab_orders")
+}
+
+model LabOrderItem {
+  id         String   @id @default(uuid())
+  labOrderId String
+  testId     String
+  testName   String
+  department String
+  price      Decimal  @db.Decimal(10, 2)
+  status     String   @default("PENDING") // "PENDING", "COMPLETED"
+  createdAt  DateTime @default(now())
+
+  labOrder LabOrder @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+  test     LabTest  @relation(fields: [testId], references: [id])
+
+  @@index([labOrderId])
+  @@map("lab_order_items")
+}
+
+model LabOrderResult {
+  id                String   @id @default(uuid())
+  labOrderId        String
+  parameterId       String?
+  testName          String
+  parameterName     String
+  parameterCode     String?
+  resultValue       String   // Text or numeric string e.g. "14.2", "Negative"
+  numericValue      Decimal? @db.Decimal(10, 3)
+  unit              String?
+  referenceInterval String?  // Biological reference interval evaluated for this patient's age/gender
+  flag              String   @default("NORMAL") // "NORMAL", "HIGH", "LOW", "CRITICAL_HIGH", "CRITICAL_LOW", "ABNORMAL"
+  remarks           String?
+  orderIndex        Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  labOrder  LabOrder          @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+  parameter LabTestParameter? @relation(fields: [parameterId], references: [id], onDelete: SetNull)
+
+  @@index([labOrderId, orderIndex])
+  @@map("lab_order_results")
+}
